@@ -1,0 +1,95 @@
+<!doctype html>
+<html lang="zh-CN">
+<head>
+  <meta charset="utf-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1" />
+  <title>{% block title %}Supplier Portal{% endblock %}</title>
+
+  <!-- Tailwind CDN（先快速成型；以后想更专业再换成本地构建） -->
+  <script src="https://cdn.tailwindcss.com"></script>
+  <script>
+    tailwind.config = {
+      theme: {
+        extend: {
+          boxShadow: { soft: "0 8px 30px rgba(0,0,0,.06)" }
+        }
+      }
+    }
+  </script>
+
+  <link rel="stylesheet" href="{{ url_for('static', filename='css/app.css') }}">
+</head>
+
+<body class="bg-slate-50 text-slate-900">
+  <!-- 顶部栏 -->
+  <header class="sticky top-0 z-30 border-b bg-white/80 backdrop-blur">
+    <div class="mx-auto max-w-7xl px-4 py-3 flex items-center gap-3">
+      <div class="h-9 w-9 rounded-xl bg-slate-900 text-white grid place-items-center font-semibold">Ken</div>
+      <div class="flex-1">
+        <div class="text-sm text-slate-500">Supplier Management</div>
+        <div class="font-semibold leading-tight">Hello</div>
+      </div>
+
+      <div class="hidden md:flex items-center gap-2">
+        <input class="w-72 rounded-xl border border-slate-200 bg-slate-50 px-3 py-2 text-sm
+                      focus:outline-none focus:ring-2 focus:ring-slate-900/10"
+               placeholder="搜索供应商 / 文件 / 8D..." />
+        <button class="rounded-xl bg-slate-900 text-white px-4 py-2 text-sm shadow-soft hover:opacity-95">
+          快速创建
+        </button>
+      </div>
+    </div>
+  </header>
+
+  <div class="mx-auto max-w-7xl px-4 py-6 grid grid-cols-12 gap-6">
+    <!-- 侧边栏 -->
+    <aside class="col-span-12 md:col-span-3 lg:col-span-2">
+      <nav class="rounded-2xl bg-white border border-slate-100 shadow-soft p-3">
+        <div class="space-y-1">
+          <a href="{{ url_for('main.index') }}"
+             class="flex items-center justify-between rounded-xl px-3 py-2 text-sm
+                    {% if request.path == '/' %} bg-slate-900 text-white {% else %} hover:bg-slate-50 text-slate-700 {% endif %}">
+            <span>Home</span>
+          </a>
+
+          <a href="{{ url_for('suppliers.index') }}"
+             class="flex items-center justify-between rounded-xl px-3 py-2 text-sm
+                    {% if request.path.startswith('/suppliers') %} bg-slate-900 text-white {% else %} hover:bg-slate-50 text-slate-700 {% endif %}">
+            <span class="whitespace-nowrap">Suppliers Archive</span>
+
+          </a>
+
+          <a href="#"
+             class="flex items-center justify-between rounded-xl px-3 py-2 text-sm hover:bg-slate-50 text-slate-700">
+            <span>资料库</span>
+          </a>
+
+          <a href="#"
+             class="flex items-center justify-between rounded-xl px-3 py-2 text-sm hover:bg-slate-50 text-slate-700">
+            <span>审核队列</span>
+          </a>
+
+          <a href="#"
+             class="flex items-center justify-between rounded-xl px-3 py-2 text-sm hover:bg-slate-50 text-slate-700">
+            <span>报表 / KPI</span>
+          </a>
+
+          <a href="#"
+             class="flex items-center justify-between rounded-xl px-3 py-2 text-sm hover:bg-slate-50 text-slate-700">
+            <span>设置</span>
+          </a>
+        </div>
+
+      </nav>
+    </aside>
+
+    <!-- 主内容区 -->
+    <main class="col-span-12 md:col-span-9 lg:col-span-10">
+      {% block content %}{% endblock %}
+      <footer class="mt-10 text-xs text-slate-500">
+        © {{ 2026 }} Supplier Portal • Flask + Tailwind
+      </footer>
+    </main>
+  </div>
+</body>
+</html>

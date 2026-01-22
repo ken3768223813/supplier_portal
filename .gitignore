@@ -1,0 +1,21 @@
+# Python
+__pycache__/
+*.pyc
+
+# Virtual env
+.venv/
+venv/
+
+# PyCharm
+.idea/
+
+# Env / secrets
+.env
+
+# Local db / instance
+instance/
+*.db
+
+# Logs
+*.log
+
