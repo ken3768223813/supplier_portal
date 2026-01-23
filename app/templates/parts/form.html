@@ -1,0 +1,145 @@
+{% extends "supplier_ws/base.html" %}
+{% set active = "parts" %}
+{% block supplier_content %}
+
+<div class="bg-white rounded-2xl border border-slate-100 shadow-sm p-6 max-w-5xl">
+  <div class="text-lg font-semibold text-slate-900 mb-1">
+    {% if mode == "edit" %}编辑零部件{% else %}新增零部件{% endif %}
+  </div>
+  <div class="text-sm text-slate-500 mb-6">
+    Supplier: {{ supplier.code }} · {{ supplier.name }}
+  </div>
+
+  <!-- Part form -->
+  <form method="post"
+        action="{% if mode == 'edit' %}
+                  {{ url_for('parts.edit_part', supplier_code=supplier.code, part_id=part.id) }}
+                {% else %}
+                  {{ url_for('parts.new_part', supplier_code=supplier.code) }}
+                {% endif %}"
+        class="space-y-4">
+
+    <div>
+      <label class="block text-sm text-slate-600 mb-1">PN</label>
+      <input name="pn" required
+             value="{{ part.pn if part else '' }}"
+             class="w-full rounded-xl border border-slate-200 px-4 py-2.5 text-sm focus:outline-none focus:ring-2 focus:ring-slate-300">
+    </div>
+
+    <div>
+      <label class="block text-sm text-slate-600 mb-1">描述</label>
+      <input name="description"
+             value="{{ part.description if part and part.description else '' }}"
+             class="w-full rounded-xl border border-slate-200 px-4 py-2.5 text-sm focus:outline-none focus:ring-2 focus:ring-slate-300">
+    </div>
+
+    <div>
+      <label class="block text-sm text-slate-600 mb-1">项目</label>
+      <input name="project"
+             value="{{ part.project if part and part.project else '' }}"
+             class="w-full rounded-xl border border-slate-200 px-4 py-2.5 text-sm focus:outline-none focus:ring-2 focus:ring-slate-300">
+    </div>
+
+    <div class="flex items-center gap-2 pt-2">
+      <button class="rounded-xl bg-slate-900 px-4 py-2.5 text-sm text-white hover:bg-slate-800">
+        {% if mode == "edit" %}保存{% else %}创建{% endif %}
+      </button>
+
+      <a href="{{ url_for('parts.list_parts', supplier_code=supplier.code) }}"
+         class="rounded-xl border border-slate-200 bg-white px-4 py-2.5 text-sm text-slate-700 hover:bg-slate-50">
+        返回
+      </a>
+    </div>
+  </form>
+
+  <!-- Drawings (ONLY in edit mode) -->
+  {% if mode == "edit" and part %}
+  <div class="mt-8 bg-white rounded-2xl border border-slate-100 shadow-sm overflow-hidden">
+    <div class="px-5 py-4 border-b border-slate-100 flex items-center justify-between">
+      <div class="font-semibold text-slate-900">Drawings</div>
+      <div class="text-sm text-slate-500">{{ drawings|length }} versions</div>
+    </div>
+
+    <div class="p-5 grid grid-cols-12 gap-4">
+      <!-- Upload -->
+      <form class="col-span-12 lg:col-span-5 space-y-3"
+            method="post"
+            enctype="multipart/form-data"
+            action="{{ url_for('parts.upload_drawing', supplier_code=supplier.code, part_id=part.id) }}">
+
+        <div class="text-sm font-semibold text-slate-900">Upload new version</div>
+
+        <input type="file" name="file" required
+               class="w-full rounded-xl border border-slate-200 bg-white px-3 py-2 text-sm"/>
+
+        <div class="grid grid-cols-2 gap-3">
+          <div>
+            <label class="text-xs text-slate-500">Revision</label>
+            <input name="revision" placeholder="A0"
+                   class="mt-1 w-full rounded-xl border border-slate-200 px-3 py-2 text-sm"/>
+          </div>
+          <div>
+            <label class="text-xs text-slate-500">Effective date</label>
+            <input type="date" name="effective_date"
+                   class="mt-1 w-full rounded-xl border border-slate-200 px-3 py-2 text-sm"/>
+          </div>
+        </div>
+
+        <input name="title" placeholder="Title (optional)"
+               class="w-full rounded-xl border border-slate-200 px-3 py-2 text-sm"/>
+
+        <textarea name="remark" rows="3" placeholder="Remark (optional)"
+                  class="w-full rounded-xl border border-slate-200 px-3 py-2 text-sm"></textarea>
+
+        <button class="rounded-xl bg-slate-900 px-4 py-2 text-sm text-white hover:bg-slate-800">
+          Upload
+        </button>
+      </form>
+
+      <!-- Versions -->
+      <div class="col-span-12 lg:col-span-7">
+        <div class="text-sm font-semibold text-slate-900 mb-3">Versions</div>
+
+        {% if drawings %}
+          <div class="space-y-2">
+            {% for d in drawings %}
+              <div class="flex items-center justify-between rounded-xl border border-slate-100 bg-white px-3 py-2">
+                <div>
+                  <div class="text-sm font-semibold text-slate-900">
+                    Rev {{ d.revision }}{% if d.title %} · {{ d.title }}{% endif %}
+                  </div>
+                  <div class="text-xs text-slate-400">
+                    {{ d.created_at.date() }} · {{ d.original_name }}
+                  </div>
+                </div>
+
+                <div class="flex items-center gap-2">
+                  <a class="rounded-lg border border-slate-200 bg-white px-3 py-1.5 text-xs text-slate-700 hover:bg-slate-50"
+                     target="_blank"
+                     href="{{ url_for('parts.view_drawing', supplier_code=supplier.code, drawing_id=d.id) }}">
+                    Open
+                  </a>
+
+                  <form method="post"
+                        action="{{ url_for('parts.delete_drawing', supplier_code=supplier.code, drawing_id=d.id) }}"
+                        onsubmit="return confirm('Delete this drawing?');">
+                    <button class="rounded-lg border border-rose-200 bg-rose-50 px-3 py-1.5 text-xs text-rose-700 hover:bg-rose-100">
+                      Delete
+                    </button>
+                  </form>
+                </div>
+              </div>
+            {% endfor %}
+          </div>
+        {% else %}
+          <div class="rounded-xl border border-dashed border-slate-200 bg-slate-50 p-4 text-sm text-slate-500">
+            No drawings yet.
+          </div>
+        {% endif %}
+      </div>
+    </div>
+  </div>
+  {% endif %}
+</div>
+
+{% endblock %}

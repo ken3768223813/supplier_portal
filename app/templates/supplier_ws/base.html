@@ -1,0 +1,126 @@
+{% extends "layout/base.html" %}
+{% block content %}
+
+
+<!-- 横向菜单（模块） -->
+<div class="bg-white rounded-2xl border border-slate-100 shadow-sm mb-5">
+  <div class="px-4 py-2">
+    <div class="flex items-center justify-between">
+
+      <!-- 左：模块 Tabs -->
+      <nav class="flex items-center gap-2 text-sm">
+        <a href="{{ url_for('parts.list_parts', supplier_code=supplier.code) }}"
+           class="px-3 py-2 rounded-xl hover:bg-slate-50
+           {% if active=='parts' %}text-emerald-700 bg-emerald-50{% else %}text-slate-700{% endif %}">
+          Parts List
+        </a>
+
+        <a href="{{ url_for('docs.list_docs', supplier_code=supplier.code) }}"
+           class="px-3 py-2 rounded-xl hover:bg-slate-50
+           {% if active=='docs' %}text-emerald-700 bg-emerald-50{% else %}text-slate-700{% endif %}">
+          资料/图纸/CP
+        </a>
+
+        <span class="px-3 py-2 rounded-xl text-slate-400 cursor-not-allowed">审核队列</span>
+        <span class="px-3 py-2 rounded-xl text-slate-400 cursor-not-allowed">KPI</span>
+        <span class="px-3 py-2 rounded-xl text-slate-400 cursor-not-allowed">APQP</span>
+        <span class="px-3 py-2 rounded-xl text-slate-400 cursor-not-allowed">TR</span>
+      </nav>
+
+      <!-- 右：供应商名称（红框位置） -->
+      <div class="text-sm text-slate-500 text-right">
+        <div class="font-medium text-slate-700">
+          {{ supplier.code }} · {{ supplier.name }}
+        </div>
+        {% if supplier.china_name %}
+          <div class="text-xs text-slate-400">
+            {{ supplier.china_name }}
+          </div>
+        {% endif %}
+      </div>
+
+    </div>
+  </div>
+</div>
+
+<!-- 页面内容 -->
+{% block supplier_content %}{% endblock %}
+
+<!-- Drawings Modal -->
+<div id="drawingsModal" class="fixed inset-0 z-50 hidden">
+  <div class="absolute inset-0 bg-black/30" onclick="closeDrawings()"></div>
+
+  <div class="absolute left-1/2 top-1/2 w-[92vw] max-w-2xl -translate-x-1/2 -translate-y-1/2">
+    <div class="rounded-2xl bg-white shadow-xl border border-slate-100 overflow-hidden">
+      <div class="flex items-center justify-between px-5 py-4 border-b border-slate-100">
+        <div class="font-semibold text-slate-900">Drawings</div>
+        <button class="text-slate-400 hover:text-slate-700" onclick="closeDrawings()">✕</button>
+      </div>
+      <div id="drawingsBody" class="p-5">
+        <div class="text-sm text-slate-500">Loading...</div>
+      </div>
+    </div>
+  </div>
+</div>
+
+<!-- Preview Modal -->
+<div id="previewModal" class="fixed inset-0 z-50 hidden">
+  <!-- 背景遮罩 -->
+  <div class="absolute inset-0 bg-black/50" onclick="closePreview()"></div>
+
+  <!-- Modal 容器：真正放大 -->
+  <div class="absolute inset-2 md:inset-6">
+    <div class="rounded-2xl bg-white shadow-xl border border-slate-100 overflow-hidden h-full flex flex-col">
+
+      <!-- Header -->
+      <div class="flex items-center justify-between px-5 py-4 border-b border-slate-100">
+        <div class="font-semibold text-slate-900">Drawing Preview</div>
+        <button
+          class="text-slate-400 hover:text-slate-700 text-xl leading-none"
+          onclick="closePreview()"
+        >
+          ×
+        </button>
+      </div>
+
+      <!-- Viewer -->
+      <iframe
+        id="previewFrame"
+        class="w-full flex-1 bg-slate-100"
+        src=""
+      ></iframe>
+
+    </div>
+  </div>
+</div>
+
+
+<script>
+  async function openDrawings(supplierCode, partId) {
+    const modal = document.getElementById('drawingsModal');
+    const body = document.getElementById('drawingsBody');
+    modal.classList.remove('hidden');
+    body.innerHTML = '<div class="text-sm text-slate-500">Loading...</div>';
+
+    const url = `/suppliers/${supplierCode}/parts/${partId}/drawings`;
+    const html = await fetch(url).then(r => r.text());
+    body.innerHTML = html;
+  }
+
+  function closeDrawings() {
+    document.getElementById('drawingsModal').classList.add('hidden');
+  }
+
+  function previewDrawing(url) {
+    document.getElementById('previewModal').classList.remove('hidden');
+    document.getElementById('previewFrame').src = url;
+  }
+
+  function closePreview() {
+    document.getElementById('previewFrame').src = '';
+    document.getElementById('previewModal').classList.add('hidden');
+  }
+</script>
+
+
+{% endblock %}

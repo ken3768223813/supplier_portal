@@ -12,6 +12,13 @@ def create_app(test_config=None):
 
     # 确保 instance 文件夹存在（用于放 sqlite）
     os.makedirs(app.instance_path, exist_ok=True)
+    app.config["UPLOAD_DIR"] = os.path.join(app.instance_path, "uploads")
+
+    # ✅ 确保上传目录存在（instance/uploads）
+    os.makedirs(os.path.join(app.instance_path, "uploads"), exist_ok=True)
+
+    os.makedirs(app.config["DB_DIR"], exist_ok=True)
+    os.makedirs(app.config["UPLOAD_DIR"], exist_ok=True)
 
     # init extensions
     db.init_app(app)
@@ -23,8 +30,19 @@ def create_app(test_config=None):
     from .blueprints.suppliers import suppliers_bp
     app.register_blueprint(suppliers_bp, url_prefix="/suppliers")
 
+    # ✅ 新增：供应商工作台 / 零部件 / 文档
+    from .blueprints.supplier_ws import supplier_ws_bp
+    app.register_blueprint(supplier_ws_bp)  # 它自己带 url_prefix="/suppliers"
+
+    from .blueprints.parts import parts_bp
+    app.register_blueprint(parts_bp)        # prefix: /suppliers/<code>/parts
+
+    from .blueprints.docs import docs_bp
+    app.register_blueprint(docs_bp)         # prefix: /suppliers/<code>/docs
+
     # CLI：初始化数据库 + 导入种子数据
     from .seed import seed_suppliers
+
     @app.cli.command("init-db")
     def init_db():
         """Create tables and seed initial suppliers."""
@@ -32,5 +50,8 @@ def create_app(test_config=None):
             db.create_all()
             seed_suppliers()
             print("✅ DB initialized and suppliers seeded.")
+
+    print("✅ SQLALCHEMY_DATABASE_URI =", app.config["SQLALCHEMY_DATABASE_URI"])
+    print("✅ DB file exists =", os.path.exists(app.config["SQLALCHEMY_DATABASE_URI"].replace("sqlite:///", "")))
 
     return app

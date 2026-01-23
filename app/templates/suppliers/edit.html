@@ -1,0 +1,37 @@
+{% extends "layout/base.html" %}
+{% block content %}
+
+<div class="max-w-2xl mx-auto">
+  <h1 class="text-2xl font-semibold mb-6">编辑供应商</h1>
+
+  <form method="post" class="space-y-4 bg-white rounded-2xl border border-slate-100 p-6">
+    <div>
+      <label class="block text-sm text-slate-600 mb-1">供应商代码</label>
+      <input name="code" value="{{ supplier.code }}" class="w-full px-3 py-2 border rounded-xl">
+    </div>
+
+    <div>
+      <label class="block text-sm text-slate-600 mb-1">供应商名称</label>
+      <input name="name" value="{{ supplier.name }}" class="w-full px-3 py-2 border rounded-xl">
+    </div>
+
+    <div>
+      <label class="block text-sm text-slate-600 mb-1">中文名称</label>
+      <input name="chinese_name" value="{{ supplier.chinese_name or '' }}" class="w-full px-3 py-2 border rounded-xl">
+    </div>
+
+    <div class="flex items-center gap-3">
+      <label class="inline-flex items-center gap-2">
+
+        <span class="text-sm text-slate-700">Active</span>
+      </label>
+    </div>
+
+    <div class="flex gap-3">
+      <button class="px-4 py-2 rounded-xl bg-slate-900 text-white">保存</button>
+      <a href="{{ url_for('suppliers.index') }}" class="px-4 py-2 rounded-xl border">取消</a>
+    </div>
+  </form>
+</div>
+
+{% endblock %}

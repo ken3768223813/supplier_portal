@@ -1,0 +1,62 @@
+{% extends "supplier_ws/base.html" %}
+{% set active = "docs" %}
+{% block supplier_content %}
+
+<div class="bg-white rounded-2xl border border-slate-100 shadow-sm p-5">
+  <div class="font-semibold text-slate-900 mb-4">上传资料</div>
+
+  <form method="post" enctype="multipart/form-data" class="space-y-4">
+    <div class="grid grid-cols-12 gap-4">
+      <div class="col-span-12 md:col-span-4">
+        <label class="text-sm text-slate-600">类型</label>
+        <select name="doc_type" class="w-full mt-1 rounded-xl border px-3 py-2">
+          {% for v, label in doc_types %}
+            <option value="{{ v }}">{{ label }}</option>
+          {% endfor %}
+        </select>
+      </div>
+
+      <div class="col-span-12 md:col-span-4">
+        <label class="text-sm text-slate-600">版本 Rev</label>
+        <input name="revision" class="w-full mt-1 rounded-xl border px-3 py-2" placeholder="A / B / 01 ...">
+      </div>
+
+      <div class="col-span-12 md:col-span-4">
+        <label class="text-sm text-slate-600">状态</label>
+        <select name="status" class="w-full mt-1 rounded-xl border px-3 py-2">
+          <option value="valid">valid</option>
+          <option value="draft">draft</option>
+          <option value="obsolete">obsolete</option>
+        </select>
+      </div>
+    </div>
+
+    <div>
+      <label class="text-sm text-slate-600">标题</label>
+      <input name="title" class="w-full mt-1 rounded-xl border px-3 py-2" placeholder="如：WET500010116A0 Drawing">
+    </div>
+
+    <div>
+      <label class="text-sm text-slate-600">关联零部件（可选）</label>
+      <select name="part_id" class="w-full mt-1 rounded-xl border px-3 py-2">
+        <option value="">- 不关联 -</option>
+        {% for p in parts %}
+          <option value="{{ p.id }}">{{ p.pn }}{% if p.description %} - {{ p.description }}{% endif %}</option>
+        {% endfor %}
+      </select>
+    </div>
+
+    <div>
+      <label class="text-sm text-slate-600">文件 *</label>
+      <input type="file" name="file" class="w-full mt-1 rounded-xl border px-3 py-2" required>
+    </div>
+
+    <div class="flex gap-2">
+      <button class="px-4 py-2 rounded-xl bg-slate-900 text-white text-sm">上传</button>
+      <a class="px-4 py-2 rounded-xl border text-sm"
+         href="{{ url_for('docs.list_docs', supplier_code=supplier.code) }}">返回</a>
+    </div>
+  </form>
+</div>
+
+{% endblock %}

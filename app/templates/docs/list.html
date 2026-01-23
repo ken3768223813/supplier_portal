@@ -1,0 +1,47 @@
+{% extends "supplier_ws/base.html" %}
+{% set active = "docs" %}
+{% block supplier_content %}
+
+<div class="bg-white rounded-2xl border border-slate-100 shadow-sm overflow-hidden">
+  <div class="px-5 py-4 border-b border-slate-100 flex items-center justify-between">
+    <div class="font-semibold text-slate-900">资料 / 图纸 / Control Plan</div>
+    <a href="{{ url_for('docs.upload_doc', supplier_code=supplier.code) }}"
+       class="px-3 py-2 rounded-xl bg-slate-900 text-white text-sm">上传</a>
+  </div>
+
+  <div class="overflow-x-auto">
+    <table class="min-w-full text-sm">
+      <thead class="bg-slate-50 text-slate-600">
+        <tr>
+          <th class="text-left px-5 py-3">Type</th>
+          <th class="text-left px-5 py-3">Title</th>
+          <th class="text-left px-5 py-3">Rev</th>
+          <th class="text-left px-5 py-3">Part</th>
+          <th class="text-left px-5 py-3">Uploaded</th>
+          <th class="text-left px-5 py-3">Action</th>
+        </tr>
+      </thead>
+      <tbody class="divide-y">
+        {% for d in docs %}
+        <tr class="hover:bg-slate-50">
+          <td class="px-5 py-3">{{ d.doc_type }}</td>
+          <td class="px-5 py-3 font-medium">{{ d.title }}</td>
+          <td class="px-5 py-3">{{ d.revision or "" }}</td>
+          <td class="px-5 py-3">{{ d.part.pn if d.part else "-" }}</td>
+          <td class="px-5 py-3 text-slate-500">{{ d.uploaded_at.date() }}</td>
+          <td class="px-5 py-3">
+            <form method="post" action="{{ url_for('docs.delete_doc', supplier_code=supplier.code, doc_id=d.id) }}"
+                  onsubmit="return confirm('Delete this document?');" class="inline">
+              <button class="text-red-600 hover:underline">del.</button>
+            </form>
+          </td>
+        </tr>
+        {% else %}
+        <tr><td class="px-5 py-8 text-slate-500" colspan="6">暂无资料</td></tr>
+        {% endfor %}
+      </tbody>
+    </table>
+  </div>
+</div>
+
+{% endblock %}

@@ -1,47 +1,47 @@
 {% extends "layout/base.html" %}
 {% block content %}
 
-<div class="flex items-start justify-between mb-6">
-  <div>
-    <h1 class="text-2xl font-semibold text-slate-900">Suppliers Archive</h1>
-    <p class="text-slate-500 mt-1">供应商档案库：代码 / 名称。后续所有资料都将挂在供应商名下。</p>
-  </div>
-</div>
-
 <div class="grid grid-cols-12 gap-6">
-  <!-- 左：搜索 + 新增 -->
-  <div class="col-span-12 lg:col-span-4">
-    <div class="bg-white rounded-2xl shadow-sm border border-slate-100 p-5">
-      <div class="font-semibold text-slate-900 mb-3">搜索</div>
-      <form method="get" class="flex gap-2">
-        <input name="q" value="{{ q }}" placeholder="输入 code 或名称"
-               class="w-full rounded-xl border border-slate-200 px-3 py-2 outline-none focus:ring-2 focus:ring-slate-200" />
-        <button class="px-4 py-2 rounded-xl bg-slate-900 text-white">Go</button>
-      </form>
-
-      <div class="h-px bg-slate-100 my-5"></div>
-
-      <div class="font-semibold text-slate-900 mb-3">新增供应商</div>
-      <form method="post" action="{{ url_for('suppliers.add') }}" class="space-y-3">
-        <input name="code" placeholder="Supplier Code (e.g. ZSU0026419)"
-               class="w-full rounded-xl border border-slate-200 px-3 py-2 outline-none focus:ring-2 focus:ring-slate-200" />
-        <input name="name" placeholder="Supplier Name"
-               class="w-full rounded-xl border border-slate-200 px-3 py-2 outline-none focus:ring-2 focus:ring-slate-200" />
-        <button class="w-full px-4 py-2 rounded-xl bg-slate-900 text-white">Add</button>
-      </form>
-
-      <p class="text-xs text-slate-400 mt-3">
-        提示：后续你也可以做“批量导入（Excel/CSV）”按钮。
-      </p>
-    </div>
-  </div>
-
-  <!-- 右：列表 -->
-  <div class="col-span-12 lg:col-span-8">
+  <div class="col-span-12 lg:col-span-12">
     <div class="bg-white rounded-2xl shadow-sm border border-slate-100 overflow-hidden">
-      <div class="px-5 py-4 border-b border-slate-100 flex items-center justify-between">
-        <div class="font-semibold text-slate-900">供应商列表</div>
-        <div class="text-sm text-slate-500">共 {{ suppliers|length }} 条</div>
+
+      <div class="px-5 py-4 border-b border-slate-100 flex items-center gap-4">
+        <form method="get" class="flex-1">
+          <div class="relative">
+            <input
+              type="text"
+              name="q"
+              value="{{ q or '' }}"
+              placeholder="搜索 Code / Name / 中文名称…"
+              class="w-full rounded-xl border border-slate-200 bg-white px-4 py-2.5
+                     text-sm text-slate-800 placeholder:text-slate-400
+                     focus:outline-none focus:ring-2 focus:ring-slate-300"
+            />
+            {% if q %}
+              <a href="{{ url_for('suppliers.index') }}"
+                 class="absolute right-3 top-1/2 -translate-y-1/2 text-slate-400 hover:text-slate-600 text-sm">
+                清除
+              </a>
+            {% endif %}
+          </div>
+        </form>
+
+        <div class="flex items-center gap-3 shrink-0">
+          <div class="text-sm text-slate-500">
+            共 {{ pagination.total }} 条（第 {{ pagination.page }}/{{ pagination.pages }} 页）
+          </div>
+
+          <a href="{{ url_for('suppliers.new_supplier') }}"
+             class="group inline-flex items-center justify-center w-9 h-9 rounded-lg
+                    bg-slate-200 text-slate-700 hover:bg-slate-300 hover:text-slate-900
+                    border border-slate-300 shadow-sm transition active:scale-[0.96] active:shadow-inner"
+             title="新增供应商" aria-label="新增供应商">
+            <svg viewBox="0 0 24 24" class="w-5 h-5 transition-transform group-active:scale-95" fill="none" aria-hidden="true">
+              <path d="M12 5v14M5 12h14"
+                    stroke="currentColor" stroke-width="1.5" stroke-linecap="round" stroke-linejoin="round" />
+            </svg>
+          </a>
+        </div>
       </div>
 
       <div class="overflow-x-auto">
@@ -50,33 +50,101 @@
             <tr>
               <th class="text-left px-5 py-3">Code</th>
               <th class="text-left px-5 py-3">Name</th>
-              <th class="text-left px-5 py-3">Status</th>
+              <th class="text-left px-5 py-3">中文名称</th>
+
               <th class="text-left px-5 py-3">Created</th>
+              <th class="px-5 py-3 text-right">Action</th>
             </tr>
           </thead>
+
           <tbody class="divide-y divide-slate-100">
             {% for s in suppliers %}
             <tr class="hover:bg-slate-50">
-              <td class="px-5 py-3 font-medium text-slate-900">{{ s.code }}</td>
+              <td class="px-5 py-3 font-medium">
+                  <a
+                    href="{{ url_for('supplier_ws.overview', supplier_code=s.code) }}"
+                    class="text-slate-900 hover:underline hover:text-slate-700"
+                  >
+                    {{ s.code }}
+                  </a>
+                </td>
+
               <td class="px-5 py-3 text-slate-700">{{ s.name }}</td>
-              <td class="px-5 py-3">
-                {% if s.is_active %}
-                  <span class="px-2 py-1 rounded-full text-xs bg-emerald-50 text-emerald-700">Active</span>
-                {% else %}
-                  <span class="px-2 py-1 rounded-full text-xs bg-slate-100 text-slate-600">Inactive</span>
-                {% endif %}
-              </td>
+              <td class="px-5 py-3 text-slate-700">{{ s.china_name or "-" }}</td>
+
               <td class="px-5 py-3 text-slate-500">{{ s.created_at.strftime("%Y-%m-%d") }}</td>
+                <td class="px-5 py-3 text-right">
+                  <div class="inline-flex items-center gap-3">
+                    <a href="{{ url_for('suppliers.edit_supplier', supplier_id=s.id) }}"
+                       class="text-blue-600 hover:underline">
+                      edit
+                    </a>
+
+                    <form method="post"
+                          action="{{ url_for('suppliers.delete_supplier', supplier_id=s.id) }}"
+                          onsubmit="return confirm('确认删除供应商 {{ s.code }} 吗？此操作不可恢复。');">
+                      <button type="submit" class="text-rose-600 hover:underline">
+                        del.
+                      </button>
+                    </form>
+                  </div>
+                </td>
+
             </tr>
             {% endfor %}
+
             {% if suppliers|length == 0 %}
             <tr>
-              <td colspan="4" class="px-5 py-8 text-center text-slate-400">暂无数据</td>
+              <td colspan="5" class="px-5 py-8 text-center text-slate-400">暂无数据</td>
             </tr>
             {% endif %}
           </tbody>
         </table>
       </div>
+
+      {% if pagination.pages > 1 %}
+      <div class="px-5 py-4 border-t border-slate-100 flex items-center justify-between">
+        <div class="text-sm text-slate-500">
+          {% if pagination.total > 0 %}
+            显示第
+            {{ (pagination.page - 1) * pagination.per_page + 1 }}
+            -
+            {{ (pagination.page - 1) * pagination.per_page + suppliers|length }}
+            条
+          {% else %}
+            无结果
+          {% endif %}
+        </div>
+
+        <nav class="flex items-center gap-2">
+          {% if pagination.has_prev %}
+            <a class="px-3 py-1.5 rounded-lg border text-sm hover:bg-slate-50"
+               href="{{ url_for('suppliers.index', page=pagination.prev_num, q=q, per_page=per_page) }}">上一页</a>
+          {% else %}
+            <span class="px-3 py-1.5 rounded-lg border text-sm text-slate-400 bg-slate-50">上一页</span>
+          {% endif %}
+
+          <div class="flex items-center gap-1">
+            {% for p in range(1, pagination.pages + 1) %}
+              {% if p == pagination.page %}
+                <span class="px-3 py-1.5 rounded-lg bg-slate-900 text-white text-sm">{{ p }}</span>
+              {% else %}
+                <a class="px-3 py-1.5 rounded-lg border text-sm hover:bg-slate-50"
+                   href="{{ url_for('suppliers.index', page=p, q=q, per_page=per_page) }}">{{ p }}</a>
+              {% endif %}
+            {% endfor %}
+          </div>
+
+          {% if pagination.has_next %}
+            <a class="px-3 py-1.5 rounded-lg border text-sm hover:bg-slate-50"
+               href="{{ url_for('suppliers.index', page=pagination.next_num, q=q, per_page=per_page) }}">下一页</a>
+          {% else %}
+            <span class="px-3 py-1.5 rounded-lg border text-sm text-slate-400 bg-slate-50">下一页</span>
+          {% endif %}
+        </nav>
+      </div>
+      {% endif %}
+
     </div>
   </div>
 </div>
