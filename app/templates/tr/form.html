@@ -1,0 +1,165 @@
+{% extends "layout/base.html" %}
+{% block content %}
+
+<div class="max-w-4xl mx-auto px-6 py-6">
+  <div class="bg-white rounded-2xl border border-slate-100 shadow-sm p-6">
+    <div class="flex items-start justify-between gap-4">
+      <div>
+        <div class="text-lg font-semibold text-slate-900">
+          {% if mode == "edit" %}编辑 Trouble Report{% else %}新增 Trouble Report{% endif %}
+        </div>
+        <div class="text-sm text-slate-500 mt-1">字段风格统一，便于你“整齐划一”录入</div>
+      </div>
+
+      <a href="{{ url_for('tr.index') }}"
+         class="rounded-xl border border-slate-200 bg-white px-4 py-2 text-sm text-slate-700 hover:bg-slate-50">
+        返回
+      </a>
+    </div>
+
+    <form method="post" class="mt-6 space-y-4"
+          action="{% if mode=='edit' %}{{ url_for('tr.edit_tr', tr_id=tr.id) }}{% else %}{{ url_for('tr.new_tr') }}{% endif %}">
+
+      <div class="grid grid-cols-12 gap-4">
+        <div class="col-span-12 sm:col-span-4">
+          <label class="block text-sm text-slate-600 mb-1">TR No.</label>
+          <input name="tr_no" required
+                 value="{{ tr.tr_no if tr else '' }}"
+                 class="w-full rounded-xl border border-slate-200 bg-white px-4 py-2.5 text-sm
+                        text-slate-800 placeholder:text-slate-400
+                        focus:outline-none focus:ring-2 focus:ring-slate-300" />
+        </div>
+
+        <div class="col-span-12 sm:col-span-8">
+          <label class="block text-sm text-slate-600 mb-1">SUPPLIER NAME</label>
+          <input name="supplier_name" required
+                 value="{{ tr.supplier_name if tr else '' }}"
+                 class="w-full rounded-xl border border-slate-200 bg-white px-4 py-2.5 text-sm
+                        text-slate-800 placeholder:text-slate-400
+                        focus:outline-none focus:ring-2 focus:ring-slate-300" />
+        </div>
+
+        <div class="col-span-12 sm:col-span-4">
+          <label class="block text-sm text-slate-600 mb-1">PART NUMBER</label>
+          <input name="part_number"
+                 value="{{ tr.part_number if tr and tr.part_number else '' }}"
+                 class="w-full rounded-xl border border-slate-200 bg-white px-4 py-2.5 text-sm
+                        text-slate-800 placeholder:text-slate-400
+                        focus:outline-none focus:ring-2 focus:ring-slate-300" />
+        </div>
+
+        <div class="col-span-12 sm:col-span-8">
+          <label class="block text-sm text-slate-600 mb-1">PART NAME</label>
+          <input name="part_name"
+                 value="{{ tr.part_name if tr and tr.part_name else '' }}"
+                 class="w-full rounded-xl border border-slate-200 bg-white px-4 py-2.5 text-sm
+                        text-slate-800 placeholder:text-slate-400
+                        focus:outline-none focus:ring-2 focus:ring-slate-300" />
+        </div>
+
+        <div class="col-span-12">
+          <label class="block text-sm text-slate-600 mb-1">ISSUE DESCRIPTION</label>
+          <textarea
+            name="issue_description"
+            rows="6"
+            required
+            class="w-full rounded-xl border border-slate-200 bg-white px-4 py-2.5
+                   text-sm text-slate-800 placeholder:text-slate-400
+                   focus:outline-none focus:ring-2 focus:ring-slate-300
+                   leading-6 resize-y"
+            placeholder="请用同一格式描述：现象 / 条件 / 影响 / 临时措施（如果有）..."
+          >{{ tr.issue_description if tr else "" }}</textarea>
+        </div>
+
+        <div class="col-span-12 sm:col-span-3">
+          <label class="block text-sm text-slate-600 mb-1">SEVERITY</label>
+          <input name="severity"
+                 value="{{ tr.severity if tr and tr.severity else '' }}"
+                 placeholder="S0 / S1 / 100 / 40..."
+                 class="w-full rounded-xl border border-slate-200 bg-white px-4 py-2.5 text-sm
+                        text-slate-800 placeholder:text-slate-400
+                        focus:outline-none focus:ring-2 focus:ring-slate-300" />
+        </div>
+
+        {# ✅ 新增：8D Status（四态） #}
+        <div class="col-span-12 sm:col-span-3">
+          <label class="block text-sm text-slate-600 mb-1">8D Status</label>
+          <select id="eight_d_status" name="eight_d_status"
+                  class="w-full rounded-xl border border-slate-200 bg-white px-4 py-2.5 text-sm
+                         text-slate-800 focus:outline-none focus:ring-2 focus:ring-slate-300">
+            {% set d8 = (tr.eight_d_status if tr and tr.eight_d_status else "NOT_REQUIRED") %}
+            <option value="NOT_REQUIRED" {% if d8=="NOT_REQUIRED" %}selected{% endif %}>不要求 8D</option>
+            <option value="NOT_RECEIVED" {% if d8=="NOT_RECEIVED" %}selected{% endif %}>要求 8D：未收到</option>
+            <option value="RECEIVED_REJECT" {% if d8=="RECEIVED_REJECT" %}selected{% endif %}>已收到：Reject</option>
+            <option value="RECEIVED_PASS" {% if d8=="RECEIVED_PASS" %}selected{% endif %}>已收到：Pass</option>
+          </select>
+        </div>
+
+        {# ✅ 保留旧字段：8D 编号/链接（可选） #}
+        <div class="col-span-12 sm:col-span-3">
+          <label class="block text-sm text-slate-600 mb-1">8D Ref (可选)</label>
+          <input id="eight_d" name="eight_d"
+                 value="{{ tr.eight_d if tr and tr.eight_d else '' }}"
+                 placeholder="8D编号 / 链接Key / 文件名..."
+                 class="w-full rounded-xl border border-slate-200 bg-white px-4 py-2.5 text-sm
+                        text-slate-800 placeholder:text-slate-400
+                        focus:outline-none focus:ring-2 focus:ring-slate-300" />
+          <div class="mt-1 text-xs text-slate-400">不要求 8D 时可留空；收到后可填编号/链接方便追溯</div>
+        </div>
+
+        <div class="col-span-12 sm:col-span-3">
+          <label class="block text-sm text-slate-600 mb-1">STATUS</label>
+          <select name="status"
+                  class="w-full rounded-xl border border-slate-200 bg-white px-4 py-2.5 text-sm
+                         text-slate-800 focus:outline-none focus:ring-2 focus:ring-slate-300">
+            {% set current = (tr.status if tr and tr.status else "Open") %}
+            <option value="Open" {% if current=="Open" %}selected{% endif %}>Open</option>
+            <option value="In Progress" {% if current=="In Progress" %}selected{% endif %}>In Progress</option>
+            <option value="Closed" {% if current=="Closed" %}selected{% endif %}>Closed</option>
+          </select>
+        </div>
+
+        <div class="col-span-12 sm:col-span-3">
+          <label class="block text-sm text-slate-600 mb-1">REMARK</label>
+          <input name="remark"
+                 value="{{ tr.remark if tr and tr.remark else '' }}"
+                 class="w-full rounded-xl border border-slate-200 bg-white px-4 py-2.5 text-sm
+                        text-slate-800 placeholder:text-slate-400
+                        focus:outline-none focus:ring-2 focus:ring-slate-300" />
+        </div>
+      </div>
+
+      <div class="flex items-center gap-2 pt-2">
+        <button class="rounded-xl bg-slate-900 px-4 py-2.5 text-sm text-white hover:bg-slate-800">
+          {% if mode == "edit" %}保存{% else %}创建{% endif %}
+        </button>
+        <a href="{{ url_for('tr.index') }}"
+           class="rounded-xl border border-slate-200 bg-white px-4 py-2.5 text-sm text-slate-700 hover:bg-slate-50">
+          取消
+        </a>
+      </div>
+    </form>
+  </div>
+</div>
+
+{# 可选：当选择“不要求 8D”时，8D Ref 输入框淡化提示（不影响后端逻辑） #}
+<script>
+  (function () {
+    const sel = document.getElementById("eight_d_status");
+    const ref = document.getElementById("eight_d");
+    if (!sel || !ref) return;
+
+    function sync() {
+      const v = sel.value;
+      const notRequired = (v === "NOT_REQUIRED");
+      ref.classList.toggle("bg-slate-50", notRequired);
+      ref.classList.toggle("text-slate-700", notRequired);
+      ref.placeholder = notRequired ? "不要求 8D，可留空" : "8D编号 / 链接Key / 文件名...";
+    }
+
+    sel.addEventListener("change", sync);
+    sync();
+  })();
+</script>
+
+{% endblock %}

@@ -1,2 +1,14 @@
 /* 你想加一些全局微调放这里（尽量少） */
 html { scroll-behavior: smooth; }
+
+.line-clamp-2,
+.line-clamp-3 {
+  display: -webkit-box;
+  -webkit-box-orient: vertical;
+  overflow: hidden;
+}
+.line-clamp-2 { -webkit-line-clamp: 2; }
+.line-clamp-3 { -webkit-line-clamp: 3; }
+
+
+

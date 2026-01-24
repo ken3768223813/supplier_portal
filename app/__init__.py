@@ -2,6 +2,8 @@ import os
 from flask import Flask
 from .config import Config
 from .extensions import db
+from . import models  # ✅ 确保所有模型（含TR）被加载
+
 
 def create_app(test_config=None):
     app = Flask(__name__, instance_relative_config=True)
@@ -40,6 +42,9 @@ def create_app(test_config=None):
     from .blueprints.docs import docs_bp
     app.register_blueprint(docs_bp)         # prefix: /suppliers/<code>/docs
 
+    from .blueprints.tr import tr_bp
+    app.register_blueprint(tr_bp, url_prefix="/tr")
+
     # CLI：初始化数据库 + 导入种子数据
     from .seed import seed_suppliers
 
@@ -55,3 +60,5 @@ def create_app(test_config=None):
     print("✅ DB file exists =", os.path.exists(app.config["SQLALCHEMY_DATABASE_URI"].replace("sqlite:///", "")))
 
     return app
+
+

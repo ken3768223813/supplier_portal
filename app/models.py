@@ -68,3 +68,47 @@ class Drawing(db.Model):
 
     part = db.relationship("Part", backref=db.backref("drawings", lazy="dynamic", cascade="all, delete-orphan"))
 
+
+
+from sqlalchemy import CheckConstraint
+
+class TroubleReport(db.Model):
+    __tablename__ = "trouble_reports"
+
+    id = db.Column(db.Integer, primary_key=True)
+
+    tr_no = db.Column(db.String(50), nullable=False, unique=True, index=True)
+    supplier_code = db.Column(db.String(50), nullable=False, index=True)
+    supplier_name = db.Column(db.String(255), nullable=False)
+
+    part_number = db.Column(db.String(100), nullable=True, index=True)
+    part_name = db.Column(db.String(255), nullable=True)
+
+    issue_description = db.Column(db.Text, nullable=False)
+
+    severity = db.Column(db.String(20), nullable=True, index=True)
+
+    # 旧字段保留：可以继续存“8D编号/链接/备注”
+    eight_d = db.Column(db.String(50), nullable=True, index=True)
+
+    # ✅ 新增：8D 状态枚举（用于灯号/筛选）
+    eight_d_status = db.Column(db.String(30), nullable=False, default="NOT_REQUIRED", index=True)
+
+    status = db.Column(db.String(30), nullable=False, default="Open", index=True)
+    remark = db.Column(db.Text, nullable=True)
+
+    created_at = db.Column(db.DateTime, nullable=False, default=datetime.utcnow, index=True)
+    updated_at = db.Column(db.DateTime, nullable=False, default=datetime.utcnow, onupdate=datetime.utcnow)
+
+    __table_args__ = (
+        CheckConstraint(
+            "eight_d_status IN ('NOT_REQUIRED','NOT_RECEIVED','RECEIVED_REJECT','RECEIVED_PASS')",
+            name="ck_tr_8d_status"
+        ),
+    )
+
+    def __repr__(self):
+        return f"<TR {self.tr_no}>"
+
+
+
