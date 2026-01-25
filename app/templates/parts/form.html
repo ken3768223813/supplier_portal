@@ -2,144 +2,438 @@
 {% set active = "parts" %}
 {% block supplier_content %}
 
-<div class="bg-white rounded-2xl border border-slate-100 shadow-sm p-6 max-w-5xl">
-  <div class="text-lg font-semibold text-slate-900 mb-1">
-    {% if mode == "edit" %}编辑零部件{% else %}新增零部件{% endif %}
+<style>
+  /* 输入框聚焦效果 */
+  .form-input:focus {
+    box-shadow: 0 0 0 3px rgba(16, 185, 129, 0.1);
+  }
+
+  /* 拖拽上传区域 */
+  .upload-zone {
+    transition: all 0.3s ease;
+  }
+
+  .upload-zone:hover {
+    border-color: #10b981;
+    background: #f0fdf4;
+  }
+
+  .upload-zone.drag-over {
+    border-color: #10b981;
+    background: #d1fae5;
+    transform: scale(1.02);
+  }
+
+  /* 图纸卡片动画 */
+  .drawing-card {
+    transition: all 0.2s ease;
+  }
+
+  .drawing-card:hover {
+    transform: translateX(4px);
+    box-shadow: 0 4px 12px -4px rgba(0, 0, 0, 0.15);
+  }
+</style>
+
+<div class="max-w-7xl mx-auto">
+  <!-- 面包屑导航 -->
+  <div class="mb-6 flex items-center gap-2 text-sm text-slate-600">
+    <a href="{{ url_for('parts.list_parts', supplier_code=supplier.code) }}"
+       class="hover:text-slate-900 transition">零部件列表</a>
+    <svg class="w-4 h-4 text-slate-400" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+      <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M9 5l7 7-7 7"/>
+    </svg>
+    <span class="text-slate-900 font-medium">
+      {% if mode == "edit" %}编辑零部件{% else %}新增零部件{% endif %}
+    </span>
   </div>
-  <div class="text-sm text-slate-500 mb-6">
-    Supplier: {{ supplier.code }} · {{ supplier.name }}
-  </div>
 
-  <!-- Part form -->
-  <form method="post"
-        action="{% if mode == 'edit' %}
-                  {{ url_for('parts.edit_part', supplier_code=supplier.code, part_id=part.id) }}
-                {% else %}
-                  {{ url_for('parts.new_part', supplier_code=supplier.code) }}
-                {% endif %}"
-        class="space-y-4">
-
-    <div>
-      <label class="block text-sm text-slate-600 mb-1">PN</label>
-      <input name="pn" required
-             value="{{ part.pn if part else '' }}"
-             class="w-full rounded-xl border border-slate-200 px-4 py-2.5 text-sm focus:outline-none focus:ring-2 focus:ring-slate-300">
-    </div>
-
-    <div>
-      <label class="block text-sm text-slate-600 mb-1">描述</label>
-      <input name="description"
-             value="{{ part.description if part and part.description else '' }}"
-             class="w-full rounded-xl border border-slate-200 px-4 py-2.5 text-sm focus:outline-none focus:ring-2 focus:ring-slate-300">
-    </div>
-
-    <div>
-      <label class="block text-sm text-slate-600 mb-1">项目</label>
-      <input name="project"
-             value="{{ part.project if part and part.project else '' }}"
-             class="w-full rounded-xl border border-slate-200 px-4 py-2.5 text-sm focus:outline-none focus:ring-2 focus:ring-slate-300">
-    </div>
-
-    <div class="flex items-center gap-2 pt-2">
-      <button class="rounded-xl bg-slate-900 px-4 py-2.5 text-sm text-white hover:bg-slate-800">
-        {% if mode == "edit" %}保存{% else %}创建{% endif %}
-      </button>
-
-      <a href="{{ url_for('parts.list_parts', supplier_code=supplier.code) }}"
-         class="rounded-xl border border-slate-200 bg-white px-4 py-2.5 text-sm text-slate-700 hover:bg-slate-50">
-        返回
-      </a>
-    </div>
-  </form>
-
-  <!-- Drawings (ONLY in edit mode) -->
-  {% if mode == "edit" and part %}
-  <div class="mt-8 bg-white rounded-2xl border border-slate-100 shadow-sm overflow-hidden">
-    <div class="px-5 py-4 border-b border-slate-100 flex items-center justify-between">
-      <div class="font-semibold text-slate-900">Drawings</div>
-      <div class="text-sm text-slate-500">{{ drawings|length }} versions</div>
-    </div>
-
-    <div class="p-5 grid grid-cols-12 gap-4">
-      <!-- Upload -->
-      <form class="col-span-12 lg:col-span-5 space-y-3"
-            method="post"
-            enctype="multipart/form-data"
-            action="{{ url_for('parts.upload_drawing', supplier_code=supplier.code, part_id=part.id) }}">
-
-        <div class="text-sm font-semibold text-slate-900">Upload new version</div>
-
-        <input type="file" name="file" required
-               class="w-full rounded-xl border border-slate-200 bg-white px-3 py-2 text-sm"/>
-
-        <div class="grid grid-cols-2 gap-3">
-          <div>
-            <label class="text-xs text-slate-500">Revision</label>
-            <input name="revision" placeholder="A0"
-                   class="mt-1 w-full rounded-xl border border-slate-200 px-3 py-2 text-sm"/>
-          </div>
-          <div>
-            <label class="text-xs text-slate-500">Effective date</label>
-            <input type="date" name="effective_date"
-                   class="mt-1 w-full rounded-xl border border-slate-200 px-3 py-2 text-sm"/>
+  <!-- 主卡片 -->
+  <div class="bg-white rounded-2xl shadow-lg border border-slate-200 overflow-hidden">
+    <!-- 头部 -->
+    <div class="bg-gradient-to-r from-emerald-50 to-emerald-100 px-8 py-6 border-b border-emerald-200">
+      <div class="flex items-center justify-between">
+        <div>
+          <h1 class="text-2xl font-bold text-slate-900 mb-2">
+            {% if mode == "edit" %}
+              <span class="flex items-center gap-2">
+                <svg class="w-7 h-7 text-emerald-600" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                  <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M11 5H6a2 2 0 00-2 2v11a2 2 0 002 2h11a2 2 0 002-2v-5m-1.414-9.414a2 2 0 112.828 2.828L11.828 15H9v-2.828l8.586-8.586z"/>
+                </svg>
+                编辑零部件
+              </span>
+            {% else %}
+              <span class="flex items-center gap-2">
+                <svg class="w-7 h-7 text-emerald-600" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                  <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M12 4v16m8-8H4"/>
+                </svg>
+                新增零部件
+              </span>
+            {% endif %}
+          </h1>
+          <div class="flex items-center gap-2 text-sm text-slate-600">
+            <svg class="w-4 h-4 text-slate-400" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+              <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M19 21V5a2 2 0 00-2-2H7a2 2 0 00-2 2v16m14 0h2m-2 0h-5m-9 0H3m2 0h5M9 7h1m-1 4h1m4-4h1m-1 4h1m-5 10v-5a1 1 0 011-1h2a1 1 0 011 1v5m-4 0h4"/>
+            </svg>
+            <span class="font-medium text-slate-700">{{ supplier.code }}</span>
+            <span class="text-slate-400">·</span>
+            <span>{{ supplier.name }}</span>
           </div>
         </div>
 
-        <input name="title" placeholder="Title (optional)"
-               class="w-full rounded-xl border border-slate-200 px-3 py-2 text-sm"/>
-
-        <textarea name="remark" rows="3" placeholder="Remark (optional)"
-                  class="w-full rounded-xl border border-slate-200 px-3 py-2 text-sm"></textarea>
-
-        <button class="rounded-xl bg-slate-900 px-4 py-2 text-sm text-white hover:bg-slate-800">
-          Upload
-        </button>
-      </form>
-
-      <!-- Versions -->
-      <div class="col-span-12 lg:col-span-7">
-        <div class="text-sm font-semibold text-slate-900 mb-3">Versions</div>
-
-        {% if drawings %}
-          <div class="space-y-2">
-            {% for d in drawings %}
-              <div class="flex items-center justify-between rounded-xl border border-slate-100 bg-white px-3 py-2">
-                <div>
-                  <div class="text-sm font-semibold text-slate-900">
-                    Rev {{ d.revision }}{% if d.title %} · {{ d.title }}{% endif %}
-                  </div>
-                  <div class="text-xs text-slate-400">
-                    {{ d.created_at.date() }} · {{ d.original_name }}
-                  </div>
-                </div>
-
-                <div class="flex items-center gap-2">
-                  <a class="rounded-lg border border-slate-200 bg-white px-3 py-1.5 text-xs text-slate-700 hover:bg-slate-50"
-                     target="_blank"
-                     href="{{ url_for('parts.view_drawing', supplier_code=supplier.code, drawing_id=d.id) }}">
-                    Open
-                  </a>
-
-                  <form method="post"
-                        action="{{ url_for('parts.delete_drawing', supplier_code=supplier.code, drawing_id=d.id) }}"
-                        onsubmit="return confirm('Delete this drawing?');">
-                    <button class="rounded-lg border border-rose-200 bg-rose-50 px-3 py-1.5 text-xs text-rose-700 hover:bg-rose-100">
-                      Delete
-                    </button>
-                  </form>
-                </div>
-              </div>
-            {% endfor %}
-          </div>
-        {% else %}
-          <div class="rounded-xl border border-dashed border-slate-200 bg-slate-50 p-4 text-sm text-slate-500">
-            No drawings yet.
+        {% if mode == "edit" and part %}
+          <div class="bg-white rounded-xl px-4 py-2 border border-emerald-200 shadow-sm">
+            <div class="text-xs text-slate-500 mb-0.5">Part Number</div>
+            <div class="font-mono font-semibold text-slate-900">{{ part.pn }}</div>
           </div>
         {% endif %}
+      </div>
+    </div>
+
+    <!-- 表单内容 -->
+    <div class="p-8">
+      <form method="post"
+            action="{% if mode == 'edit' %}
+                      {{ url_for('parts.edit_part', supplier_code=supplier.code, part_id=part.id) }}
+                    {% else %}
+                      {{ url_for('parts.new_part', supplier_code=supplier.code) }}
+                    {% endif %}"
+            class="space-y-6">
+
+        <div class="grid grid-cols-1 md:grid-cols-2 gap-6">
+          <!-- Part Number -->
+          <div>
+            <label class="flex items-center gap-2 text-sm font-semibold text-slate-700 mb-2">
+              <svg class="w-4 h-4 text-emerald-600" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M7 7h.01M7 3h5c.512 0 1.024.195 1.414.586l7 7a2 2 0 010 2.828l-7 7a2 2 0 01-2.828 0l-7-7A1.994 1.994 0 013 12V7a4 4 0 014-4z"/>
+              </svg>
+              零部件编号 <span class="text-rose-500">*</span>
+            </label>
+            <input name="pn" required
+                   value="{{ part.pn if part else '' }}"
+                   placeholder="输入零部件编号，如：ABC-12345"
+                   class="form-input w-full rounded-xl border-2 border-slate-200 px-4 py-3 text-sm
+                          focus:outline-none focus:border-emerald-400 transition-all
+                          placeholder:text-slate-400 font-mono">
+            <p class="mt-1.5 text-xs text-slate-500">唯一标识此零部件的编号</p>
+          </div>
+
+          <!-- Project -->
+          <div>
+            <label class="flex items-center gap-2 text-sm font-semibold text-slate-700 mb-2">
+              <svg class="w-4 h-4 text-blue-600" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M3 7v10a2 2 0 002 2h14a2 2 0 002-2V9a2 2 0 00-2-2h-6l-2-2H5a2 2 0 00-2 2z"/>
+              </svg>
+              所属项目
+            </label>
+            <input name="project"
+                   value="{{ part.project if part and part.project else '' }}"
+                   placeholder="输入项目名称，如：Project Alpha"
+                   class="form-input w-full rounded-xl border-2 border-slate-200 px-4 py-3 text-sm
+                          focus:outline-none focus:border-blue-400 transition-all
+                          placeholder:text-slate-400">
+            <p class="mt-1.5 text-xs text-slate-500">此零部件所属的项目或产品线</p>
+          </div>
+        </div>
+
+        <!-- Description -->
+        <div>
+          <label class="flex items-center gap-2 text-sm font-semibold text-slate-700 mb-2">
+            <svg class="w-4 h-4 text-purple-600" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+              <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M4 6h16M4 12h16M4 18h7"/>
+            </svg>
+            零部件描述
+          </label>
+          <textarea name="description" rows="3"
+                    placeholder="详细描述此零部件的功能、特征、用途等信息..."
+                    class="form-input w-full rounded-xl border-2 border-slate-200 px-4 py-3 text-sm
+                           focus:outline-none focus:border-purple-400 transition-all
+                           placeholder:text-slate-400 resize-none">{{ part.description if part and part.description else '' }}</textarea>
+          <p class="mt-1.5 text-xs text-slate-500">提供清晰的描述有助于团队成员快速理解零部件信息</p>
+        </div>
+
+        <!-- 操作按钮 -->
+        <div class="flex items-center gap-3 pt-4">
+          <button type="submit"
+                  class="inline-flex items-center gap-2 px-6 py-3 rounded-xl
+                         bg-gradient-to-r from-emerald-600 to-emerald-700 text-white font-semibold
+                         shadow-lg shadow-emerald-600/30 hover:shadow-xl hover:shadow-emerald-600/40
+                         transition-all duration-200 hover:scale-105 active:scale-95">
+            <svg class="w-5 h-5" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+              {% if mode == "edit" %}
+                <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M5 13l4 4L19 7"/>
+              {% else %}
+                <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M12 4v16m8-8H4"/>
+              {% endif %}
+            </svg>
+            <span>{% if mode == "edit" %}保存更改{% else %}创建零部件{% endif %}</span>
+          </button>
+
+          <a href="{{ url_for('parts.list_parts', supplier_code=supplier.code) }}"
+             class="inline-flex items-center gap-2 px-6 py-3 rounded-xl
+                    border-2 border-slate-300 bg-white text-slate-700 font-medium
+                    hover:bg-slate-50 hover:border-slate-400 transition-all">
+            <svg class="w-5 h-5" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+              <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M10 19l-7-7m0 0l7-7m-7 7h18"/>
+            </svg>
+            <span>返回列表</span>
+          </a>
+        </div>
+      </form>
+    </div>
+  </div>
+
+  <!-- 图纸管理区域 (仅编辑模式) -->
+  {% if mode == "edit" and part %}
+  <div class="mt-8 bg-white rounded-2xl shadow-lg border border-slate-200 overflow-hidden">
+    <!-- 图纸区域头部 -->
+    <div class="bg-gradient-to-r from-blue-50 to-blue-100 px-8 py-5 border-b border-blue-200">
+      <div class="flex items-center justify-between">
+        <div class="flex items-center gap-3">
+          <div class="w-12 h-12 bg-blue-200 rounded-xl flex items-center justify-center">
+            <svg class="w-6 h-6 text-blue-600" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+              <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M9 12h6m-6 4h6m2 5H7a2 2 0 01-2-2V5a2 2 0 012-2h5.586a1 1 0 01.707.293l5.414 5.414a1 1 0 01.293.707V19a2 2 0 01-2 2z"/>
+            </svg>
+          </div>
+          <div>
+            <h2 class="text-xl font-bold text-slate-900">图纸管理</h2>
+            <p class="text-sm text-slate-600">Drawing Version Control</p>
+          </div>
+        </div>
+        <div class="bg-white rounded-xl px-4 py-2 border border-blue-200 shadow-sm">
+          <div class="text-xs text-slate-500">版本数量</div>
+          <div class="text-xl font-bold text-blue-600">{{ drawings|length }}</div>
+        </div>
+      </div>
+    </div>
+
+    <div class="p-8">
+      <div class="grid grid-cols-1 lg:grid-cols-5 gap-8">
+        <!-- 上传新版本 -->
+        <div class="lg:col-span-2">
+          <div class="bg-gradient-to-br from-slate-50 to-slate-100 rounded-2xl p-6 border border-slate-200">
+            <h3 class="text-lg font-bold text-slate-900 mb-4 flex items-center gap-2">
+              <svg class="w-5 h-5 text-blue-600" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M7 16a4 4 0 01-.88-7.903A5 5 0 1115.9 6L16 6a5 5 0 011 9.9M15 13l-3-3m0 0l-3 3m3-3v12"/>
+              </svg>
+              上传新版本
+            </h3>
+
+            <form method="post"
+                  enctype="multipart/form-data"
+                  action="{{ url_for('parts.upload_drawing', supplier_code=supplier.code, part_id=part.id) }}"
+                  class="space-y-4">
+
+              <!-- 文件上传区 -->
+              <div class="upload-zone border-2 border-dashed border-slate-300 rounded-xl p-6 text-center cursor-pointer">
+                <input type="file" name="file" required id="fileInput"
+                       class="hidden"
+                       accept=".pdf,.dwg,.dxf,.step,.stp,.igs,.iges"
+                       onchange="updateFileName(this)">
+                <label for="fileInput" class="cursor-pointer">
+                  <div class="flex flex-col items-center gap-2">
+                    <div class="w-12 h-12 bg-blue-100 rounded-full flex items-center justify-center">
+                      <svg class="w-6 h-6 text-blue-600" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                        <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M7 16a4 4 0 01-.88-7.903A5 5 0 1115.9 6L16 6a5 5 0 011 9.9M15 13l-3-3m0 0l-3 3m3-3v12"/>
+                      </svg>
+                    </div>
+                    <div>
+                      <p class="text-sm font-semibold text-slate-700">点击选择文件</p>
+                      <p class="text-xs text-slate-500 mt-1">支持 PDF, DWG, STEP 等格式</p>
+                    </div>
+                  </div>
+                </label>
+                <p id="fileName" class="text-xs text-emerald-600 font-medium mt-2 hidden"></p>
+              </div>
+
+              <!-- 版本信息 -->
+              <div class="grid grid-cols-2 gap-3">
+                <div>
+                  <label class="text-xs font-semibold text-slate-700 mb-1.5 block">版本号 *</label>
+                  <input name="revision" placeholder="A0" required
+                         class="form-input w-full rounded-lg border-2 border-slate-200 px-3 py-2 text-sm
+                                focus:outline-none focus:border-blue-400 transition-all">
+                </div>
+                <div>
+                  <label class="text-xs font-semibold text-slate-700 mb-1.5 block">生效日期</label>
+                  <input type="date" name="effective_date"
+                         class="form-input w-full rounded-lg border-2 border-slate-200 px-3 py-2 text-sm
+                                focus:outline-none focus:border-blue-400 transition-all">
+                </div>
+              </div>
+
+              <div>
+                <label class="text-xs font-semibold text-slate-700 mb-1.5 block">图纸标题</label>
+                <input name="title" placeholder="例：零部件装配图"
+                       class="form-input w-full rounded-lg border-2 border-slate-200 px-3 py-2 text-sm
+                              focus:outline-none focus:border-blue-400 transition-all">
+              </div>
+
+              <div>
+                <label class="text-xs font-semibold text-slate-700 mb-1.5 block">备注说明</label>
+                <textarea name="remark" rows="3" placeholder="记录此版本的变更说明..."
+                          class="form-input w-full rounded-lg border-2 border-slate-200 px-3 py-2 text-sm
+                                 focus:outline-none focus:border-blue-400 transition-all resize-none"></textarea>
+              </div>
+
+              <button type="submit"
+                      class="w-full inline-flex items-center justify-center gap-2 px-4 py-3 rounded-xl
+                             bg-gradient-to-r from-blue-600 to-blue-700 text-white font-semibold
+                             shadow-lg shadow-blue-600/30 hover:shadow-xl hover:shadow-blue-600/40
+                             transition-all duration-200 hover:scale-105 active:scale-95">
+                <svg class="w-5 h-5" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                  <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M7 16a4 4 0 01-.88-7.903A5 5 0 1115.9 6L16 6a5 5 0 011 9.9M15 13l-3-3m0 0l-3 3m3-3v12"/>
+                </svg>
+                <span>上传图纸</span>
+              </button>
+            </form>
+          </div>
+        </div>
+
+        <!-- 版本列表 -->
+        <div class="lg:col-span-3">
+          <h3 class="text-lg font-bold text-slate-900 mb-4 flex items-center gap-2">
+            <svg class="w-5 h-5 text-slate-600" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+              <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M9 12h6m-6 4h6m2 5H7a2 2 0 01-2-2V5a2 2 0 012-2h5.586a1 1 0 01.707.293l5.414 5.414a1 1 0 01.293.707V19a2 2 0 01-2 2z"/>
+            </svg>
+            历史版本
+          </h3>
+
+          {% if drawings %}
+            <div class="space-y-3">
+              {% for d in drawings %}
+                <div class="drawing-card bg-white rounded-xl border-2 border-slate-200 p-4 hover:border-blue-300">
+                  <div class="flex items-start justify-between gap-4">
+                    <div class="flex-1">
+                      <div class="flex items-center gap-3 mb-2">
+                        <span class="inline-flex items-center gap-1.5 px-3 py-1 rounded-lg
+                                     bg-blue-100 border border-blue-200 text-sm font-bold text-blue-700">
+                          <svg class="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                            <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M7 7h.01M7 3h5c.512 0 1.024.195 1.414.586l7 7a2 2 0 010 2.828l-7 7a2 2 0 01-2.828 0l-7-7A1.994 1.994 0 013 12V7a4 4 0 014-4z"/>
+                          </svg>
+                          Rev {{ d.revision }}
+                        </span>
+                        {% if d.title %}
+                          <span class="text-sm font-semibold text-slate-900">{{ d.title }}</span>
+                        {% endif %}
+                      </div>
+
+                      <div class="flex items-center gap-4 text-xs text-slate-500 mb-2">
+                        <span class="flex items-center gap-1.5">
+                          <svg class="w-3.5 h-3.5" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                            <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M12 8v4l3 3m6-3a9 9 0 11-18 0 9 9 0 0118 0z"/>
+                          </svg>
+                          {{ d.created_at.date() }}
+                        </span>
+                        <span class="flex items-center gap-1.5">
+                          <svg class="w-3.5 h-3.5" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                            <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M7 21h10a2 2 0 002-2V9.414a1 1 0 00-.293-.707l-5.414-5.414A1 1 0 0012.586 3H7a2 2 0 00-2 2v14a2 2 0 002 2z"/>
+                          </svg>
+                          {{ d.original_name }}
+                        </span>
+                      </div>
+
+                      {% if d.remark %}
+                        <p class="text-xs text-slate-600 bg-slate-50 px-3 py-2 rounded-lg border border-slate-200">
+                          {{ d.remark }}
+                        </p>
+                      {% endif %}
+                    </div>
+
+                    <div class="flex flex-col gap-2">
+                      <a target="_blank"
+                         href="{{ url_for('parts.view_drawing', supplier_code=supplier.code, drawing_id=d.id) }}"
+                         class="inline-flex items-center gap-1.5 px-3 py-2 rounded-lg
+                                bg-blue-50 text-blue-600 hover:bg-blue-100 hover:text-blue-700
+                                border border-blue-200 transition-all text-xs font-medium whitespace-nowrap">
+                        <svg class="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                          <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M15 12a3 3 0 11-6 0 3 3 0 016 0z"/>
+                          <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M2.458 12C3.732 7.943 7.523 5 12 5c4.478 0 8.268 2.943 9.542 7-1.274 4.057-5.064 7-9.542 7-4.477 0-8.268-2.943-9.542-7z"/>
+                        </svg>
+                        查看
+                      </a>
+
+                      <form method="post"
+                            action="{{ url_for('parts.delete_drawing', supplier_code=supplier.code, drawing_id=d.id) }}"
+                            onsubmit="return confirm('确认删除版本 {{ d.revision }} 吗？\n\n此操作不可恢复！');">
+                        <button type="submit"
+                                class="w-full inline-flex items-center gap-1.5 px-3 py-2 rounded-lg
+                                       bg-rose-50 text-rose-600 hover:bg-rose-100 hover:text-rose-700
+                                       border border-rose-200 transition-all text-xs font-medium">
+                          <svg class="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                            <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M19 7l-.867 12.142A2 2 0 0116.138 21H7.862a2 2 0 01-1.995-1.858L5 7m5 4v6m4-6v6m1-10V4a1 1 0 00-1-1h-4a1 1 0 00-1 1v3M4 7h16"/>
+                          </svg>
+                          删除
+                        </button>
+                      </form>
+                    </div>
+                  </div>
+                </div>
+              {% endfor %}
+            </div>
+          {% else %}
+            <div class="rounded-2xl border-2 border-dashed border-slate-200 bg-slate-50 p-8 text-center">
+              <div class="flex flex-col items-center gap-3">
+                <div class="w-16 h-16 bg-slate-200 rounded-full flex items-center justify-center">
+                  <svg class="w-8 h-8 text-slate-400" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                    <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M9 12h6m-6 4h6m2 5H7a2 2 0 01-2-2V5a2 2 0 012-2h5.586a1 1 0 01.707.293l5.414 5.414a1 1 0 01.293.707V19a2 2 0 01-2 2z"/>
+                  </svg>
+                </div>
+                <p class="text-slate-500 font-medium">暂无图纸</p>
+                <p class="text-sm text-slate-400">从左侧上传第一个版本</p>
+              </div>
+            </div>
+          {% endif %}
+        </div>
       </div>
     </div>
   </div>
   {% endif %}
 </div>
+
+<script>
+function updateFileName(input) {
+  const fileNameDisplay = document.getElementById('fileName');
+  if (input.files && input.files[0]) {
+    fileNameDisplay.textContent = '已选择: ' + input.files[0].name;
+    fileNameDisplay.classList.remove('hidden');
+  } else {
+    fileNameDisplay.classList.add('hidden');
+  }
+}
+
+// 拖拽上传功能
+const uploadZone = document.querySelector('.upload-zone');
+if (uploadZone) {
+  ['dragenter', 'dragover', 'dragleave', 'drop'].forEach(eventName => {
+    uploadZone.addEventListener(eventName, preventDefaults, false);
+  });
+
+  function preventDefaults(e) {
+    e.preventDefault();
+    e.stopPropagation();
+  }
+
+  ['dragenter', 'dragover'].forEach(eventName => {
+    uploadZone.addEventListener(eventName, () => {
+      uploadZone.classList.add('drag-over');
+    }, false);
+  });
+
+  ['dragleave', 'drop'].forEach(eventName => {
+    uploadZone.addEventListener(eventName, () => {
+      uploadZone.classList.remove('drag-over');
+    }, false);
+  });
+
+  uploadZone.addEventListener('drop', (e) => {
+    const dt = e.dataTransfer;
+    const files = dt.files;
+    const fileInput = document.getElementById('fileInput');
+    fileInput.files = files;
+    updateFileName(fileInput);
+  }, false);
+}
+</script>
 
 {% endblock %}

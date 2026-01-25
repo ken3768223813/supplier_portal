@@ -12,13 +12,14 @@ def create_app(test_config=None):
     if test_config:
         app.config.update(test_config)
 
-    # 确保 instance 文件夹存在（用于放 sqlite）
+    # 确保 instance 文件夹存在（但不再用于上传文件）
     os.makedirs(app.instance_path, exist_ok=True)
-    app.config["UPLOAD_DIR"] = os.path.join(app.instance_path, "uploads")
 
-    # ✅ 确保上传目录存在（instance/uploads）
-    os.makedirs(os.path.join(app.instance_path, "uploads"), exist_ok=True)
+    # ❌ 删除这两行 - 不要覆盖 config.py 中的 UPLOAD_DIR 配置
+    # app.config["UPLOAD_DIR"] = os.path.join(app.instance_path, "uploads")
+    # os.makedirs(os.path.join(app.instance_path, "uploads"), exist_ok=True)
 
+    # ✅ 使用 config.py 中配置的目录
     os.makedirs(app.config["DB_DIR"], exist_ok=True)
     os.makedirs(app.config["UPLOAD_DIR"], exist_ok=True)
 
@@ -37,10 +38,10 @@ def create_app(test_config=None):
     app.register_blueprint(supplier_ws_bp)  # 它自己带 url_prefix="/suppliers"
 
     from .blueprints.parts import parts_bp
-    app.register_blueprint(parts_bp)        # prefix: /suppliers/<code>/parts
+    app.register_blueprint(parts_bp)  # prefix: /suppliers/<code>/parts
 
     from .blueprints.docs import docs_bp
-    app.register_blueprint(docs_bp)         # prefix: /suppliers/<code>/docs
+    app.register_blueprint(docs_bp)  # prefix: /suppliers/<code>/docs
 
     from .blueprints.tr import tr_bp
     app.register_blueprint(tr_bp, url_prefix="/tr")
@@ -56,9 +57,11 @@ def create_app(test_config=None):
             seed_suppliers()
             print("✅ DB initialized and suppliers seeded.")
 
+    # 调试信息
+    print("=" * 60)
     print("✅ SQLALCHEMY_DATABASE_URI =", app.config["SQLALCHEMY_DATABASE_URI"])
     print("✅ DB file exists =", os.path.exists(app.config["SQLALCHEMY_DATABASE_URI"].replace("sqlite:///", "")))
+    print("✅ UPLOAD_DIR =", app.config["UPLOAD_DIR"])
+    print("=" * 60)
 
     return app
-
-

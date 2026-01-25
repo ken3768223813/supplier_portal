@@ -1,37 +1,230 @@
 {% extends "layout/base.html" %}
 {% block content %}
 
-<div class="max-w-2xl mx-auto">
-  <h1 class="text-2xl font-semibold mb-6">新增供应商</h1>
+<style>
+  /* 输入框聚焦效果 */
+  .form-input:focus {
+    box-shadow: 0 0 0 3px rgba(59, 130, 246, 0.1);
+  }
 
-  <form method="post" class="space-y-4 bg-white rounded-2xl border border-slate-100 p-6">
-    <div>
-      <label class="block text-sm text-slate-600 mb-1">供应商代码</label>
-      <input name="code" class="w-full px-3 py-2 border rounded-xl" placeholder="如 ZSU0026419">
+  /* 开关按钮动画 */
+  .toggle-checkbox:checked {
+    background-color: #10b981;
+    border-color: #10b981;
+  }
+
+  .toggle-checkbox:checked + .toggle-label:before {
+    transform: translateX(1.25rem);
+  }
+</style>
+
+<div class="max-w-4xl mx-auto">
+  <!-- 面包屑导航 -->
+  <div class="mb-6 flex items-center gap-2 text-sm text-slate-600">
+    <a href="{{ url_for('suppliers.index') }}"
+       class="hover:text-slate-900 transition">供应商列表</a>
+    <svg class="w-4 h-4 text-slate-400" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+      <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M9 5l7 7-7 7"/>
+    </svg>
+    <span class="text-slate-900 font-medium">新增供应商</span>
+  </div>
+
+  <!-- 主卡片 -->
+  <div class="bg-white rounded-2xl shadow-lg border border-slate-200 overflow-hidden">
+    <!-- 头部 -->
+    <div class="bg-gradient-to-r from-blue-50 to-blue-100 px-8 py-6 border-b border-blue-200">
+      <div class="flex items-center gap-3">
+        <div class="w-14 h-14 bg-blue-200 rounded-xl flex items-center justify-center">
+          <svg class="w-7 h-7 text-blue-600" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+            <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M12 4v16m8-8H4"/>
+          </svg>
+        </div>
+        <div>
+          <h1 class="text-2xl font-bold text-slate-900">新增供应商</h1>
+          <p class="text-sm text-slate-600 mt-1">Add New Supplier</p>
+        </div>
+      </div>
     </div>
 
-    <div>
-      <label class="block text-sm text-slate-600 mb-1">供应商名称</label>
-      <input name="name" class="w-full px-3 py-2 border rounded-xl" placeholder="Supplier Name">
+    <!-- 表单内容 -->
+    <form method="post" class="p-8">
+      <div class="space-y-6">
+        <!-- 供应商代码 -->
+        <div>
+          <label class="flex items-center gap-2 text-sm font-semibold text-slate-700 mb-2">
+            <svg class="w-4 h-4 text-blue-600" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+              <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M7 7h.01M7 3h5c.512 0 1.024.195 1.414.586l7 7a2 2 0 010 2.828l-7 7a2 2 0 01-2.828 0l-7-7A1.994 1.994 0 013 12V7a4 4 0 014-4z"/>
+            </svg>
+            供应商代码 <span class="text-rose-500">*</span>
+          </label>
+          <input
+            type="text"
+            name="code"
+            required
+            placeholder="例如：ZSU0026419"
+            class="form-input w-full px-4 py-3 border-2 border-slate-200 rounded-xl text-sm
+                   focus:outline-none focus:border-blue-400 transition-all
+                   placeholder:text-slate-400 font-mono">
+          <p class="mt-1.5 text-xs text-slate-500">唯一标识供应商的代码，通常为字母+数字组合</p>
+        </div>
+
+        <!-- 供应商名称 -->
+        <div>
+          <label class="flex items-center gap-2 text-sm font-semibold text-slate-700 mb-2">
+            <svg class="w-4 h-4 text-emerald-600" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+              <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M3.055 11H5a2 2 0 012 2v1a2 2 0 002 2 2 2 0 012 2v2.945M8 3.935V5.5A2.5 2.5 0 0010.5 8h.5a2 2 0 012 2 2 2 0 104 0 2 2 0 012-2h1.064M15 20.488V18a2 2 0 012-2h3.064M21 12a9 9 0 11-18 0 9 9 0 0118 0z"/>
+            </svg>
+            供应商英文名称 <span class="text-rose-500">*</span>
+          </label>
+          <input
+            type="text"
+            name="name"
+            required
+            placeholder="Supplier Company Name Ltd."
+            class="form-input w-full px-4 py-3 border-2 border-slate-200 rounded-xl text-sm
+                   focus:outline-none focus:border-emerald-400 transition-all
+                   placeholder:text-slate-400">
+          <p class="mt-1.5 text-xs text-slate-500">供应商的正式英文名称</p>
+        </div>
+
+        <!-- 中文名称 -->
+        <div>
+          <label class="flex items-center gap-2 text-sm font-semibold text-slate-700 mb-2">
+            <svg class="w-4 h-4 text-purple-600" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+              <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M7 8h10M7 12h4m1 8l-4-4H5a2 2 0 01-2-2V6a2 2 0 012-2h14a2 2 0 012 2v8a2 2 0 01-2 2h-3l-4 4z"/>
+            </svg>
+            中文名称
+          </label>
+          <input
+            type="text"
+            name="chinese_name"
+            placeholder="中文名称（选填）"
+            class="form-input w-full px-4 py-3 border-2 border-slate-200 rounded-xl text-sm
+                   focus:outline-none focus:border-purple-400 transition-all
+                   placeholder:text-slate-400">
+          <p class="mt-1.5 text-xs text-slate-500">供应商的中文名称，选填项</p>
+        </div>
+
+        <!-- Active 状态开关 -->
+        <div class="bg-slate-50 rounded-xl p-5 border border-slate-200">
+          <div class="flex items-center justify-between">
+            <div class="flex items-center gap-3">
+              <div class="w-10 h-10 bg-emerald-100 rounded-lg flex items-center justify-center">
+                <svg class="w-5 h-5 text-emerald-600" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                  <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M9 12l2 2 4-4m6 2a9 9 0 11-18 0 9 9 0 0118 0z"/>
+                </svg>
+              </div>
+              <div>
+                <p class="text-sm font-semibold text-slate-900">激活状态</p>
+                <p class="text-xs text-slate-500">设置供应商是否处于活跃状态</p>
+              </div>
+            </div>
+
+            <label class="relative inline-flex items-center cursor-pointer">
+              <input
+                type="checkbox"
+                name="is_active"
+                value="1"
+                checked
+                class="toggle-checkbox sr-only peer">
+              <div class="w-11 h-6 bg-slate-300 rounded-full peer
+                          peer-checked:bg-emerald-500
+                          peer-focus:ring-4 peer-focus:ring-emerald-200
+                          transition-all duration-300
+                          after:content-[''] after:absolute after:top-[2px] after:left-[2px]
+                          after:bg-white after:rounded-full after:h-5 after:w-5
+                          after:transition-all after:duration-300
+                          peer-checked:after:translate-x-full"></div>
+            </label>
+          </div>
+        </div>
+
+        <!-- 提示信息 -->
+        <div class="bg-blue-50 border-l-4 border-blue-400 p-4 rounded-r-xl">
+          <div class="flex items-start gap-3">
+            <svg class="w-5 h-5 text-blue-600 mt-0.5 flex-shrink-0" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+              <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M13 16h-1v-4h-1m1-4h.01M21 12a9 9 0 11-18 0 9 9 0 0118 0z"/>
+            </svg>
+            <div>
+              <p class="text-sm font-semibold text-blue-900 mb-1">提示</p>
+              <p class="text-xs text-blue-700">创建供应商后，您可以为其添加零部件、上传图纸和管理相关文档。</p>
+            </div>
+          </div>
+        </div>
+      </div>
+
+      <!-- 操作按钮 -->
+      <div class="flex items-center gap-3 pt-8 border-t border-slate-200 mt-8">
+        <button
+          type="submit"
+          class="inline-flex items-center gap-2 px-6 py-3 rounded-xl
+                 bg-gradient-to-r from-blue-600 to-blue-700 text-white font-semibold
+                 shadow-lg shadow-blue-600/30 hover:shadow-xl hover:shadow-blue-600/40
+                 transition-all duration-200 hover:scale-105 active:scale-95">
+          <svg class="w-5 h-5" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+            <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M5 13l4 4L19 7"/>
+          </svg>
+          <span>保存供应商</span>
+        </button>
+
+        <a
+          href="{{ url_for('suppliers.index') }}"
+          class="inline-flex items-center gap-2 px-6 py-3 rounded-xl
+                 border-2 border-slate-300 bg-white text-slate-700 font-medium
+                 hover:bg-slate-50 hover:border-slate-400 transition-all">
+          <svg class="w-5 h-5" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+            <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M6 18L18 6M6 6l12 12"/>
+          </svg>
+          <span>取消</span>
+        </a>
+      </div>
+    </form>
+  </div>
+
+  <!-- 快捷操作提示 -->
+  <div class="mt-6 grid grid-cols-1 md:grid-cols-3 gap-4">
+    <div class="bg-white rounded-xl p-4 border border-slate-200 hover:shadow-md transition-shadow">
+      <div class="flex items-start gap-3">
+        <div class="w-10 h-10 bg-blue-100 rounded-lg flex items-center justify-center flex-shrink-0">
+          <svg class="w-5 h-5 text-blue-600" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+            <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M9 5H7a2 2 0 00-2 2v12a2 2 0 002 2h10a2 2 0 002-2V7a2 2 0 00-2-2h-2M9 5a2 2 0 002 2h2a2 2 0 002-2M9 5a2 2 0 012-2h2a2 2 0 012 2"/>
+          </svg>
+        </div>
+        <div>
+          <h3 class="text-sm font-semibold text-slate-900 mb-1">步骤 1</h3>
+          <p class="text-xs text-slate-600">填写供应商基本信息</p>
+        </div>
+      </div>
     </div>
 
-    <div>
-      <label class="block text-sm text-slate-600 mb-1">中文名称</label>
-      <input name="chinese_name" class="w-full px-3 py-2 border rounded-xl" placeholder="中文名称（可空）">
+    <div class="bg-white rounded-xl p-4 border border-slate-200 hover:shadow-md transition-shadow">
+      <div class="flex items-start gap-3">
+        <div class="w-10 h-10 bg-emerald-100 rounded-lg flex items-center justify-center flex-shrink-0">
+          <svg class="w-5 h-5 text-emerald-600" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+            <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M19 11H5m14 0a2 2 0 012 2v6a2 2 0 01-2 2H5a2 2 0 01-2-2v-6a2 2 0 012-2m14 0V9a2 2 0 00-2-2M5 11V9a2 2 0 012-2m0 0V5a2 2 0 012-2h6a2 2 0 012 2v2M7 7h10"/>
+          </svg>
+        </div>
+        <div>
+          <h3 class="text-sm font-semibold text-slate-900 mb-1">步骤 2</h3>
+          <p class="text-xs text-slate-600">添加零部件信息</p>
+        </div>
+      </div>
     </div>
 
-    <div class="flex items-center gap-3">
-      <label class="inline-flex items-center gap-2">
-
-        <span class="text-sm text-slate-700">Active</span>
-      </label>
+    <div class="bg-white rounded-xl p-4 border border-slate-200 hover:shadow-md transition-shadow">
+      <div class="flex items-start gap-3">
+        <div class="w-10 h-10 bg-purple-100 rounded-lg flex items-center justify-center flex-shrink-0">
+          <svg class="w-5 h-5 text-purple-600" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+            <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M9 12h6m-6 4h6m2 5H7a2 2 0 01-2-2V5a2 2 0 012-2h5.586a1 1 0 01.707.293l5.414 5.414a1 1 0 01.293.707V19a2 2 0 01-2 2z"/>
+          </svg>
+        </div>
+        <div>
+          <h3 class="text-sm font-semibold text-slate-900 mb-1">步骤 3</h3>
+          <p class="text-xs text-slate-600">上传图纸和文档</p>
+        </div>
+      </div>
     </div>
-
-    <div class="flex gap-3">
-      <button class="px-4 py-2 rounded-xl bg-slate-900 text-white">保存</button>
-      <a href="{{ url_for('suppliers.index') }}" class="px-4 py-2 rounded-xl border">取消</a>
-    </div>
-  </form>
+  </div>
 </div>
 
 {% endblock %}

@@ -6,7 +6,7 @@ class Supplier(db.Model):
     id = db.Column(db.Integer, primary_key=True)
     code = db.Column(db.String(64), unique=True, index=True, nullable=False)
     name = db.Column(db.String(255), nullable=False)
-    china_name = db.Column(db.String(255))
+    chinese_name = db.Column(db.String(255))
     created_at = db.Column(db.DateTime, default=datetime.utcnow)
 
     parts = db.relationship("Part", backref="supplier", lazy=True, cascade="all, delete-orphan")
@@ -100,6 +100,8 @@ class TroubleReport(db.Model):
     created_at = db.Column(db.DateTime, nullable=False, default=datetime.utcnow, index=True)
     updated_at = db.Column(db.DateTime, nullable=False, default=datetime.utcnow, onupdate=datetime.utcnow)
 
+    documents = db.relationship("TRDocument", backref="trouble_report", lazy="dynamic", cascade="all, delete-orphan")
+
     __table_args__ = (
         CheckConstraint(
             "eight_d_status IN ('NOT_REQUIRED','NOT_RECEIVED','RECEIVED_REJECT','RECEIVED_PASS')",
@@ -111,4 +113,31 @@ class TroubleReport(db.Model):
         return f"<TR {self.tr_no}>"
 
 
+class TRDocument(db.Model):
+    __tablename__ = "tr_documents"
 
+    id = db.Column(db.Integer, primary_key=True)
+    tr_id = db.Column(db.Integer, db.ForeignKey("trouble_reports.id"), nullable=False, index=True)
+
+    # 文档类型
+    doc_type = db.Column(db.String(50), nullable=False, index=True)
+    # 可选值: quality_report, test_report, 8d_report, photo, other
+
+    # 文档标题
+    title = db.Column(db.String(255), nullable=False)
+
+    # 文件信息
+    original_name = db.Column(db.String(255), nullable=False)  # 原始文件名
+    stored_name = db.Column(db.String(255), nullable=False)  # 存储文件名（UUID）
+    rel_path = db.Column(db.String(500), nullable=False)  # 相对路径
+    mime = db.Column(db.String(100))  # MIME 类型
+    size = db.Column(db.Integer)  # 文件大小（字节）
+
+    # 备注
+    remark = db.Column(db.Text)
+
+    # 创建时间
+    created_at = db.Column(db.DateTime, default=datetime.utcnow, nullable=False, index=True)
+
+    def __repr__(self):
+        return f"<TRDocument {self.title} for TR#{self.tr_id}>"

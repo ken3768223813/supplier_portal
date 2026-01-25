@@ -1,20 +1,76 @@
-from flask import render_template, request, redirect, url_for, flash
+from flask import render_template, request, redirect, url_for, flash, send_file, abort, current_app
+from werkzeug.utils import secure_filename
 from sqlalchemy import or_
+import os
+import uuid
+
 from . import tr_bp
 from ...extensions import db
-from ...models import TroubleReport
-
+from ...models import TroubleReport, TRDocument
 
 # 8D 枚举允许值（四态）
 ALLOWED_8D_STATUS = {"NOT_REQUIRED", "NOT_RECEIVED", "RECEIVED_REJECT", "RECEIVED_PASS"}
 
-# 用于搜索：把枚举映射成中文关键词（让你在搜索框里输入“未收到/不要求/reject/pass”也能搜到）
+# 用于搜索：把枚举映射成中文关键词
 EIGHTD_SEARCH_MAP = {
     "NOT_REQUIRED": "不要求",
     "NOT_RECEIVED": "未收到",
     "RECEIVED_REJECT": "reject",
     "RECEIVED_PASS": "pass",
 }
+
+# 文档类型选项
+DOC_TYPES = {
+    "quality_report": "质量报告",
+    "test_report": "测试报告",
+    "8d_report": "8D报告",
+    "photo": "现场照片",
+    "capa": "纠正预防措施",
+    "other": "其他文档",
+}
+
+# 允许的文件扩展名
+ALLOWED_EXTENSIONS = {
+    "pdf", "doc", "docx", "xls", "xlsx", "ppt", "pptx",
+    "jpg", "jpeg", "png", "zip", "rar"
+}
+
+# mimetype -> ext 的兜底映射（应对浏览器/系统给错 type 或没后缀）
+MIME_TO_EXT = {
+    "application/vnd.openxmlformats-officedocument.spreadsheetml.sheet": "xlsx",
+    "application/vnd.ms-excel": "xls",
+    "application/msword": "doc",
+    "application/vnd.openxmlformats-officedocument.wordprocessingml.document": "docx",
+    "application/vnd.ms-powerpoint": "ppt",
+    "application/vnd.openxmlformats-officedocument.presentationml.presentation": "pptx",
+    "application/pdf": "pdf",
+    "image/jpeg": "jpg",
+    "image/png": "png",
+    "application/zip": "zip",
+    "application/x-zip-compressed": "zip",
+    "application/x-rar-compressed": "rar",
+}
+
+
+def allowed_file(filename: str) -> bool:
+    return "." in filename and filename.rsplit(".", 1)[1].lower() in ALLOWED_EXTENSIONS
+
+
+def guess_ext(filename: str, mimetype: str) -> str:
+    """
+    可靠获取 ext：
+    1) 优先从原始 filename 取
+    2) 取不到再从 mimetype 兜底
+    """
+    ext = ""
+    if filename and "." in filename:
+        ext = filename.rsplit(".", 1)[1].lower().strip()
+
+    if not ext:
+        mt = (mimetype or "").lower().strip()
+        ext = MIME_TO_EXT.get(mt, "")
+
+    return ext
 
 
 @tr_bp.route("/", methods=["GET"])
@@ -27,11 +83,6 @@ def index():
 
     if q:
         like = f"%{q}%"
-
-        # 额外：支持中文关键词/常用词搜 8D 状态
-        # 例如：输入 “未收到” -> 命中 NOT_RECEIVED
-        #      输入 “不要求” -> 命中 NOT_REQUIRED
-        #      输入 “reject” -> 命中 RECEIVED_REJECT
         extra_8d_status = []
         q_lower = q.lower()
         for k, v in EIGHTD_SEARCH_MAP.items():
@@ -46,14 +97,9 @@ def index():
                 TroubleReport.part_name.ilike(like),
                 TroubleReport.issue_description.ilike(like),
                 TroubleReport.severity.ilike(like),
-
-                # 旧字段：编号/链接/备注 也可搜
                 TroubleReport.eight_d.ilike(like),
-
-                # ✅ 新字段：8D 状态可搜（同时支持输入枚举值/中文关键词）
                 TroubleReport.eight_d_status.ilike(like),
                 TroubleReport.eight_d_status.in_(extra_8d_status) if extra_8d_status else False,
-
                 TroubleReport.status.ilike(like),
                 TroubleReport.remark.ilike(like),
             )
@@ -82,10 +128,7 @@ def new_tr():
         issue_description = (request.form.get("issue_description") or "").strip()
         severity = (request.form.get("severity") or "").strip() or None
 
-        # 旧字段：可继续存 8D 编号/链接（可选）
         eight_d = (request.form.get("eight_d") or "").strip() or None
-
-        # ✅ 新字段：8D 状态（四态）
         eight_d_status = (request.form.get("eight_d_status") or "NOT_REQUIRED").strip()
         if eight_d_status not in ALLOWED_8D_STATUS:
             eight_d_status = "NOT_REQUIRED"
@@ -112,16 +155,14 @@ def new_tr():
 
         tr = TroubleReport(
             tr_no=tr_no,
-            supplier_code="N/A",          # 你当前前端不显示 supplier_code，先占位
+            supplier_code="N/A",
             supplier_name=supplier_name,
             part_number=part_number,
             part_name=part_name,
             issue_description=issue_description,
             severity=severity,
-
-            eight_d=eight_d,                  # 可选：编号/链接
-            eight_d_status=eight_d_status,    # ✅ 关键：四态枚举
-
+            eight_d=eight_d,
+            eight_d_status=eight_d_status,
             status=status,
             remark=remark,
         )
@@ -146,10 +187,7 @@ def edit_tr(tr_id):
         issue_description = (request.form.get("issue_description") or "").strip()
         severity = (request.form.get("severity") or "").strip() or None
 
-        # 旧字段：编号/链接（可选）
         eight_d = (request.form.get("eight_d") or "").strip() or None
-
-        # ✅ 新字段：8D 状态（四态）
         eight_d_status = (request.form.get("eight_d_status") or "NOT_REQUIRED").strip()
         if eight_d_status not in ALLOWED_8D_STATUS:
             eight_d_status = "NOT_REQUIRED"
@@ -159,22 +197,21 @@ def edit_tr(tr_id):
 
         if not tr_no:
             flash("TR No. 不能为空", "error")
-            return render_template("tr/form.html", mode="edit", tr=tr)
+            return render_template("tr/form.html", mode="edit", tr=tr, doc_types=DOC_TYPES)
 
         if not supplier_name:
             flash("SUPPLIER NAME 不能为空", "error")
-            return render_template("tr/form.html", mode="edit", tr=tr)
+            return render_template("tr/form.html", mode="edit", tr=tr, doc_types=DOC_TYPES)
 
         if not issue_description:
             flash("ISSUE DESCRIPTION 不能为空", "error")
-            return render_template("tr/form.html", mode="edit", tr=tr)
+            return render_template("tr/form.html", mode="edit", tr=tr, doc_types=DOC_TYPES)
 
-        # 如果修改了 TR No，检查唯一性
         if tr_no != tr.tr_no:
             exists = TroubleReport.query.filter_by(tr_no=tr_no).first()
             if exists:
                 flash(f"TR No. 已存在：{tr_no}", "error")
-                return render_template("tr/form.html", mode="edit", tr=tr)
+                return render_template("tr/form.html", mode="edit", tr=tr, doc_types=DOC_TYPES)
 
         tr.tr_no = tr_no
         tr.supplier_name = supplier_name
@@ -182,10 +219,8 @@ def edit_tr(tr_id):
         tr.part_name = part_name
         tr.issue_description = issue_description
         tr.severity = severity
-
         tr.eight_d = eight_d
-        tr.eight_d_status = eight_d_status   # ✅ 保存新枚举
-
+        tr.eight_d_status = eight_d_status
         tr.status = status
         tr.remark = remark
 
@@ -193,13 +228,158 @@ def edit_tr(tr_id):
         flash("✅ TR 已更新", "success")
         return redirect(url_for("tr.index"))
 
-    return render_template("tr/form.html", mode="edit", tr=tr)
+    documents = tr.documents.order_by(TRDocument.created_at.desc()).all()
+    return render_template("tr/form.html", mode="edit", tr=tr, documents=documents, doc_types=DOC_TYPES)
 
 
 @tr_bp.route("/<int:tr_id>/delete", methods=["POST"])
 def delete_tr(tr_id):
     tr = TroubleReport.query.get_or_404(tr_id)
+
+    for doc in tr.documents:
+        file_path = os.path.join(current_app.config["UPLOAD_DIR"], doc.rel_path)
+        if os.path.exists(file_path):
+            try:
+                os.remove(file_path)
+            except OSError:
+                pass
+
     db.session.delete(tr)
     db.session.commit()
     flash("✅ TR 已删除", "success")
     return redirect(url_for("tr.index"))
+
+
+# ==================== 文档管理路由 ====================
+
+@tr_bp.route("/<int:tr_id>/documents/upload", methods=["POST"])
+def upload_document(tr_id):
+    """上传 TR 文档"""
+    tr = TroubleReport.query.get_or_404(tr_id)
+
+    if "file" not in request.files:
+        flash("❌ 未选择文件", "error")
+        return redirect(url_for("tr.edit_tr", tr_id=tr_id))
+
+    file = request.files["file"]
+    if not file or file.filename == "":
+        flash("❌ 未选择文件", "error")
+        return redirect(url_for("tr.edit_tr", tr_id=tr_id))
+
+    raw_name = (file.filename or "").strip()
+
+    # 先校验扩展名（从原始文件名判断）
+    if not allowed_file(raw_name):
+        flash(f"❌ 不支持的文件格式。允许的格式：{', '.join(sorted(ALLOWED_EXTENSIONS))}", "error")
+        return redirect(url_for("tr.edit_tr", tr_id=tr_id))
+
+    # 获取表单数据
+    doc_type = request.form.get("doc_type", "other")
+    title = (request.form.get("title") or "").strip()
+    remark = (request.form.get("remark") or "").strip() or None
+
+    if not title:
+        title = raw_name
+
+    # 关键修复：ext 从原始文件名取 + mimetype 兜底
+    ext = guess_ext(raw_name, file.mimetype)
+
+    # 防止 Windows “uuid.” 这种非法文件名
+    if not ext:
+        flash("❌ 无法识别文件扩展名，请使用标准文件名（例如 .xlsx/.pdf/.docx）再上传", "error")
+        return redirect(url_for("tr.edit_tr", tr_id=tr_id))
+
+    stored_name = f"{uuid.uuid4().hex}.{ext}"
+
+    # 保留原始文件名用于展示/下载（同时做安全兜底避免 None）
+    original_name_to_store = raw_name or secure_filename(raw_name) or stored_name
+
+    # 构建存储路径：uploads/tr_docs/TR_NO/
+    tr_dir = os.path.join("tr_docs", secure_filename(tr.tr_no))
+    full_dir = os.path.join(current_app.config["UPLOAD_DIR"], tr_dir)
+    os.makedirs(full_dir, exist_ok=True)
+
+    # 保存文件
+    file_path = os.path.join(full_dir, stored_name)
+    file.save(file_path)
+
+    # 文件大小和 MIME 类型
+    file_size = os.path.getsize(file_path)
+    mime_type = file.mimetype  # 比 content_type 更一致
+
+    # 相对路径
+    rel_path = os.path.join(tr_dir, stored_name)
+
+    # 创建数据库记录
+    document = TRDocument(
+        tr_id=tr.id,
+        doc_type=doc_type,
+        title=title,
+        original_name=original_name_to_store,
+        stored_name=stored_name,
+        rel_path=rel_path,
+        mime=mime_type,
+        size=file_size,
+        remark=remark,
+    )
+    db.session.add(document)
+    db.session.commit()
+
+    flash(f"✅ 文档已上传：{title}", "success")
+    return redirect(url_for("tr.edit_tr", tr_id=tr_id))
+
+
+@tr_bp.route("/<int:tr_id>/documents/<int:doc_id>/view")
+def view_document(tr_id, doc_id):
+    """查看/下载文档（浏览器能预览的就预览）"""
+    TroubleReport.query.get_or_404(tr_id)
+    doc = TRDocument.query.filter_by(id=doc_id, tr_id=tr_id).first_or_404()
+
+    file_path = os.path.join(current_app.config["UPLOAD_DIR"], doc.rel_path)
+    if not os.path.exists(file_path):
+        abort(404, "文件不存在")
+
+    return send_file(
+        file_path,
+        as_attachment=False,
+        download_name=doc.original_name,
+        mimetype=doc.mime,
+    )
+
+
+@tr_bp.route("/<int:tr_id>/documents/<int:doc_id>/download")
+def download_document(tr_id, doc_id):
+    """强制下载文档"""
+    TroubleReport.query.get_or_404(tr_id)
+    doc = TRDocument.query.filter_by(id=doc_id, tr_id=tr_id).first_or_404()
+
+    file_path = os.path.join(current_app.config["UPLOAD_DIR"], doc.rel_path)
+    if not os.path.exists(file_path):
+        abort(404, "文件不存在")
+
+    return send_file(
+        file_path,
+        as_attachment=True,
+        download_name=doc.original_name,
+        mimetype=doc.mime,
+    )
+
+
+@tr_bp.route("/<int:tr_id>/documents/<int:doc_id>/delete", methods=["POST"])
+def delete_document(tr_id, doc_id):
+    """删除文档"""
+    TroubleReport.query.get_or_404(tr_id)
+    doc = TRDocument.query.filter_by(id=doc_id, tr_id=tr_id).first_or_404()
+
+    file_path = os.path.join(current_app.config["UPLOAD_DIR"], doc.rel_path)
+    if os.path.exists(file_path):
+        try:
+            os.remove(file_path)
+        except OSError:
+            pass
+
+    db.session.delete(doc)
+    db.session.commit()
+
+    flash(f"✅ 文档已删除：{doc.title}", "success")
+    return redirect(url_for("tr.edit_tr", tr_id=tr_id))

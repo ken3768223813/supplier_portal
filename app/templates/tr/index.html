@@ -2,135 +2,228 @@
 {% block content %}
 
 <style>
-  /* 简单的 3 行截断：不用 Tailwind line-clamp 插件也能工作 */
-  .clamp-3{
+  /* 3行截断 */
+  .clamp-3 {
     display: -webkit-box;
     -webkit-line-clamp: 3;
     -webkit-box-orient: vertical;
     overflow: hidden;
   }
+
+  /* 表格行悬停效果 */
+  .table-row {
+    transition: all 0.2s ease;
+  }
+
+  .table-row:hover {
+    transform: translateX(2px);
+  }
+
+  /* 状态灯光效果 */
+  @keyframes pulse-glow {
+    0%, 100% { opacity: 1; }
+    50% { opacity: 0.7; }
+  }
+
+  .status-dot-warning {
+    animation: pulse-glow 2s ease-in-out infinite;
+  }
+
+  /* 搜索框聚焦效果 */
+  .search-input:focus {
+    box-shadow: 0 0 0 3px rgba(148, 163, 184, 0.1);
+  }
+
+  /* 文档徽章动画 */
+  .doc-badge {
+    transition: all 0.2s ease;
+  }
+
+  .doc-badge:hover {
+    transform: scale(1.15);
+  }
 </style>
 
 <div class="grid grid-cols-12 gap-6">
-  <div class="col-span-12 lg:col-span-12">
-    <div class="bg-white rounded-2xl shadow-sm border border-slate-100 overflow-hidden">
-
-      <!-- 顶部：搜索 + 统计 + 新增按钮 -->
-      <div class="px-5 py-4 border-b border-slate-100 flex items-center gap-4">
-        <form method="get" class="flex-1">
-          <div class="relative">
-            <input
-              type="text"
-              name="q"
-              value="{{ q or '' }}"
-              placeholder="搜索 TR No. / Supplier / PN / Issue..."
-              class="w-full rounded-xl border border-slate-200 bg-white px-4 py-2.5
-                     text-sm text-slate-800 placeholder:text-slate-400
-                     focus:outline-none focus:ring-2 focus:ring-slate-300"
-            />
-            {% if q %}
-              <a href="{{ url_for('tr.index', per_page=per_page) }}"
-                 class="absolute right-3 top-1/2 -translate-y-1/2 text-slate-400 hover:text-slate-600 text-sm">
-                清除
-              </a>
-            {% endif %}
+  <div class="col-span-12">
+    <!-- 顶部统计卡片 -->
+    <div class="grid grid-cols-1 md:grid-cols-4 gap-4 mb-6">
+      <div class="bg-gradient-to-br from-blue-50 to-blue-100 rounded-2xl p-5 border border-blue-200">
+        <div class="flex items-center justify-between">
+          <div>
+            <p class="text-sm font-medium text-blue-600 mb-1">总记录数</p>
+            <p class="text-2xl font-bold text-blue-900">{{ pagination.total }}</p>
           </div>
-        </form>
-
-        <div class="flex items-center gap-3 shrink-0">
-          <div class="text-sm text-slate-500">
-            共 {{ pagination.total }} 条（第 {{ pagination.page }}/{{ pagination.pages if pagination.pages else 1 }} 页）
-          </div>
-
-          <a href="{{ url_for('tr.new_tr') }}"
-             class="group inline-flex items-center justify-center w-9 h-9 rounded-lg
-                    bg-slate-200 text-slate-700 hover:bg-slate-300 hover:text-slate-900
-                    border border-slate-300 shadow-sm transition active:scale-[0.96] active:shadow-inner"
-             title="新增 TR" aria-label="新增 TR">
-            <svg viewBox="0 0 24 24" class="w-5 h-5 transition-transform group-active:scale-95" fill="none" aria-hidden="true">
-              <path d="M12 5v14M5 12h14"
-                    stroke="currentColor" stroke-width="1.5" stroke-linecap="round" stroke-linejoin="round" />
+          <div class="w-12 h-12 bg-blue-200 rounded-xl flex items-center justify-center">
+            <svg class="w-6 h-6 text-blue-600" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+              <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M9 12h6m-6 4h6m2 5H7a2 2 0 01-2-2V5a2 2 0 012-2h5.586a1 1 0 01.707.293l5.414 5.414a1 1 0 01.293.707V19a2 2 0 01-2 2z"/>
             </svg>
-          </a>
+          </div>
         </div>
       </div>
 
-      {# ========= 颜色/灯号映射：纯模板内完成，不依赖后端改字段 ========= #}
-      {% macro dot(color_class, title_text) -%}
-        <span class="inline-block w-3 h-3 rounded-full {{ color_class }}"
-              title="{{ title_text }}"
-              aria-label="{{ title_text }}"></span>
-      {%- endmacro %}
+      <div class="bg-gradient-to-br from-amber-50 to-amber-100 rounded-2xl p-5 border border-amber-200">
+        <div class="flex items-center justify-between">
+          <div>
+            <p class="text-sm font-medium text-amber-600 mb-1">进行中</p>
+            <p class="text-2xl font-bold text-amber-900">--</p>
+          </div>
+          <div class="w-12 h-12 bg-amber-200 rounded-xl flex items-center justify-center">
+            <svg class="w-6 h-6 text-amber-600" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+              <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M12 8v4l3 3m6-3a9 9 0 11-18 0 9 9 0 0118 0z"/>
+            </svg>
+          </div>
+        </div>
+      </div>
 
-      <div>
+      <div class="bg-gradient-to-br from-rose-50 to-rose-100 rounded-2xl p-5 border border-rose-200">
+        <div class="flex items-center justify-between">
+          <div>
+            <p class="text-sm font-medium text-rose-600 mb-1">逾期</p>
+            <p class="text-2xl font-bold text-rose-900">--</p>
+          </div>
+          <div class="w-12 h-12 bg-rose-200 rounded-xl flex items-center justify-center">
+            <svg class="w-6 h-6 text-rose-600" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+              <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M12 9v2m0 4h.01m-6.938 4h13.856c1.54 0 2.502-1.667 1.732-3L13.732 4c-.77-1.333-2.694-1.333-3.464 0L3.34 16c-.77 1.333.192 3 1.732 3z"/>
+            </svg>
+          </div>
+        </div>
+      </div>
+
+      <div class="bg-gradient-to-br from-emerald-50 to-emerald-100 rounded-2xl p-5 border border-emerald-200">
+        <div class="flex items-center justify-between">
+          <div>
+            <p class="text-sm font-medium text-emerald-600 mb-1">已关闭</p>
+            <p class="text-2xl font-bold text-emerald-900">--</p>
+          </div>
+          <div class="w-12 h-12 bg-emerald-200 rounded-xl flex items-center justify-center">
+            <svg class="w-6 h-6 text-emerald-600" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+              <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M9 12l2 2 4-4m6 2a9 9 0 11-18 0 9 9 0 0118 0z"/>
+            </svg>
+          </div>
+        </div>
+      </div>
+    </div>
+
+    <!-- 主表格卡片 -->
+    <div class="bg-white rounded-2xl shadow-lg border border-slate-200 overflow-hidden">
+      <!-- 搜索栏 -->
+      <div class="bg-gradient-to-r from-slate-50 to-slate-100 px-6 py-5 border-b border-slate-200">
+        <div class="flex items-center gap-4">
+          <form method="get" class="flex-1">
+            <div class="relative">
+              <div class="absolute inset-y-0 left-0 pl-4 flex items-center pointer-events-none">
+                <svg class="w-5 h-5 text-slate-400" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                  <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M21 21l-6-6m2-5a7 7 0 11-14 0 7 7 0 0114 0z"/>
+                </svg>
+              </div>
+              <input
+                type="text"
+                name="q"
+                value="{{ q or '' }}"
+                placeholder="搜索 TR No. / Supplier / Part Number / Issue..."
+                class="search-input w-full pl-12 pr-12 py-3.5 rounded-xl border-2 border-slate-200 bg-white
+                       text-sm text-slate-800 placeholder:text-slate-400
+                       focus:outline-none focus:border-slate-400 transition-all"
+              />
+              {% if q %}
+                <a href="{{ url_for('tr.index', per_page=per_page) }}"
+                   class="absolute right-4 top-1/2 -translate-y-1/2 text-slate-400 hover:text-slate-600 transition">
+                  <svg class="w-5 h-5" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                    <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M6 18L18 6M6 6l12 12"/>
+                  </svg>
+                </a>
+              {% endif %}
+            </div>
+          </form>
+
+          <div class="flex items-center gap-3 shrink-0">
+            <div class="px-4 py-2 bg-white rounded-lg border border-slate-200 text-sm text-slate-600">
+              <span class="font-medium text-slate-800">{{ pagination.page }}</span> / {{ pagination.pages if pagination.pages else 1 }}
+            </div>
+
+            <a href="{{ url_for('tr.new_tr') }}"
+               class="group relative inline-flex items-center gap-2 px-5 py-2.5 rounded-xl
+                      bg-gradient-to-r from-slate-700 to-slate-900 text-white font-medium
+                      shadow-lg shadow-slate-900/20 hover:shadow-xl hover:shadow-slate-900/30
+                      border border-slate-600 transition-all duration-200 hover:scale-105 active:scale-95"
+               title="新增 TR">
+              <svg class="w-5 h-5" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M12 4v16m8-8H4"/>
+              </svg>
+              <span>新增</span>
+            </a>
+          </div>
+        </div>
+      </div>
+
+      <!-- 表格 -->
+      <div class="overflow-x-auto">
         <table class="w-full table-fixed text-sm">
-          <thead class="bg-slate-50">
-            <tr class="text-xs font-medium text-slate-500 uppercase tracking-wide">
-              <th class="w-[110px] px-2 py-2 text-left">TR No.</th>
-              <th class="w-[14%]  px-2 py-2 text-left">Supplier</th>
-              <th class="w-[18%]  px-2 py-2 text-left">Part No.</th>
-              <th class="w-[14%]  px-2 py-2 text-left">Part Name</th>
-
-              {# ISSUE 给更多空间 #}
-              <th class="w-[32%]  px-2 py-2 text-center">Issue</th>
-
-              <th class="w-[54px]  px-1 py-2 text-center">Sev</th>
-
-              {# 8D / ST 用灯号：列宽极窄 #}
-              <th class="w-[46px]  px-1 py-2 text-center">8D</th>
-              <th class="w-[46px]  px-1 py-2 text-center">ST</th>
-
-              <th class="w-[16%]  px-2 py-2 text-center">NOTE</th>
-              <th class="w-[90px]  px-2 py-2 text-center normal-case">Action</th>
+          <thead class="bg-gradient-to-r from-slate-100 to-slate-50 sticky top-0">
+            <tr class="text-xs font-semibold text-slate-600 uppercase tracking-wider">
+              <th class="w-[110px] px-4 py-4 text-left border-b-2 border-slate-200">TR No.</th>
+              <th class="w-[13%] px-4 py-4 text-left border-b-2 border-slate-200">Supplier</th>
+              <th class="w-[16%] px-4 py-4 text-left border-b-2 border-slate-200">Part No.</th>
+              <th class="w-[13%] px-4 py-4 text-left border-b-2 border-slate-200">Part Name</th>
+              <th class="w-[28%] px-4 py-4 text-left border-b-2 border-slate-200">Issue</th>
+              <th class="w-[54px] px-2 py-4 text-center border-b-2 border-slate-200">Sev</th>
+              <th class="w-[46px] px-2 py-4 text-center border-b-2 border-slate-200">8D</th>
+              <th class="w-[46px] px-2 py-4 text-center border-b-2 border-slate-200">ST</th>
+              <th class="w-[14%] px-4 py-4 text-center border-b-2 border-slate-200 normal-case">Note</th>
+              <th class="w-[50px] px-2 py-4 text-center border-b-2 border-slate-200 normal-case">📎</th>
+              <th class="w-[90px] px-4 py-4 text-center border-b-2 border-slate-200 normal-case">Action</th>
             </tr>
           </thead>
 
           <tbody class="divide-y divide-slate-100">
             {% for tr in trs %}
-
-              {# --- 统一状态小写方便判断 --- #}
               {% set status = (tr.status or '')|lower %}
-              {% set eightd = (tr.eight_d or '')|lower %}
-
-              {# --- 行高亮：Overdue / Late 轻微红底，方便扫表 --- #}
-              {% set row_cls = "hover:bg-slate-50/60 align-top" %}
+              {% set row_cls = "table-row align-top" %}
               {% if status in ['overdue', 'late'] %}
-                {% set row_cls = row_cls ~ " bg-rose-50/40" %}
+                {% set row_cls = row_cls ~ " bg-rose-50/50" %}
               {% endif %}
 
               <tr class="{{ row_cls }}">
-
-                <!-- TR NO.：等宽 + 不换行（更像系统编号） -->
-                <td class="px-2 py-3 font-medium text-slate-900 whitespace-nowrap font-mono">
-                  <div title="{{ tr.tr_no }}">{{ tr.tr_no }}</div>
+                <!-- TR NO. -->
+                <td class="px-4 py-4">
+                  <div class="font-semibold text-slate-900 whitespace-nowrap font-mono bg-slate-100 px-3 py-1.5 rounded-lg inline-block"
+                       title="{{ tr.tr_no }}">
+                    {{ tr.tr_no }}
+                  </div>
                 </td>
 
-                <td class="px-2 py-3 text-slate-700">
+                <!-- Supplier -->
+                <td class="px-4 py-4 text-slate-700 font-medium">
                   <div class="truncate" title="{{ tr.supplier_name }}">{{ tr.supplier_name }}</div>
                 </td>
 
-                <!-- Part No.：完整显示 + 等宽 + 不换行 -->
-                <td class="px-2 py-3 text-slate-800 whitespace-nowrap font-mono">
-                  <div title="{{ tr.part_number or '' }}">{{ tr.part_number or "-" }}</div>
+                <!-- Part No. -->
+                <td class="px-4 py-4">
+                  <div class="text-slate-800 whitespace-nowrap font-mono text-xs bg-blue-50 px-2 py-1 rounded inline-block"
+                       title="{{ tr.part_number or '' }}">
+                    {{ tr.part_number or "-" }}
+                  </div>
                 </td>
 
-                <!-- Part Name：可以适度截断 -->
-                <td class="px-2 py-3 text-slate-700">
+                <!-- Part Name -->
+                <td class="px-4 py-4 text-slate-700">
                   <div class="truncate" title="{{ tr.part_name or '' }}">{{ tr.part_name or "-" }}</div>
                 </td>
 
-                <!-- Issue：3 行截断 + tooltip -->
-                <td class="px-2 py-3 text-slate-600">
-                  <div class="text-[13px] leading-5 clamp-3" title="{{ tr.issue_description or '' }}">
+                <!-- Issue -->
+                <td class="px-4 py-4">
+                  <div class="text-[13px] leading-5 text-slate-600 clamp-3" title="{{ tr.issue_description or '' }}">
                     {{ tr.issue_description }}
                   </div>
                 </td>
 
-
-                <!-- Sev：小 badge（紧凑） -->
-                <td class="px-1 py-3 text-center">
+                <!-- Severity -->
+                <td class="px-2 py-4 text-center">
                   {% if tr.severity %}
-                    <span class="inline-flex items-center justify-center rounded-full bg-slate-100 px-2 py-0.5 text-xs font-medium text-slate-700">
+                    <span class="inline-flex items-center justify-center w-8 h-8 rounded-lg
+                                 bg-gradient-to-br from-slate-100 to-slate-200 border border-slate-300
+                                 text-xs font-bold text-slate-700 shadow-sm">
                       {{ tr.severity }}
                     </span>
                   {% else %}
@@ -138,105 +231,133 @@
                   {% endif %}
                 </td>
 
-                <!-- 8D：灯号（hover 看含义） -->
-                <td class="px-1 py-3 text-center">
+                <!-- 8D Status -->
+                <td class="px-2 py-4 text-center">
                   {% set d8 = (tr.eight_d_status or 'NOT_REQUIRED')|trim|upper %}
 
                   {% if d8 == 'NOT_REQUIRED' %}
-                    <span class="inline-block w-3 h-3 rounded-full bg-slate-300 shadow-[inset_0_1px_1px_rgba(255,255,255,.6),0_2px_4px_rgba(0,0,0,.2)]"
+                    <span class="inline-block w-4 h-4 rounded-full bg-slate-300 border-2 border-slate-400 shadow-inner"
                           title="8D: Not required"></span>
 
                   {% elif d8 == 'NOT_RECEIVED' %}
-                    <span class="inline-block w-3 h-3 rounded-full bg-yellow-400 shadow-[0_0_8px_rgba(250,204,21,.8),0_2px_4px_rgba(0,0,0,.25)]"
+                    <span class="status-dot-warning inline-block w-4 h-4 rounded-full bg-yellow-400 border-2 border-yellow-500 shadow-lg shadow-yellow-400/50"
                           title="8D: Required but not received"></span>
 
                   {% elif d8 == 'RECEIVED_REJECT' %}
-                    <span class="inline-block w-3 h-3 rounded-full bg-red-500 shadow-[0_0_8px_rgba(239,68,68,.9),0_2px_4px_rgba(0,0,0,.28)]"
+                    <span class="inline-block w-4 h-4 rounded-full bg-red-500 border-2 border-red-600 shadow-lg shadow-red-500/50"
                           title="8D: Received (Reject)"></span>
 
                   {% elif d8 == 'RECEIVED_PASS' %}
-                    <span class="inline-block w-3 h-3 rounded-full bg-emerald-500 shadow-[0_0_8px_rgba(34,197,94,.9),0_2px_4px_rgba(0,0,0,.28)]"
+                    <span class="inline-block w-4 h-4 rounded-full bg-emerald-500 border-2 border-emerald-600 shadow-lg shadow-emerald-500/50"
                           title="8D: Received (Pass)"></span>
 
                   {% else %}
-                    <span class="inline-block w-3 h-3 rounded-full bg-slate-300 shadow-[inset_0_1px_1px_rgba(255,255,255,.6),0_2px_4px_rgba(0,0,0,.2)]"
+                    <span class="inline-block w-4 h-4 rounded-full bg-slate-300 border-2 border-slate-400 shadow-inner"
                           title="8D: Unknown ({{ tr.eight_d_status }})"></span>
                   {% endif %}
                 </td>
 
-
-
-
-
-                <!-- Status：交通灯 -->
-                <td class="px-1 py-3 text-center">
+                <!-- Status -->
+                <td class="px-2 py-4 text-center">
                   {% set st = (tr.status or '')|lower %}
                   {% if st in ['overdue','late'] %}
-                    <span class="inline-flex items-center justify-center h-5 px-2 rounded-full text-[11px] font-semibold
-                                 bg-red-100 text-red-700 shadow-[inset_0_1px_0_rgba(255,255,255,.7),0_2px_4px_rgba(0,0,0,.18)]"
+                    <span class="inline-flex items-center justify-center h-6 px-3 rounded-full text-[10px] font-bold uppercase tracking-wide
+                                 bg-gradient-to-r from-red-500 to-red-600 text-white shadow-lg shadow-red-500/40 border border-red-700"
                           title="Overdue">LATE</span>
                   {% elif st in ['closed','done','complete','completed'] %}
-                    <span class="inline-flex items-center justify-center h-5 px-2 rounded-full text-[11px] font-semibold
-                                 bg-emerald-100 text-emerald-700 shadow-[inset_0_1px_0_rgba(255,255,255,.7),0_2px_4px_rgba(0,0,0,.18)]"
+                    <span class="inline-flex items-center justify-center h-6 px-3 rounded-full text-[10px] font-bold uppercase tracking-wide
+                                 bg-gradient-to-r from-emerald-500 to-emerald-600 text-white shadow-lg shadow-emerald-500/40 border border-emerald-700"
                           title="Closed">OK</span>
                   {% else %}
-                    <span class="inline-flex items-center justify-center h-5 px-2 rounded-full text-[11px] font-semibold
-                                 bg-yellow-100 text-yellow-800 shadow-[inset_0_1px_0_rgba(255,255,255,.7),0_2px_4px_rgba(0,0,0,.18)]"
+                    <span class="inline-flex items-center justify-center h-6 px-3 rounded-full text-[10px] font-bold uppercase tracking-wide
+                                 bg-gradient-to-r from-yellow-400 to-yellow-500 text-yellow-900 shadow-lg shadow-yellow-400/40 border border-yellow-600"
                           title="Ongoing">ON</span>
                   {% endif %}
                 </td>
 
-
-
-                <!-- Remark：截断 + tooltip -->
-                <td class="px-8 py-3 text-slate-700">
-                  <div class="truncate" title="{{ tr.remark or '' }}">{{ tr.remark or "-" }}</div>
+                <!-- Remark -->
+                <td class="px-4 py-4 text-slate-600">
+                  <div class="truncate text-xs" title="{{ tr.remark or '' }}">{{ tr.remark or "-" }}</div>
                 </td>
 
-                <!-- Action：更紧凑 -->
-                <td class="px-2 py-3 text-right">
-                  <div class="flex flex-col items-end gap-1 text-sm">
-                    <!-- Edit -->
+                <!-- Documents 📎 -->
+                <td class="px-2 py-4 text-center">
+                  {% set doc_count = tr.documents.count() %}
+                  {% if doc_count > 0 %}
+                    <a href="{{ url_for('tr.edit_tr', tr_id=tr.id) }}#documents"
+                       class="doc-badge inline-flex items-center justify-center w-7 h-7 rounded-lg
+                              bg-gradient-to-br from-indigo-100 to-indigo-200
+                              text-indigo-700 font-bold text-xs
+                              border-2 border-indigo-300 shadow-sm
+                              hover:from-indigo-200 hover:to-indigo-300 hover:shadow-md
+                              cursor-pointer"
+                       title="查看 {{ doc_count }} 个文档">
+                      {{ doc_count }}
+                    </a>
+                  {% else %}
+                    <span class="inline-flex items-center justify-center w-7 h-7 rounded-lg
+                                 bg-slate-50 text-slate-300 text-xs border border-slate-200"
+                          title="暂无文档">
+                      -
+                    </span>
+                  {% endif %}
+                </td>
+
+                <!-- Actions -->
+                <td class="px-4 py-4">
+                  <div class="flex items-center justify-center gap-2">
                     <a href="{{ url_for('tr.edit_tr', tr_id=tr.id) }}"
-                       class="text-blue-600 hover:text-blue-800"
+                       class="inline-flex items-center justify-center w-8 h-8 rounded-lg
+                              bg-blue-50 text-blue-600 hover:bg-blue-100 hover:text-blue-700
+                              border border-blue-200 transition-all hover:scale-110"
                        title="Edit">
-                      ✎
+                      <svg class="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                        <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M11 5H6a2 2 0 00-2 2v11a2 2 0 002 2h11a2 2 0 002-2v-5m-1.414-9.414a2 2 0 112.828 2.828L11.828 15H9v-2.828l8.586-8.586z"/>
+                      </svg>
                     </a>
 
-                    <!-- Delete -->
                     <form method="post"
                           action="{{ url_for('tr.delete_tr', tr_id=tr.id) }}"
                           onsubmit="return confirm('确认删除 TR {{ tr.tr_no }} 吗？此操作不可恢复。');">
                       <button type="submit"
-                              class="text-rose-600 hover:text-rose-800"
+                              class="inline-flex items-center justify-center w-8 h-8 rounded-lg
+                                     bg-rose-50 text-rose-600 hover:bg-rose-100 hover:text-rose-700
+                                     border border-rose-200 transition-all hover:scale-110"
                               title="Delete">
-                        🗑
+                        <svg class="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                          <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M19 7l-.867 12.142A2 2 0 0116.138 21H7.862a2 2 0 01-1.995-1.858L5 7m5 4v6m4-6v6m1-10V4a1 1 0 00-1-1h-4a1 1 0 00-1 1v3M4 7h16"/>
+                        </svg>
                       </button>
                     </form>
                   </div>
                 </td>
-
               </tr>
             {% endfor %}
 
             {% if trs|length == 0 %}
             <tr>
-              <td colspan="10" class="px-5 py-10 text-center text-slate-400">暂无数据</td>
+              <td colspan="11" class="px-6 py-16 text-center">
+                <div class="flex flex-col items-center gap-3">
+                  <svg class="w-16 h-16 text-slate-300" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                    <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M20 13V6a2 2 0 00-2-2H6a2 2 0 00-2 2v7m16 0v5a2 2 0 01-2 2H6a2 2 0 01-2-2v-5m16 0h-2.586a1 1 0 00-.707.293l-2.414 2.414a1 1 0 01-.707.293h-3.172a1 1 0 01-.707-.293l-2.414-2.414A1 1 0 006.586 13H4"/>
+                  </svg>
+                  <p class="text-slate-400 font-medium">暂无数据</p>
+                </div>
+              </td>
             </tr>
             {% endif %}
           </tbody>
         </table>
       </div>
 
+      <!-- 分页 -->
       {% if pagination.pages > 1 %}
-      <div class="px-5 py-4 border-t border-slate-100 flex items-center justify-between">
-        <div class="text-sm text-slate-500">
+      <div class="bg-slate-50 px-6 py-4 border-t border-slate-200 flex items-center justify-between">
+        <div class="text-sm text-slate-600">
           {% if pagination.total > 0 %}
-            显示第
-            {{ (pagination.page - 1) * pagination.per_page + 1 }}
-            -
-            {{ (pagination.page - 1) * pagination.per_page + trs|length }}
-            条
+            显示第 <span class="font-semibold text-slate-800">{{ (pagination.page - 1) * pagination.per_page + 1 }}</span>
+            - <span class="font-semibold text-slate-800">{{ (pagination.page - 1) * pagination.per_page + trs|length }}</span>
+            条，共 <span class="font-semibold text-slate-800">{{ pagination.total }}</span> 条
           {% else %}
             无结果
           {% endif %}
@@ -244,28 +365,43 @@
 
         <nav class="flex items-center gap-2">
           {% if pagination.has_prev %}
-            <a class="px-3 py-1.5 rounded-lg border text-sm hover:bg-slate-50"
-               href="{{ url_for('tr.index', page=pagination.prev_num, q=q, per_page=per_page) }}">上一页</a>
+            <a class="px-4 py-2 rounded-lg border-2 border-slate-300 text-sm font-medium text-slate-700
+                      hover:bg-slate-100 hover:border-slate-400 transition-all"
+               href="{{ url_for('tr.index', page=pagination.prev_num, q=q, per_page=per_page) }}">
+              上一页
+            </a>
           {% else %}
-            <span class="px-3 py-1.5 rounded-lg border text-sm text-slate-400 bg-slate-50">上一页</span>
+            <span class="px-4 py-2 rounded-lg border-2 border-slate-200 text-sm font-medium text-slate-400 bg-slate-100">
+              上一页
+            </span>
           {% endif %}
 
           <div class="flex items-center gap-1">
             {% for p in range(1, pagination.pages + 1) %}
               {% if p == pagination.page %}
-                <span class="px-3 py-1.5 rounded-lg bg-slate-900 text-white text-sm">{{ p }}</span>
+                <span class="px-4 py-2 rounded-lg bg-gradient-to-r from-slate-700 to-slate-900 text-white text-sm font-bold shadow-lg">
+                  {{ p }}
+                </span>
               {% else %}
-                <a class="px-3 py-1.5 rounded-lg border text-sm hover:bg-slate-50"
-                   href="{{ url_for('tr.index', page=p, q=q, per_page=per_page) }}">{{ p }}</a>
+                <a class="px-4 py-2 rounded-lg border-2 border-slate-200 text-sm font-medium text-slate-700
+                          hover:bg-slate-100 hover:border-slate-400 transition-all"
+                   href="{{ url_for('tr.index', page=p, q=q, per_page=per_page) }}">
+                  {{ p }}
+                </a>
               {% endif %}
             {% endfor %}
           </div>
 
           {% if pagination.has_next %}
-            <a class="px-3 py-1.5 rounded-lg border text-sm hover:bg-slate-50"
-               href="{{ url_for('tr.index', page=pagination.next_num, q=q, per_page=per_page) }}">下一页</a>
+            <a class="px-4 py-2 rounded-lg border-2 border-slate-300 text-sm font-medium text-slate-700
+                      hover:bg-slate-100 hover:border-slate-400 transition-all"
+               href="{{ url_for('tr.index', page=pagination.next_num, q=q, per_page=per_page) }}">
+              下一页
+            </a>
           {% else %}
-            <span class="px-3 py-1.5 rounded-lg border text-sm text-slate-400 bg-slate-50">下一页</span>
+            <span class="px-4 py-2 rounded-lg border-2 border-slate-200 text-sm font-medium text-slate-400 bg-slate-100">
+              下一页
+            </span>
           {% endif %}
         </nav>
       </div>
