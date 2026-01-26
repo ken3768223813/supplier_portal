@@ -141,3 +141,188 @@ class TRDocument(db.Model):
 
     def __repr__(self):
         return f"<TRDocument {self.title} for TR#{self.tr_id}>"
+
+
+
+class BusinessTrip(db.Model):
+    """出差记录表"""
+    __tablename__ = 'business_trips'
+
+    id = db.Column(db.Integer, primary_key=True)
+
+    # 基本信息
+    trip_no = db.Column(db.String(50), unique=True, nullable=False, index=True)  # 出差编号
+    engineer = db.Column(db.String(100), nullable=False)  # 工程师姓名
+
+    # 供应商信息
+    supplier_code = db.Column(db.String(50), index=True)  # 供应商代码
+    supplier_name = db.Column(db.String(200), nullable=False, index=True)  # 供应商名称
+    supplier_location = db.Column(db.String(200))  # 供应商地址
+
+    # 出差信息
+    purpose = db.Column(db.Text, nullable=False)  # 出差目的（审核类型）
+    start_date = db.Column(db.Date, nullable=False, index=True)  # 出发日期
+    end_date = db.Column(db.Date, nullable=False)  # 返回日期
+    days = db.Column(db.Integer)  # 出差天数
+
+    # 审核类型
+    audit_type = db.Column(db.String(50))  # initial/periodic/special/follow_up
+
+    # 状态管理
+    status = db.Column(db.String(20), default='pending')  # pending/approved/completed/cancelled
+
+    # 费用信息（可选）
+    estimated_cost = db.Column(db.Float)  # 预估费用
+    actual_cost = db.Column(db.Float)  # 实际费用
+
+    # 备注
+    notes = db.Column(db.Text)  # 备注说明
+
+    # 时间戳
+    created_at = db.Column(db.DateTime, default=datetime.utcnow)
+    updated_at = db.Column(db.DateTime, default=datetime.utcnow, onupdate=datetime.utcnow)
+
+    # 关联文档
+    documents = db.relationship('TripDocument', backref='trip', lazy='dynamic', cascade='all, delete-orphan')
+
+    def __repr__(self):
+        return f'<BusinessTrip {self.trip_no}: {self.supplier_name}>'
+
+
+class TripDocument(db.Model):
+    """出差文档表"""
+    __tablename__ = 'trip_documents'
+
+    id = db.Column(db.Integer, primary_key=True)
+    trip_id = db.Column(db.Integer, db.ForeignKey('business_trips.id'), nullable=False, index=True)
+
+    # 文档信息
+    doc_type = db.Column(db.String(50), nullable=False)  # 文档类型
+    title = db.Column(db.String(200), nullable=False)  # 文档标题
+
+    # 文件存储
+    original_name = db.Column(db.String(255), nullable=False)  # 原始文件名
+    stored_name = db.Column(db.String(255), nullable=False)  # 存储文件名
+    rel_path = db.Column(db.String(500), nullable=False)  # 相对路径
+
+    # 文件属性
+    mime = db.Column(db.String(100))  # MIME 类型
+    size = db.Column(db.Integer)  # 文件大小（字节）
+
+    # 备注
+    remark = db.Column(db.Text)  # 备注说明
+
+    # 时间戳
+    created_at = db.Column(db.DateTime, default=datetime.utcnow)
+
+    def __repr__(self):
+        return f'<TripDocument {self.title}>'
+
+
+class KnowledgeItem(db.Model):
+    """工艺知识条目"""
+    __tablename__ = 'knowledge_items'
+
+    id = db.Column(db.Integer, primary_key=True)
+
+    # 基本信息
+    title = db.Column(db.String(200), nullable=False)
+    content = db.Column(db.Text, nullable=False)
+
+    # 工艺分类
+    process = db.Column(db.String(50), nullable=False, index=True)
+
+    # 优先级
+    priority = db.Column(db.String(20), default='normal')
+
+    # 标签（以逗号分隔的字符串）
+    tags = db.Column(db.String(500))
+
+    # 关联信息
+    supplier_name = db.Column(db.String(200))
+    part_number = db.Column(db.String(100))
+
+    # 案例类型
+    case_type = db.Column(db.String(50))
+
+    # 附件和链接
+    attachments = db.Column(db.Text)
+    related_links = db.Column(db.Text)
+
+    # 时间戳
+    created_at = db.Column(db.DateTime, default=datetime.utcnow, index=True)
+    updated_at = db.Column(db.DateTime, default=datetime.utcnow, onupdate=datetime.utcnow)
+
+    def __repr__(self):
+        return f'<KnowledgeItem {self.title}>'
+
+    def get_tags_list(self):
+        """获取标签列表"""
+        if self.tags:
+            return [tag.strip() for tag in self.tags.split(',') if tag.strip()]
+        return []
+
+    def set_tags_list(self, tags_list):
+        """设置标签列表"""
+        if tags_list:
+            # 确保 tags_list 是列表
+            if isinstance(tags_list, str):
+                tags_list = [tags_list]
+            self.tags = ','.join([str(tag).strip() for tag in tags_list if str(tag).strip()])
+        else:
+            self.tags = None
+
+    @property
+    def tags_display(self):
+        """用于模板显示的标签列表（已处理为列表）"""
+        return self.get_tags_list()
+
+
+class FileLibrary(db.Model):
+    """文件库"""
+    __tablename__ = 'file_library'
+
+    id = db.Column(db.Integer, primary_key=True)
+
+    # 文件信息
+    title = db.Column(db.String(200), nullable=False, index=True)  # 文件标题
+    description = db.Column(db.Text)  # 文件描述
+    category = db.Column(db.String(50), nullable=False, index=True)  # 文件分类
+    # standard(标准), checklist(检查表), specification(规范), template(模板),
+    # procedure(程序文件), manual(手册), other(其他)
+
+    # 文件存储信息
+    original_name = db.Column(db.String(255), nullable=False)  # 原始文件名
+    stored_name = db.Column(db.String(255), nullable=False)  # 存储文件名
+    rel_path = db.Column(db.String(500), nullable=False)  # 相对路径
+    mime = db.Column(db.String(100))  # MIME 类型
+    size = db.Column(db.Integer)  # 文件大小(字节)
+
+    # 分类标签
+    tags = db.Column(db.String(500))  # 标签（逗号分隔）
+
+    # 版本信息
+    version = db.Column(db.String(50))  # 版本号
+    issue_date = db.Column(db.Date)  # 发布日期
+
+    # 关联信息
+    related_process = db.Column(db.String(50))  # 关联工艺
+    supplier_name = db.Column(db.String(200))  # 关联供应商
+    part_category = db.Column(db.String(100))  # 零件类别
+
+    # 访问统计
+    download_count = db.Column(db.Integer, default=0)  # 下载次数
+    view_count = db.Column(db.Integer, default=0)  # 查看次数
+
+    # 时间戳
+    created_at = db.Column(db.DateTime, default=datetime.utcnow, index=True)
+    updated_at = db.Column(db.DateTime, default=datetime.utcnow, onupdate=datetime.utcnow)
+
+    def __repr__(self):
+        return f'<FileLibrary {self.title}>'
+
+    def get_tags_list(self):
+        """获取标签列表"""
+        if self.tags:
+            return [tag.strip() for tag in self.tags.split(',') if tag.strip()]
+        return []

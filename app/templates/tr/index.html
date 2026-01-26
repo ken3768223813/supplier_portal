@@ -281,19 +281,21 @@
                 </td>
 
                 <!-- Documents 📎 -->
+                <!-- Documents 📎 -->
                 <td class="px-2 py-4 text-center">
                   {% set doc_count = tr.documents.count() %}
                   {% if doc_count > 0 %}
-                    <a href="{{ url_for('tr.edit_tr', tr_id=tr.id) }}#documents"
-                       class="doc-badge inline-flex items-center justify-center w-7 h-7 rounded-lg
-                              bg-gradient-to-br from-indigo-100 to-indigo-200
-                              text-indigo-700 font-bold text-xs
-                              border-2 border-indigo-300 shadow-sm
-                              hover:from-indigo-200 hover:to-indigo-300 hover:shadow-md
-                              cursor-pointer"
-                       title="查看 {{ doc_count }} 个文档">
+                    <button type="button"
+                            onclick="openTRDocumentsModal({{ tr.id }})"
+                            class="doc-badge inline-flex items-center justify-center w-7 h-7 rounded-lg
+                                   bg-gradient-to-br from-indigo-100 to-indigo-200
+                                   text-indigo-700 font-bold text-xs
+                                   border-2 border-indigo-300 shadow-sm
+                                   hover:from-indigo-200 hover:to-indigo-300 hover:shadow-md
+                                   cursor-pointer transition-all hover:scale-110"
+                            title="点击查看 {{ doc_count }} 个文档">
                       {{ doc_count }}
-                    </a>
+                    </button>
                   {% else %}
                     <span class="inline-flex items-center justify-center w-7 h-7 rounded-lg
                                  bg-slate-50 text-slate-300 text-xs border border-slate-200"
@@ -302,7 +304,6 @@
                     </span>
                   {% endif %}
                 </td>
-
                 <!-- Actions -->
                 <td class="px-4 py-4">
                   <div class="flex items-center justify-center gap-2">
@@ -410,5 +411,58 @@
     </div>
   </div>
 </div>
+
+<script>
+// 打开文档模态框
+function openTRDocumentsModal(trId) {
+  // 创建模态框容器
+  const container = document.createElement('div');
+  container.id = 'tr-documents-modal-container';
+  container.style.opacity = '0';
+  container.style.transition = 'opacity 0.2s ease';
+  document.body.appendChild(container);
+
+  // 防止页面滚动
+  document.body.style.overflow = 'hidden';
+
+  // 加载文档列表
+  fetch(`/tr/${trId}/documents/panel`)
+    .then(response => {
+      if (!response.ok) {
+        throw new Error('加载失败');
+      }
+      return response.text();
+    })
+    .then(html => {
+      container.innerHTML = html;
+      // 触发淡入动画
+      setTimeout(() => {
+        container.style.opacity = '1';
+      }, 10);
+    })
+    .catch(error => {
+      console.error('加载文档失败:', error);
+      alert('加载文档列表失败,请重试');
+      container.remove();
+      document.body.style.overflow = '';
+    });
+}
+
+// 关闭时恢复页面滚动
+window.closeTRDocumentsModal = function(event) {
+  if (event && event.target !== event.currentTarget) {
+    return;
+  }
+
+  const container = document.getElementById('tr-documents-modal-container');
+  if (container) {
+    container.style.opacity = '0';
+    setTimeout(() => {
+      container.remove();
+      document.body.style.overflow = '';
+    }, 200);
+  }
+};
+</script>
 
 {% endblock %}

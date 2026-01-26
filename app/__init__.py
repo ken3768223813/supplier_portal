@@ -1,5 +1,6 @@
 import os
 from flask import Flask
+from flask_migrate import Migrate  # ✅ 添加这一行
 from .config import Config
 from .extensions import db
 from . import models  # ✅ 确保所有模型（含TR）被加载
@@ -15,16 +16,13 @@ def create_app(test_config=None):
     # 确保 instance 文件夹存在（但不再用于上传文件）
     os.makedirs(app.instance_path, exist_ok=True)
 
-    # ❌ 删除这两行 - 不要覆盖 config.py 中的 UPLOAD_DIR 配置
-    # app.config["UPLOAD_DIR"] = os.path.join(app.instance_path, "uploads")
-    # os.makedirs(os.path.join(app.instance_path, "uploads"), exist_ok=True)
-
     # ✅ 使用 config.py 中配置的目录
     os.makedirs(app.config["DB_DIR"], exist_ok=True)
     os.makedirs(app.config["UPLOAD_DIR"], exist_ok=True)
 
     # init extensions
     db.init_app(app)
+    migrate = Migrate(app, db)  # ✅ 添加这一行，初始化 Flask-Migrate
 
     # 注册蓝图
     from .blueprints.main import main_bp
@@ -33,18 +31,28 @@ def create_app(test_config=None):
     from .blueprints.suppliers import suppliers_bp
     app.register_blueprint(suppliers_bp, url_prefix="/suppliers")
 
-    # ✅ 新增：供应商工作台 / 零部件 / 文档
     from .blueprints.supplier_ws import supplier_ws_bp
-    app.register_blueprint(supplier_ws_bp)  # 它自己带 url_prefix="/suppliers"
+    app.register_blueprint(supplier_ws_bp)
 
     from .blueprints.parts import parts_bp
-    app.register_blueprint(parts_bp)  # prefix: /suppliers/<code>/parts
+    app.register_blueprint(parts_bp)
 
     from .blueprints.docs import docs_bp
-    app.register_blueprint(docs_bp)  # prefix: /suppliers/<code>/docs
+    app.register_blueprint(docs_bp)
 
     from .blueprints.tr import tr_bp
     app.register_blueprint(tr_bp, url_prefix="/tr")
+
+    from app.blueprints.Trip import trip_bp
+    app.register_blueprint(trip_bp, url_prefix='/trip')
+
+    # 在其他 blueprint 导入后添加
+    from app.blueprints.knowledge import knowledge_bp
+    app.register_blueprint(knowledge_bp, url_prefix='/knowledge')
+
+    # 在其他 blueprint 后添加
+    from app.blueprints.file import file_bp
+    app.register_blueprint(file_bp, url_prefix='/file')
 
     # CLI：初始化数据库 + 导入种子数据
     from .seed import seed_suppliers

@@ -331,7 +331,7 @@ def upload_document(tr_id):
 
 @tr_bp.route("/<int:tr_id>/documents/<int:doc_id>/view")
 def view_document(tr_id, doc_id):
-    """查看/下载文档（浏览器能预览的就预览）"""
+    """查看/预览文档（浏览器内联显示，不触发下载）"""
     TroubleReport.query.get_or_404(tr_id)
     doc = TRDocument.query.filter_by(id=doc_id, tr_id=tr_id).first_or_404()
 
@@ -339,12 +339,21 @@ def view_document(tr_id, doc_id):
     if not os.path.exists(file_path):
         abort(404, "文件不存在")
 
-    return send_file(
+    # 关键修改：使用 make_response 并设置 Content-Disposition 为 inline
+    from flask import make_response
+
+    response = make_response(send_file(
         file_path,
-        as_attachment=False,
-        download_name=doc.original_name,
-        mimetype=doc.mime,
-    )
+        mimetype=doc.mime or 'application/octet-stream',
+    ))
+
+    # 强制浏览器内联显示（预览）而不是下载
+    response.headers['Content-Disposition'] = f'inline; filename="{doc.original_name}"'
+
+    # 对于某些浏览器，添加这些头部可以改善预览体验
+    response.headers['X-Content-Type-Options'] = 'nosniff'
+
+    return response
 
 
 @tr_bp.route("/<int:tr_id>/documents/<int:doc_id>/download")
@@ -383,3 +392,17 @@ def delete_document(tr_id, doc_id):
 
     flash(f"✅ 文档已删除：{doc.title}", "success")
     return redirect(url_for("tr.edit_tr", tr_id=tr_id))
+
+
+@tr_bp.route("/<int:tr_id>/documents/panel", methods=["GET"])
+def documents_panel(tr_id):
+    """返回某个 TR 的文档列表 HTML 片段(用于模态框)"""
+    tr = TroubleReport.query.get_or_404(tr_id)
+    documents = tr.documents.order_by(TRDocument.created_at.desc()).all()
+
+    return render_template(
+        "tr/_documents_panel.html",
+        tr=tr,
+        documents=documents,
+        doc_types=DOC_TYPES
+    )

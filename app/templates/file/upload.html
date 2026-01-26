@@ -1,0 +1,174 @@
+{% extends "layout/base.html" %}
+{% block content %}
+
+<div class="max-w-4xl mx-auto">
+  
+  <!-- 面包屑 -->
+  <div class="mb-6 flex items-center gap-2 text-sm text-slate-600">
+    <a href="{{ url_for('file.index') }}" class="hover:text-slate-900 transition">文件库</a>
+    <svg class="w-4 h-4 text-slate-400" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+      <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M9 5l7 7-7 7"/>
+    </svg>
+    <span class="text-slate-900 font-medium">上传文件</span>
+  </div>
+
+  <!-- 表单卡片 -->
+  <div class="bg-white rounded-2xl shadow-lg border border-slate-200 overflow-hidden">
+    
+    <!-- 头部 -->
+    <div class="bg-gradient-to-r from-blue-600 to-cyan-600 px-8 py-6">
+      <h1 class="text-2xl font-bold text-white flex items-center gap-3">
+        <svg class="w-8 h-8" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+          <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M7 16a4 4 0 01-.88-7.903A5 5 0 1115.9 6L16 6a5 5 0 011 9.9M15 13l-3-3m0 0l-3 3m3-3v12"/>
+        </svg>
+        上传文件
+      </h1>
+      <p class="text-blue-100 mt-2">上传标准、检查表、规范等文件到文件库</p>
+    </div>
+
+    <!-- 表单 -->
+    <form method="post" enctype="multipart/form-data" class="p-8">
+      
+      <!-- 文件上传区 -->
+      <div class="mb-6">
+        <label class="block text-sm font-bold text-slate-700 mb-3">
+          选择文件 <span class="text-rose-500">*</span>
+        </label>
+        <div class="border-2 border-dashed border-slate-300 rounded-xl p-8 text-center hover:border-blue-400 hover:bg-blue-50 transition-all cursor-pointer">
+          <input type="file" name="file" required id="fileInput"
+                 class="hidden"
+                 accept=".pdf,.doc,.docx,.xls,.xlsx,.ppt,.pptx,.txt,.jpg,.jpeg,.png,.zip,.rar"
+                 onchange="updateFileName(this)">
+          <label for="fileInput" class="cursor-pointer">
+            <div class="flex flex-col items-center gap-3">
+              <div class="w-16 h-16 bg-blue-100 rounded-full flex items-center justify-center">
+                <svg class="w-8 h-8 text-blue-600" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                  <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M7 16a4 4 0 01-.88-7.903A5 5 0 1115.9 6L16 6a5 5 0 011 9.9M15 13l-3-3m0 0l-3 3m3-3v12"/>
+                </svg>
+              </div>
+              <div>
+                <p class="text-sm font-semibold text-slate-700">点击选择文件或拖拽到这里</p>
+                <p class="text-xs text-slate-500 mt-1">支持 PDF, Office, 图片, 压缩包</p>
+              </div>
+            </div>
+          </label>
+          <p id="fileName" class="text-sm text-emerald-600 font-medium mt-3 hidden"></p>
+        </div>
+      </div>
+
+      <!-- 文件分类 -->
+      <div class="mb-6">
+        <label class="block text-sm font-bold text-slate-700 mb-3">
+          文件分类 <span class="text-rose-500">*</span>
+        </label>
+        <div class="grid grid-cols-2 md:grid-cols-4 gap-3">
+          {% for slug, info in categories.items() %}
+          <label class="relative cursor-pointer">
+            <input type="radio" name="category" value="{{ slug }}" required
+                   class="peer sr-only">
+            <div class="px-4 py-3 rounded-xl border-2 border-slate-200 
+                        peer-checked:border-blue-500 peer-checked:bg-blue-50
+                        hover:border-slate-300 transition-all text-center">
+              <div class="text-2xl mb-1">{{ info.icon }}</div>
+              <div class="text-xs font-semibold text-slate-700">{{ info.name }}</div>
+            </div>
+          </label>
+          {% endfor %}
+        </div>
+      </div>
+
+      <!-- 文件标题 -->
+      <div class="mb-6">
+        <label class="block text-sm font-bold text-slate-700 mb-2">
+          文件标题
+        </label>
+        <input type="text" name="title"
+               placeholder="留空则使用文件名"
+               class="w-full px-4 py-3 rounded-xl border-2 border-slate-200
+                      focus:outline-none focus:border-blue-400 transition-all">
+      </div>
+
+      <!-- 文件描述 -->
+      <div class="mb-6">
+        <label class="block text-sm font-bold text-slate-700 mb-2">文件描述</label>
+        <textarea name="description" rows="4"
+                  placeholder="简要描述文件内容和用途..."
+                  class="w-full px-4 py-3 rounded-xl border-2 border-slate-200
+                         focus:outline-none focus:border-blue-400 transition-all resize-none"></textarea>
+      </div>
+
+      <div class="grid grid-cols-2 gap-6 mb-6">
+        <!-- 版本号 -->
+        <div>
+          <label class="block text-sm font-bold text-slate-700 mb-2">版本号</label>
+          <input type="text" name="version" placeholder="例如：1.0"
+                 class="w-full px-4 py-3 rounded-xl border-2 border-slate-200
+                        focus:outline-none focus:border-blue-400 transition-all">
+        </div>
+
+        <!-- 发布日期 -->
+        <div>
+          <label class="block text-sm font-bold text-slate-700 mb-2">发布日期</label>
+          <input type="date" name="issue_date"
+                 class="w-full px-4 py-3 rounded-xl border-2 border-slate-200
+                        focus:outline-none focus:border-blue-400 transition-all">
+        </div>
+      </div>
+
+      <div class="grid grid-cols-2 gap-6 mb-6">
+        <!-- 关联供应商 -->
+        <div>
+          <label class="block text-sm font-bold text-slate-700 mb-2">关联供应商</label>
+          <input type="text" name="supplier_name" placeholder="可选"
+                 class="w-full px-4 py-3 rounded-xl border-2 border-slate-200
+                        focus:outline-none focus:border-blue-400 transition-all">
+        </div>
+
+        <!-- 零件类别 -->
+        <div>
+          <label class="block text-sm font-bold text-slate-700 mb-2">零件类别</label>
+          <input type="text" name="part_category" placeholder="可选"
+                 class="w-full px-4 py-3 rounded-xl border-2 border-slate-200
+                        focus:outline-none focus:border-blue-400 transition-all">
+        </div>
+      </div>
+
+      <!-- 标签 -->
+      <div class="mb-8">
+        <label class="block text-sm font-bold text-slate-700 mb-2">标签</label>
+        <input type="text" name="tags"
+               placeholder="用逗号分隔，例如：IATF16949,审核,质量"
+               class="w-full px-4 py-3 rounded-xl border-2 border-slate-200
+                      focus:outline-none focus:border-blue-400 transition-all">
+      </div>
+
+      <!-- 操作按钮 -->
+      <div class="flex items-center gap-4 pt-6 border-t border-slate-200">
+        <button type="submit"
+                class="flex-1 py-3 rounded-xl bg-gradient-to-r from-blue-600 to-cyan-600
+                       text-white font-bold shadow-lg hover:shadow-xl transition-all hover:scale-105">
+          上传文件
+        </button>
+        <a href="{{ url_for('file.index') }}"
+           class="px-6 py-3 rounded-xl border-2 border-slate-300 text-slate-700 font-semibold
+                  hover:bg-slate-50 transition-all">
+          取消
+        </a>
+      </div>
+    </form>
+  </div>
+</div>
+
+<script>
+function updateFileName(input) {
+  const fileNameDisplay = document.getElementById('fileName');
+  if (input.files && input.files[0]) {
+    fileNameDisplay.textContent = '已选择: ' + input.files[0].name;
+    fileNameDisplay.classList.remove('hidden');
+  } else {
+    fileNameDisplay.classList.add('hidden');
+  }
+}
+</script>
+
+{% endblock %}

@@ -1,0 +1,251 @@
+{% extends "layout/base.html" %}
+{% block content %}
+
+<style>
+  /* 工艺分类标签 */
+  .process-tab {
+    transition: all 0.3s ease;
+  }
+
+  .process-tab:hover {
+    transform: translateY(-2px);
+  }
+
+  .process-tab.active {
+    background: linear-gradient(135deg, #667eea 0%, #764ba2 100%);
+    color: white;
+    box-shadow: 0 8px 16px rgba(102, 126, 234, 0.3);
+  }
+
+  /* 知识卡片 */
+  .knowledge-card {
+    transition: all 0.3s cubic-bezier(0.4, 0, 0.2, 1);
+    background: white;
+  }
+
+  .knowledge-card:hover {
+    transform: translateY(-8px) scale(1.02);
+    box-shadow: 0 20px 40px rgba(0, 0, 0, 0.15);
+  }
+
+  /* 搜索框 */
+  .search-glow:focus {
+    box-shadow: 0 0 0 4px rgba(99, 102, 241, 0.1);
+  }
+
+  /* 平滑滚动 */
+  .smooth-scroll {
+    scroll-behavior: smooth;
+  }
+</style>
+
+<div class="max-w-7xl mx-auto">
+
+  <!-- 顶部标题区 -->
+  <div class="mb-8">
+    <div class="flex items-center justify-between">
+      <div>
+        <h1 class="text-4xl font-bold text-slate-900 mb-2 flex items-center gap-3">
+          <div class="w-12 h-12 bg-gradient-to-br from-indigo-500 to-purple-600 rounded-xl flex items-center justify-center shadow-lg">
+            <svg class="w-7 h-7 text-white" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+              <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M12 6.253v13m0-13C10.832 5.477 9.246 5 7.5 5S4.168 5.477 3 6.253v13C4.168 18.477 5.754 18 7.5 18s3.332.477 4.5 1.253m0-13C13.168 5.477 14.754 5 16.5 5c1.747 0 3.332.477 4.5 1.253v13C19.832 18.477 18.247 18 16.5 18c-1.746 0-3.332.477-4.5 1.253"/>
+            </svg>
+          </div>
+          工艺知识库
+        </h1>
+        <p class="text-lg text-slate-600">Quality Engineering Knowledge Base</p>
+      </div>
+
+      <!-- 统计信息 -->
+      <div class="flex items-center gap-4">
+        <div class="bg-indigo-50 rounded-xl px-6 py-3 border border-indigo-200">
+          <div class="text-sm text-indigo-600 mb-1">总知识条目</div>
+          <div class="text-2xl font-bold text-indigo-900">{{ total_count }}</div>
+        </div>
+      </div>
+    </div>
+  </div>
+
+  <!-- 搜索栏 -->
+  <div class="bg-white rounded-2xl shadow-lg border border-slate-200 p-6 mb-8">
+    <form method="get" class="flex items-center gap-4">
+      <div class="flex-1 relative">
+        <div class="absolute inset-y-0 left-0 pl-4 flex items-center pointer-events-none">
+          <svg class="w-5 h-5 text-slate-400" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+            <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M21 21l-6-6m2-5a7 7 0 11-14 0 7 7 0 0114 0z"/>
+          </svg>
+        </div>
+        <input type="text" name="q" value="{{ search_query or '' }}"
+               placeholder="搜索工艺知识、关键词、问题描述..."
+               class="search-glow w-full pl-12 pr-4 py-3.5 rounded-xl border-2 border-slate-200
+                      text-sm focus:outline-none focus:border-indigo-400 transition-all">
+      </div>
+      <button type="submit"
+              class="px-6 py-3.5 rounded-xl bg-gradient-to-r from-indigo-600 to-purple-600
+                     text-white font-semibold shadow-lg hover:shadow-xl transition-all hover:scale-105">
+        搜索
+      </button>
+    </form>
+  </div>
+
+  <!-- 工艺分类标签 -->
+  <div class="bg-white rounded-2xl shadow-lg border border-slate-200 p-6 mb-8">
+    <div class="flex items-center gap-3 flex-wrap">
+      <a href="{{ url_for('knowledge.index') }}"
+         class="process-tab px-6 py-3 rounded-xl font-semibold transition-all
+                {% if not selected_process %}active{% else %}bg-slate-100 text-slate-700 hover:bg-slate-200{% endif %}">
+        全部
+      </a>
+
+      {% for process in processes %}
+      <a href="{{ url_for('knowledge.index', process=process.slug) }}"
+         class="process-tab px-6 py-3 rounded-xl font-semibold transition-all
+                {% if selected_process == process.slug %}active{% else %}bg-slate-100 text-slate-700 hover:bg-slate-200{% endif %}">
+        <span class="flex items-center gap-2">
+          {{ process.icon }}
+          {{ process.name }}
+          <span class="ml-1 px-2 py-0.5 rounded-full text-xs
+                       {% if selected_process == process.slug %}bg-white/20{% else %}bg-slate-200{% endif %}">
+            {{ process.count }}
+          </span>
+        </span>
+      </a>
+      {% endfor %}
+    </div>
+  </div>
+
+  <!-- 知识卡片网格 -->
+  <div class="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-6">
+    {% for item in knowledge_items %}
+    <div class="knowledge-card rounded-2xl shadow-lg border-2 border-slate-200 overflow-hidden">
+
+      <!-- 卡片头部 - 工艺标识 -->
+      <div class="h-2 bg-gradient-to-r
+                  {% if item.process == 'welding' %}from-orange-400 to-red-500
+                  {% elif item.process == 'coating' %}from-blue-400 to-cyan-500
+                  {% elif item.process == 'smt' %}from-green-400 to-emerald-500
+                  {% elif item.process == 'molding' %}from-purple-400 to-pink-500
+                  {% elif item.process == 'stamping' %}from-yellow-400 to-amber-500
+                  {% else %}from-slate-400 to-slate-500{% endif %}">
+      </div>
+
+      <!-- 卡片内容 -->
+      <div class="p-6">
+        <!-- 工艺标签 -->
+        <div class="flex items-center gap-2 mb-4">
+          <span class="px-3 py-1 rounded-lg text-xs font-bold
+                       {% if item.process == 'welding' %}bg-orange-100 text-orange-700
+                       {% elif item.process == 'coating' %}bg-blue-100 text-blue-700
+                       {% elif item.process == 'smt' %}bg-green-100 text-green-700
+                       {% elif item.process == 'molding' %}bg-purple-100 text-purple-700
+                       {% elif item.process == 'stamping' %}bg-yellow-100 text-yellow-700
+                       {% else %}bg-slate-100 text-slate-700{% endif %}">
+            {{ item.process_name }}
+          </span>
+
+          {% if item.priority == 'high' %}
+          <span class="px-2 py-1 rounded-lg text-xs font-semibold bg-rose-100 text-rose-700 flex items-center gap-1">
+            <svg class="w-3 h-3" fill="currentColor" viewBox="0 0 20 20">
+              <path d="M10 2a6 6 0 00-6 6v3.586l-.707.707A1 1 0 004 14h12a1 1 0 00.707-1.707L16 11.586V8a6 6 0 00-6-6zM10 18a3 3 0 01-3-3h6a3 3 0 01-3 3z"/>
+            </svg>
+            重要
+          </span>
+          {% endif %}
+        </div>
+
+        <!-- 标题 -->
+        <h3 class="text-lg font-bold text-slate-900 mb-3 line-clamp-2">
+          {{ item.title }}
+        </h3>
+
+        <!-- 内容摘要 -->
+        <p class="text-sm text-slate-600 mb-4 line-clamp-3">
+          {{ item.content }}
+        </p>
+
+        <!-- 标签 -->
+        <!-- 标签 -->
+        {% if item.tags %}
+        <div class="flex items-center gap-2 flex-wrap mb-4">
+          {% for tag in item.get_tags_list()[:3] %}  <!-- ✅ 改用 get_tags_list() -->
+          <span class="px-2 py-1 rounded-md text-xs bg-slate-100 text-slate-600 border border-slate-200">
+            #{{ tag }}
+          </span>
+          {% endfor %}
+          {% if item.get_tags_list()|length > 3 %}  <!-- ✅ 改用 get_tags_list() -->
+          <span class="text-xs text-slate-400">+{{ item.get_tags_list()|length - 3 }}</span>
+          {% endif %}
+        </div>
+        {% endif %}
+
+        <!-- 底部信息 -->
+        <div class="flex items-center justify-between pt-4 border-t border-slate-200">
+          <div class="flex items-center gap-2 text-xs text-slate-500">
+            <svg class="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+              <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M8 7V3m8 4V3m-9 8h10M5 21h14a2 2 0 002-2V7a2 2 0 00-2-2H5a2 2 0 00-2 2v12a2 2 0 002 2z"/>
+            </svg>
+            {{ item.created_at.strftime('%Y-%m-%d') }}
+          </div>
+
+          <a href="{{ url_for('knowledge.view_item', item_id=item.id) }}"
+             class="inline-flex items-center gap-1.5 px-3 py-1.5 rounded-lg
+                    bg-indigo-50 text-indigo-600 hover:bg-indigo-100
+                    text-xs font-semibold transition-all">
+            查看详情
+            <svg class="w-3.5 h-3.5" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+              <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M9 5l7 7-7 7"/>
+            </svg>
+          </a>
+        </div>
+      </div>
+    </div>
+    {% else %}
+
+    <!-- 空状态 -->
+    <div class="col-span-full">
+      <div class="bg-gradient-to-br from-slate-50 to-slate-100 rounded-3xl p-20 text-center border-2 border-dashed border-slate-300">
+        <div class="flex flex-col items-center gap-4">
+          <div class="w-20 h-20 bg-slate-200 rounded-full flex items-center justify-center">
+            <svg class="w-10 h-10 text-slate-400" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+              <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M12 6.253v13m0-13C10.832 5.477 9.246 5 7.5 5S4.168 5.477 3 6.253v13C4.168 18.477 5.754 18 7.5 18s3.332.477 4.5 1.253m0-13C13.168 5.477 14.754 5 16.5 5c1.747 0 3.332.477 4.5 1.253v13C19.832 18.477 18.247 18 16.5 18c-1.746 0-3.332.477-4.5 1.253"/>
+            </svg>
+          </div>
+          <div>
+            <p class="text-xl font-semibold text-slate-600 mb-2">
+              {% if search_query %}
+                未找到相关知识
+              {% else %}
+                暂无{{ selected_process_name or '工艺' }}知识
+              {% endif %}
+            </p>
+            <p class="text-sm text-slate-500">
+              {% if search_query %}
+                尝试使用其他关键词搜索
+              {% else %}
+                工作中遇到的经验和问题可以记录在这里
+              {% endif %}
+            </p>
+          </div>
+        </div>
+      </div>
+    </div>
+    {% endfor %}
+  </div>
+
+  <!-- 快速添加按钮（悬浮） -->
+  <a href="{{ url_for('knowledge.quick_add') }}"
+     class="fixed bottom-8 right-8 w-16 h-16 bg-gradient-to-br from-indigo-600 to-purple-600
+            rounded-full shadow-2xl flex items-center justify-center text-white
+            hover:scale-110 transition-all hover:shadow-3xl group">
+    <svg class="w-8 h-8" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+      <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M12 4v16m8-8H4"/>
+    </svg>
+    <span class="absolute right-20 px-3 py-2 bg-slate-900 text-white text-sm font-semibold rounded-lg
+                 opacity-0 group-hover:opacity-100 transition-opacity whitespace-nowrap">
+      快速记录知识
+    </span>
+  </a>
+
+</div>
+
+{% endblock %}
