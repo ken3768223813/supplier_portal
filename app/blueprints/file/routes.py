@@ -1,13 +1,19 @@
-from flask import render_template, request, redirect, url_for, flash, current_app, send_file, abort, Response
+from flask import (
+    render_template, request, redirect, url_for, flash,
+    current_app, send_file, abort, Response
+)
 from werkzeug.utils import secure_filename
 from sqlalchemy import or_
 from datetime import datetime
 import os
 import uuid
+import sys
+import subprocess
 
 from . import file_bp
 from ...extensions import db
 from ...models import FileLibrary
+
 
 # 文件分类定义
 CATEGORIES = {
@@ -28,6 +34,20 @@ ALLOWED_EXTENSIONS = {
 
 def allowed_file(filename: str) -> bool:
     return '.' in filename and filename.rsplit('.', 1)[1].lower() in ALLOWED_EXTENSIONS
+
+
+def _open_file_on_host(path: str) -> bool:
+    """在运行 Flask 的这台电脑上，用系统默认程序打开文件（本机单人使用场景）"""
+    try:
+        if sys.platform.startswith("win"):
+            os.startfile(path)  # type: ignore[attr-defined]
+        elif sys.platform.startswith("darwin"):
+            subprocess.Popen(["open", path])
+        else:
+            subprocess.Popen(["xdg-open", path])
+        return True
+    except Exception:
+        return False
 
 
 @file_bp.route("/", methods=["GET"])
@@ -70,9 +90,9 @@ def index():
             'count': count,
         })
 
-    # 处理文件数据
-    for file in files:
-        file.category_name = CATEGORIES.get(file.category, {}).get('name', file.category)
+    # 处理文件数据（给模板用的展示字段）
+    for f in files:
+        f.category_name = CATEGORIES.get(f.category, {}).get('name', f.category)
 
     # 总计数
     total_count = FileLibrary.query.count()
@@ -131,12 +151,11 @@ def upload():
             try:
                 issue_date = datetime.strptime(issue_date_str, "%Y-%m-%d").date()
             except ValueError:
-                pass
+                issue_date = None
 
         # 文件处理
         filename = secure_filename(file.filename)
         ext = filename.rsplit('.', 1)[1].lower() if '.' in filename else ''
-
         if not ext:
             flash("❌ 无法识别文件扩展名", "error")
             return redirect(url_for("file.upload"))
@@ -184,7 +203,7 @@ def upload():
 
 @file_bp.route("/<int:file_id>/view")
 def view_file(file_id):
-    """预览文件"""
+    """预览文件（浏览器内联打开）"""
     file_record = FileLibrary.query.get_or_404(file_id)
 
     # 增加查看次数
@@ -201,13 +220,12 @@ def view_file(file_id):
     response = Response(file_data, mimetype=file_record.mime or 'application/octet-stream')
     response.headers['Content-Disposition'] = f'inline; filename="{file_record.original_name}"'
     response.headers['X-Content-Type-Options'] = 'nosniff'
-
     return response
 
 
 @file_bp.route("/<int:file_id>/download")
 def download_file(file_id):
-    """下载文件"""
+    """下载文件（本地系统可不用，但保留路由）"""
     file_record = FileLibrary.query.get_or_404(file_id)
 
     # 增加下载次数
@@ -226,9 +244,79 @@ def download_file(file_id):
     )
 
 
+@file_bp.route("/<int:file_id>/open", methods=["POST"])
+def open_local(file_id):
+    """本地打开文件（在服务器本机弹出默认程序）"""
+    file_record = FileLibrary.query.get_or_404(file_id)
+
+    file_path = os.path.join(current_app.config["UPLOAD_DIR"], file_record.rel_path)
+    if not os.path.exists(file_path):
+        abort(404, "文件不存在")
+
+    ok = _open_file_on_host(file_path)
+    if ok:
+        flash(f"✅ 已在本机打开：{file_record.title}", "success")
+    else:
+        flash("❌ 打开失败（系统权限/路径/默认程序异常）", "error")
+
+    # 回到列表页，并尽量保留查询参数
+    q = request.args.get("q", "")
+    category = request.args.get("category", "")
+    return redirect(url_for("file.index", q=q, category=category))
+
+
+@file_bp.route("/<int:file_id>/edit", methods=["GET", "POST"])
+def edit_file(file_id):
+    """编辑文件信息（删除功能在编辑页）"""
+    file_record = FileLibrary.query.get_or_404(file_id)
+
+    if request.method == "POST":
+        title = request.form.get("title", "").strip() or file_record.original_name
+        description = request.form.get("description", "").strip() or None
+        category = request.form.get("category", "other").strip()
+        version = request.form.get("version", "").strip() or None
+        issue_date_str = request.form.get("issue_date", "").strip()
+        tags_input = request.form.get("tags", "").strip()
+        related_process = request.form.get("related_process", "").strip() or None
+        supplier_name = request.form.get("supplier_name", "").strip() or None
+        part_category = request.form.get("part_category", "").strip() or None
+
+        if category not in CATEGORIES:
+            flash("❌ 请选择有效的文件分类", "error")
+            return redirect(url_for("file.edit_file", file_id=file_id))
+
+        issue_date = None
+        if issue_date_str:
+            try:
+                issue_date = datetime.strptime(issue_date_str, "%Y-%m-%d").date()
+            except ValueError:
+                issue_date = None
+
+        file_record.title = title
+        file_record.description = description
+        file_record.category = category
+        file_record.version = version
+        file_record.issue_date = issue_date
+        file_record.related_process = related_process
+        file_record.supplier_name = supplier_name
+        file_record.part_category = part_category
+
+        if tags_input:
+            tags_list = [t.strip() for t in tags_input.split(",") if t.strip()]
+            file_record.tags = ",".join(tags_list)
+        else:
+            file_record.tags = None
+
+        db.session.commit()
+        flash("✅ 已更新文件信息", "success")
+        return redirect(url_for("file.index"))
+
+    return render_template("file/edit.html", file=file_record, categories=CATEGORIES)
+
+
 @file_bp.route("/<int:file_id>/delete", methods=["POST"])
 def delete_file(file_id):
-    """删除文件"""
+    """删除文件（入口放在编辑页）"""
     file_record = FileLibrary.query.get_or_404(file_id)
 
     # 删除物理文件

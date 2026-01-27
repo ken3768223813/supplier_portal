@@ -2,7 +2,6 @@
 {% block content %}
 
 <style>
-  /* 3行截断 */
   .clamp-3 {
     display: -webkit-box;
     -webkit-line-clamp: 3;
@@ -10,16 +9,14 @@
     overflow: hidden;
   }
 
-  /* 表格行悬停效果 */
   .table-row {
     transition: all 0.2s ease;
   }
 
   .table-row:hover {
-    transform: translateX(2px);
+    background: #f9fafb;
   }
 
-  /* 状态灯光效果 */
   @keyframes pulse-glow {
     0%, 100% { opacity: 1; }
     50% { opacity: 0.7; }
@@ -29,430 +26,416 @@
     animation: pulse-glow 2s ease-in-out infinite;
   }
 
-  /* 搜索框聚焦效果 */
-  .search-input:focus {
-    box-shadow: 0 0 0 3px rgba(148, 163, 184, 0.1);
-  }
-
-  /* 文档徽章动画 */
   .doc-badge {
     transition: all 0.2s ease;
   }
 
   .doc-badge:hover {
-    transform: scale(1.15);
+    transform: scale(1.1);
   }
 </style>
 
-<div class="grid grid-cols-12 gap-6">
-  <div class="col-span-12">
-    <!-- 顶部统计卡片 -->
-    <div class="grid grid-cols-1 md:grid-cols-4 gap-4 mb-6">
-      <div class="bg-gradient-to-br from-blue-50 to-blue-100 rounded-2xl p-5 border border-blue-200">
-        <div class="flex items-center justify-between">
-          <div>
-            <p class="text-sm font-medium text-blue-600 mb-1">总记录数</p>
-            <p class="text-2xl font-bold text-blue-900">{{ pagination.total }}</p>
-          </div>
-          <div class="w-12 h-12 bg-blue-200 rounded-xl flex items-center justify-center">
-            <svg class="w-6 h-6 text-blue-600" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-              <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M9 12h6m-6 4h6m2 5H7a2 2 0 01-2-2V5a2 2 0 012-2h5.586a1 1 0 01.707.293l5.414 5.414a1 1 0 01.293.707V19a2 2 0 01-2 2z"/>
-            </svg>
-          </div>
-        </div>
-      </div>
+<div class="max-w-[1400px] mx-auto px-6 py-6">
 
-      <div class="bg-gradient-to-br from-amber-50 to-amber-100 rounded-2xl p-5 border border-amber-200">
-        <div class="flex items-center justify-between">
-          <div>
-            <p class="text-sm font-medium text-amber-600 mb-1">进行中</p>
-            <p class="text-2xl font-bold text-amber-900">--</p>
-          </div>
-          <div class="w-12 h-12 bg-amber-200 rounded-xl flex items-center justify-center">
-            <svg class="w-6 h-6 text-amber-600" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-              <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M12 8v4l3 3m6-3a9 9 0 11-18 0 9 9 0 0118 0z"/>
-            </svg>
-          </div>
-        </div>
-      </div>
+  <!-- Header -->
+  <div class="flex items-center justify-between mb-8">
+    <div>
+      <h1 class="text-4xl font-bold text-gray-900 mb-1">Trouble Reports</h1>
+      <p class="text-lg text-gray-500">Track quality issues and corrective actions</p>
+    </div>
 
-      <div class="bg-gradient-to-br from-rose-50 to-rose-100 rounded-2xl p-5 border border-rose-200">
-        <div class="flex items-center justify-between">
-          <div>
-            <p class="text-sm font-medium text-rose-600 mb-1">逾期</p>
-            <p class="text-2xl font-bold text-rose-900">--</p>
-          </div>
-          <div class="w-12 h-12 bg-rose-200 rounded-xl flex items-center justify-center">
-            <svg class="w-6 h-6 text-rose-600" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-              <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M12 9v2m0 4h.01m-6.938 4h13.856c1.54 0 2.502-1.667 1.732-3L13.732 4c-.77-1.333-2.694-1.333-3.464 0L3.34 16c-.77 1.333.192 3 1.732 3z"/>
-            </svg>
-          </div>
-        </div>
-      </div>
+    <a href="{{ url_for('tr.new_tr') }}"
+       class="inline-flex items-center gap-2 px-5 py-3 rounded-xl
+              bg-gray-900 text-white font-semibold hover:bg-gray-800
+              transition-all hover:scale-105 active:scale-95">
+      <svg class="w-5 h-5" fill="none" stroke="currentColor" viewBox="0 0 24 24" stroke-width="2">
+        <path stroke-linecap="round" stroke-linejoin="round" d="M12 4v16m8-8H4"/>
+      </svg>
+      <span>New Report</span>
+    </a>
+  </div>
 
-      <div class="bg-gradient-to-br from-emerald-50 to-emerald-100 rounded-2xl p-5 border border-emerald-200">
-        <div class="flex items-center justify-between">
-          <div>
-            <p class="text-sm font-medium text-emerald-600 mb-1">已关闭</p>
-            <p class="text-2xl font-bold text-emerald-900">--</p>
-          </div>
-          <div class="w-12 h-12 bg-emerald-200 rounded-xl flex items-center justify-center">
-            <svg class="w-6 h-6 text-emerald-600" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-              <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M9 12l2 2 4-4m6 2a9 9 0 11-18 0 9 9 0 0118 0z"/>
-            </svg>
-          </div>
+  <!-- Stats Grid -->
+  <div class="grid grid-cols-4 gap-5 mb-8">
+
+    <div class="bg-white rounded-2xl p-5 border-2 border-gray-200">
+      <div class="flex items-center gap-4">
+        <div class="w-12 h-12 rounded-xl bg-gray-700 flex items-center justify-center shrink-0">
+          <svg class="w-6 h-6 text-white" fill="none" stroke="currentColor" viewBox="0 0 24 24" stroke-width="2">
+            <path stroke-linecap="round" stroke-linejoin="round" d="M9 12h6m-6 4h6m2 5H7a2 2 0 01-2-2V5a2 2 0 012-2h5.586a1 1 0 01.707.293l5.414 5.414a1 1 0 01.293.707V19a2 2 0 01-2 2z"/>
+          </svg>
+        </div>
+        <div>
+          <div class="text-3xl font-bold text-gray-900">{{ pagination.total }}</div>
+          <div class="text-sm font-semibold text-gray-500">Total Reports</div>
         </div>
       </div>
     </div>
 
-    <!-- 主表格卡片 -->
-    <div class="bg-white rounded-2xl shadow-lg border border-slate-200 overflow-hidden">
-      <!-- 搜索栏 -->
-      <div class="bg-gradient-to-r from-slate-50 to-slate-100 px-6 py-5 border-b border-slate-200">
-        <div class="flex items-center gap-4">
-          <form method="get" class="flex-1">
-            <div class="relative">
-              <div class="absolute inset-y-0 left-0 pl-4 flex items-center pointer-events-none">
-                <svg class="w-5 h-5 text-slate-400" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-                  <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M21 21l-6-6m2-5a7 7 0 11-14 0 7 7 0 0114 0z"/>
-                </svg>
-              </div>
-              <input
-                type="text"
-                name="q"
-                value="{{ q or '' }}"
-                placeholder="搜索 TR No. / Supplier / Part Number / Issue..."
-                class="search-input w-full pl-12 pr-12 py-3.5 rounded-xl border-2 border-slate-200 bg-white
-                       text-sm text-slate-800 placeholder:text-slate-400
-                       focus:outline-none focus:border-slate-400 transition-all"
-              />
-              {% if q %}
-                <a href="{{ url_for('tr.index', per_page=per_page) }}"
-                   class="absolute right-4 top-1/2 -translate-y-1/2 text-slate-400 hover:text-slate-600 transition">
-                  <svg class="w-5 h-5" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-                    <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M6 18L18 6M6 6l12 12"/>
-                  </svg>
-                </a>
-              {% endif %}
-            </div>
-          </form>
-
-          <div class="flex items-center gap-3 shrink-0">
-            <div class="px-4 py-2 bg-white rounded-lg border border-slate-200 text-sm text-slate-600">
-              <span class="font-medium text-slate-800">{{ pagination.page }}</span> / {{ pagination.pages if pagination.pages else 1 }}
-            </div>
-
-            <a href="{{ url_for('tr.new_tr') }}"
-               class="group relative inline-flex items-center gap-2 px-5 py-2.5 rounded-xl
-                      bg-gradient-to-r from-slate-700 to-slate-900 text-white font-medium
-                      shadow-lg shadow-slate-900/20 hover:shadow-xl hover:shadow-slate-900/30
-                      border border-slate-600 transition-all duration-200 hover:scale-105 active:scale-95"
-               title="新增 TR">
-              <svg class="w-5 h-5" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-                <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M12 4v16m8-8H4"/>
-              </svg>
-              <span>新增</span>
-            </a>
-          </div>
+    <div class="bg-white rounded-2xl p-5 border-2 border-gray-200">
+      <div class="flex items-center gap-4">
+        <div class="w-12 h-12 rounded-xl bg-amber-500 flex items-center justify-center shrink-0">
+          <svg class="w-6 h-6 text-white" fill="none" stroke="currentColor" viewBox="0 0 24 24" stroke-width="2">
+            <path stroke-linecap="round" stroke-linejoin="round" d="M12 8v4l3 3m6-3a9 9 0 11-18 0 9 9 0 0118 0z"/>
+          </svg>
+        </div>
+        <div>
+          <div class="text-3xl font-bold text-gray-900">--</div>
+          <div class="text-sm font-semibold text-gray-500">In Progress</div>
         </div>
       </div>
+    </div>
 
-      <!-- 表格 -->
-      <div class="overflow-x-auto">
-        <table class="w-full table-fixed text-sm">
-          <thead class="bg-gradient-to-r from-slate-100 to-slate-50 sticky top-0">
-            <tr class="text-xs font-semibold text-slate-600 uppercase tracking-wider">
-              <th class="w-[110px] px-4 py-4 text-left border-b-2 border-slate-200">TR No.</th>
-              <th class="w-[13%] px-4 py-4 text-left border-b-2 border-slate-200">Supplier</th>
-              <th class="w-[16%] px-4 py-4 text-left border-b-2 border-slate-200">Part No.</th>
-              <th class="w-[13%] px-4 py-4 text-left border-b-2 border-slate-200">Part Name</th>
-              <th class="w-[28%] px-4 py-4 text-left border-b-2 border-slate-200">Issue</th>
-              <th class="w-[54px] px-2 py-4 text-center border-b-2 border-slate-200">Sev</th>
-              <th class="w-[46px] px-2 py-4 text-center border-b-2 border-slate-200">8D</th>
-              <th class="w-[46px] px-2 py-4 text-center border-b-2 border-slate-200">ST</th>
-              <th class="w-[14%] px-4 py-4 text-center border-b-2 border-slate-200 normal-case">Note</th>
-              <th class="w-[50px] px-2 py-4 text-center border-b-2 border-slate-200 normal-case">📎</th>
-              <th class="w-[90px] px-4 py-4 text-center border-b-2 border-slate-200 normal-case">Action</th>
-            </tr>
-          </thead>
+    <div class="bg-white rounded-2xl p-5 border-2 border-gray-200">
+      <div class="flex items-center gap-4">
+        <div class="w-12 h-12 rounded-xl bg-red-500 flex items-center justify-center shrink-0">
+          <svg class="w-6 h-6 text-white" fill="none" stroke="currentColor" viewBox="0 0 24 24" stroke-width="2">
+            <path stroke-linecap="round" stroke-linejoin="round" d="M12 9v2m0 4h.01m-6.938 4h13.856c1.54 0 2.502-1.667 1.732-3L13.732 4c-.77-1.333-2.694-1.333-3.464 0L3.34 16c-.77 1.333.192 3 1.732 3z"/>
+          </svg>
+        </div>
+        <div>
+          <div class="text-3xl font-bold text-gray-900">--</div>
+          <div class="text-sm font-semibold text-gray-500">Overdue</div>
+        </div>
+      </div>
+    </div>
 
-          <tbody class="divide-y divide-slate-100">
-            {% for tr in trs %}
-              {% set status = (tr.status or '')|lower %}
-              {% set row_cls = "table-row align-top" %}
-              {% if status in ['overdue', 'late'] %}
-                {% set row_cls = row_cls ~ " bg-rose-50/50" %}
-              {% endif %}
+    <div class="bg-white rounded-2xl p-5 border-2 border-gray-200">
+      <div class="flex items-center gap-4">
+        <div class="w-12 h-12 rounded-xl bg-green-500 flex items-center justify-center shrink-0">
+          <svg class="w-6 h-6 text-white" fill="none" stroke="currentColor" viewBox="0 0 24 24" stroke-width="2">
+            <path stroke-linecap="round" stroke-linejoin="round" d="M9 12l2 2 4-4m6 2a9 9 0 11-18 0 9 9 0 0118 0z"/>
+          </svg>
+        </div>
+        <div>
+          <div class="text-3xl font-bold text-gray-900">--</div>
+          <div class="text-sm font-semibold text-gray-500">Closed</div>
+        </div>
+      </div>
+    </div>
+  </div>
 
-              <tr class="{{ row_cls }}">
-                <!-- TR NO. -->
-                <td class="px-4 py-4">
-                  <div class="font-semibold text-slate-900 whitespace-nowrap font-mono bg-slate-100 px-3 py-1.5 rounded-lg inline-block"
-                       title="{{ tr.tr_no }}">
-                    {{ tr.tr_no }}
-                  </div>
-                </td>
+  <!-- Main Table Card -->
+  <div class="bg-white rounded-2xl border-2 border-gray-200 overflow-hidden">
 
-                <!-- Supplier -->
-                <td class="px-4 py-4 text-slate-700 font-medium">
-                  <div class="truncate" title="{{ tr.supplier_name }}">{{ tr.supplier_name }}</div>
-                </td>
+    <!-- Search Bar -->
+    <div class="px-6 py-4 border-b-2 border-gray-100">
+      <div class="flex items-center gap-4">
+        <form method="get" class="flex-1">
+          <div class="relative">
+            <input
+              type="text"
+              name="q"
+              value="{{ q or '' }}"
+              placeholder="Search by TR No., Supplier, Part Number, or Issue..."
+              class="w-full px-5 py-3 pl-12 rounded-xl bg-gray-50 border-2 border-transparent
+                     text-sm focus:outline-none focus:bg-white focus:border-gray-900 transition-all"
+            />
+            <div class="absolute left-4 top-1/2 -translate-y-1/2">
+              <svg class="w-5 h-5 text-gray-400" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M21 21l-6-6m2-5a7 7 0 11-14 0 7 7 0 0114 0z"/>
+              </svg>
+            </div>
+            {% if q %}
+            <a href="{{ url_for('tr.index', per_page=per_page) }}"
+               class="absolute right-4 top-1/2 -translate-y-1/2 text-gray-400 hover:text-gray-600">
+              <svg class="w-5 h-5" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M6 18L18 6M6 6l12 12"/>
+              </svg>
+            </a>
+            {% endif %}
+          </div>
+        </form>
 
-                <!-- Part No. -->
-                <td class="px-4 py-4">
-                  <div class="text-slate-800 whitespace-nowrap font-mono text-xs bg-blue-50 px-2 py-1 rounded inline-block"
-                       title="{{ tr.part_number or '' }}">
-                    {{ tr.part_number or "-" }}
-                  </div>
-                </td>
+        <div class="px-4 py-2 bg-gray-100 rounded-xl text-sm font-semibold text-gray-600">
+          Page {{ pagination.page }} / {{ pagination.pages if pagination.pages else 1 }}
+        </div>
+      </div>
+    </div>
 
-                <!-- Part Name -->
-                <td class="px-4 py-4 text-slate-700">
-                  <div class="truncate" title="{{ tr.part_name or '' }}">{{ tr.part_name or "-" }}</div>
-                </td>
+    <!-- Table -->
+    <div class="overflow-x-auto">
+      <table class="w-full table-fixed text-sm">
+        <thead class="bg-gray-50 border-b-2 border-gray-100">
+          <tr class="text-xs font-bold text-gray-500 uppercase tracking-wider">
+            <th class="w-[110px] px-4 py-4 text-left">TR No.</th>
+            <th class="w-[13%] px-4 py-4 text-left">Supplier</th>
+            <th class="w-[16%] px-4 py-4 text-left">Part No.</th>
+            <th class="w-[13%] px-4 py-4 text-left">Part Name</th>
+            <th class="w-[28%] px-4 py-4 text-left">Issue</th>
+            <th class="w-[54px] px-2 py-4 text-center">Sev</th>
+            <th class="w-[46px] px-2 py-4 text-center">8D</th>
+            <th class="w-[46px] px-2 py-4 text-center">ST</th>
+            <th class="w-[14%] px-4 py-4 text-center">Note</th>
+            <th class="w-[50px] px-2 py-4 text-center">📎</th>
+            <th class="w-[90px] px-4 py-4 text-center">Action</th>
+          </tr>
+        </thead>
 
-                <!-- Issue -->
-                <td class="px-4 py-4">
-                  <div class="text-[13px] leading-5 text-slate-600 clamp-3" title="{{ tr.issue_description or '' }}">
-                    {{ tr.issue_description }}
-                  </div>
-                </td>
+        <tbody class="divide-y divide-gray-100">
+          {% for tr in trs %}
+            {% set status = (tr.status or '')|lower %}
+            {% set row_cls = "table-row align-top" %}
+            {% if status in ['overdue', 'late'] %}
+              {% set row_cls = row_cls ~ " bg-red-50" %}
+            {% endif %}
 
-                <!-- Severity -->
-                <td class="px-2 py-4 text-center">
-                  {% if tr.severity %}
-                    <span class="inline-flex items-center justify-center w-8 h-8 rounded-lg
-                                 bg-gradient-to-br from-slate-100 to-slate-200 border border-slate-300
-                                 text-xs font-bold text-slate-700 shadow-sm">
-                      {{ tr.severity }}
-                    </span>
-                  {% else %}
-                    <span class="text-slate-400">-</span>
-                  {% endif %}
-                </td>
+            <tr class="{{ row_cls }}">
+              <!-- TR NO. -->
+              <td class="px-4 py-4">
+                <div class="font-mono font-bold text-sm px-3 py-1.5 rounded-lg bg-gray-100 border-2 border-gray-200 inline-block text-gray-900"
+                     title="{{ tr.tr_no }}">
+                  {{ tr.tr_no }}
+                </div>
+              </td>
 
-                <!-- 8D Status -->
-                <td class="px-2 py-4 text-center">
-                  {% set d8 = (tr.eight_d_status or 'NOT_REQUIRED')|trim|upper %}
+              <!-- Supplier -->
+              <td class="px-4 py-4 text-gray-700 font-semibold">
+                <div class="truncate" title="{{ tr.supplier_name }}">{{ tr.supplier_name }}</div>
+              </td>
 
-                  {% if d8 == 'NOT_REQUIRED' %}
-                    <span class="inline-block w-4 h-4 rounded-full bg-slate-300 border-2 border-slate-400 shadow-inner"
-                          title="8D: Not required"></span>
+              <!-- Part No. -->
+              <td class="px-4 py-4">
+                <div class="font-mono text-xs px-2 py-1 rounded bg-blue-50 border border-blue-100 inline-block text-gray-900"
+                     title="{{ tr.part_number or '' }}">
+                  {{ tr.part_number or "—" }}
+                </div>
+              </td>
 
-                  {% elif d8 == 'NOT_RECEIVED' %}
-                    <span class="status-dot-warning inline-block w-4 h-4 rounded-full bg-yellow-400 border-2 border-yellow-500 shadow-lg shadow-yellow-400/50"
-                          title="8D: Required but not received"></span>
+              <!-- Part Name -->
+              <td class="px-4 py-4 text-gray-700 font-medium">
+                <div class="truncate" title="{{ tr.part_name or '' }}">{{ tr.part_name or "—" }}</div>
+              </td>
 
-                  {% elif d8 == 'RECEIVED_REJECT' %}
-                    <span class="inline-block w-4 h-4 rounded-full bg-red-500 border-2 border-red-600 shadow-lg shadow-red-500/50"
-                          title="8D: Received (Reject)"></span>
+              <!-- Issue -->
+              <td class="px-4 py-4">
+                <div class="text-[13px] leading-5 text-gray-600 clamp-3" title="{{ tr.issue_description or '' }}">
+                  {{ tr.issue_description }}
+                </div>
+              </td>
 
-                  {% elif d8 == 'RECEIVED_PASS' %}
-                    <span class="inline-block w-4 h-4 rounded-full bg-emerald-500 border-2 border-emerald-600 shadow-lg shadow-emerald-500/50"
-                          title="8D: Received (Pass)"></span>
+              <!-- Severity -->
+              <td class="px-2 py-4 text-center">
+                {% if tr.severity %}
+                  <span class="inline-flex items-center justify-center w-8 h-8 rounded-lg
+                               bg-gray-700 text-white text-xs font-bold shadow-sm">
+                    {{ tr.severity }}
+                  </span>
+                {% else %}
+                  <span class="text-gray-300">—</span>
+                {% endif %}
+              </td>
 
-                  {% else %}
-                    <span class="inline-block w-4 h-4 rounded-full bg-slate-300 border-2 border-slate-400 shadow-inner"
-                          title="8D: Unknown ({{ tr.eight_d_status }})"></span>
-                  {% endif %}
-                </td>
+              <!-- 8D Status -->
+              <td class="px-2 py-4 text-center">
+                {% set d8 = (tr.eight_d_status or 'NOT_REQUIRED')|trim|upper %}
 
-                <!-- Status -->
-                <td class="px-2 py-4 text-center">
-                  {% set st = (tr.status or '')|lower %}
-                  {% if st in ['overdue','late'] %}
-                    <span class="inline-flex items-center justify-center h-6 px-3 rounded-full text-[10px] font-bold uppercase tracking-wide
-                                 bg-gradient-to-r from-red-500 to-red-600 text-white shadow-lg shadow-red-500/40 border border-red-700"
-                          title="Overdue">LATE</span>
-                  {% elif st in ['closed','done','complete','completed'] %}
-                    <span class="inline-flex items-center justify-center h-6 px-3 rounded-full text-[10px] font-bold uppercase tracking-wide
-                                 bg-gradient-to-r from-emerald-500 to-emerald-600 text-white shadow-lg shadow-emerald-500/40 border border-emerald-700"
-                          title="Closed">OK</span>
-                  {% else %}
-                    <span class="inline-flex items-center justify-center h-6 px-3 rounded-full text-[10px] font-bold uppercase tracking-wide
-                                 bg-gradient-to-r from-yellow-400 to-yellow-500 text-yellow-900 shadow-lg shadow-yellow-400/40 border border-yellow-600"
-                          title="Ongoing">ON</span>
-                  {% endif %}
-                </td>
+                {% if d8 == 'NOT_REQUIRED' %}
+                  <span class="inline-block w-4 h-4 rounded-full bg-gray-300 border-2 border-gray-400"
+                        title="8D: Not required"></span>
 
-                <!-- Remark -->
-                <td class="px-4 py-4 text-slate-600">
-                  <div class="truncate text-xs" title="{{ tr.remark or '' }}">{{ tr.remark or "-" }}</div>
-                </td>
+                {% elif d8 == 'NOT_RECEIVED' %}
+                  <span class="status-dot-warning inline-block w-4 h-4 rounded-full bg-yellow-400 border-2 border-yellow-500 shadow-lg"
+                        title="8D: Required but not received"></span>
 
-                <!-- Documents 📎 -->
-                <!-- Documents 📎 -->
-                <td class="px-2 py-4 text-center">
-                  {% set doc_count = tr.documents.count() %}
-                  {% if doc_count > 0 %}
-                    <button type="button"
-                            onclick="openTRDocumentsModal({{ tr.id }})"
-                            class="doc-badge inline-flex items-center justify-center w-7 h-7 rounded-lg
-                                   bg-gradient-to-br from-indigo-100 to-indigo-200
-                                   text-indigo-700 font-bold text-xs
-                                   border-2 border-indigo-300 shadow-sm
-                                   hover:from-indigo-200 hover:to-indigo-300 hover:shadow-md
-                                   cursor-pointer transition-all hover:scale-110"
-                            title="点击查看 {{ doc_count }} 个文档">
-                      {{ doc_count }}
-                    </button>
-                  {% else %}
-                    <span class="inline-flex items-center justify-center w-7 h-7 rounded-lg
-                                 bg-slate-50 text-slate-300 text-xs border border-slate-200"
-                          title="暂无文档">
-                      -
-                    </span>
-                  {% endif %}
-                </td>
-                <!-- Actions -->
-                <td class="px-4 py-4">
-                  <div class="flex items-center justify-center gap-2">
-                    <a href="{{ url_for('tr.edit_tr', tr_id=tr.id) }}"
-                       class="inline-flex items-center justify-center w-8 h-8 rounded-lg
-                              bg-blue-50 text-blue-600 hover:bg-blue-100 hover:text-blue-700
-                              border border-blue-200 transition-all hover:scale-110"
-                       title="Edit">
-                      <svg class="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-                        <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M11 5H6a2 2 0 00-2 2v11a2 2 0 002 2h11a2 2 0 002-2v-5m-1.414-9.414a2 2 0 112.828 2.828L11.828 15H9v-2.828l8.586-8.586z"/>
+                {% elif d8 == 'RECEIVED_REJECT' %}
+                  <span class="inline-block w-4 h-4 rounded-full bg-red-500 border-2 border-red-600 shadow-lg"
+                        title="8D: Received (Reject)"></span>
+
+                {% elif d8 == 'RECEIVED_PASS' %}
+                  <span class="inline-block w-4 h-4 rounded-full bg-green-500 border-2 border-green-600 shadow-lg"
+                        title="8D: Received (Pass)"></span>
+
+                {% else %}
+                  <span class="inline-block w-4 h-4 rounded-full bg-gray-300 border-2 border-gray-400"
+                        title="8D: Unknown"></span>
+                {% endif %}
+              </td>
+
+              <!-- Status -->
+              <td class="px-2 py-4 text-center">
+                {% set st = (tr.status or '')|lower %}
+                {% if st in ['overdue','late'] %}
+                  <span class="inline-flex items-center justify-center h-6 px-2.5 rounded-full text-[10px] font-bold uppercase
+                               bg-red-500 text-white shadow-sm"
+                        title="Overdue">LATE</span>
+                {% elif st in ['closed','done','complete','completed'] %}
+                  <span class="inline-flex items-center justify-center h-6 px-2.5 rounded-full text-[10px] font-bold uppercase
+                               bg-green-500 text-white shadow-sm"
+                        title="Closed">OK</span>
+                {% else %}
+                  <span class="inline-flex items-center justify-center h-6 px-2.5 rounded-full text-[10px] font-bold uppercase
+                               bg-amber-500 text-white shadow-sm"
+                        title="Ongoing">ON</span>
+                {% endif %}
+              </td>
+
+              <!-- Note -->
+              <td class="px-4 py-4 text-gray-600">
+                <div class="truncate text-xs" title="{{ tr.remark or '' }}">{{ tr.remark or "—" }}</div>
+              </td>
+
+              <!-- Documents -->
+              <td class="px-2 py-4 text-center">
+                {% set doc_count = tr.documents.count() %}
+                {% if doc_count > 0 %}
+                  <button type="button"
+                          onclick="openTRDocumentsModal({{ tr.id }})"
+                          class="doc-badge inline-flex items-center justify-center w-7 h-7 rounded-lg
+                                 bg-gray-700 text-white font-bold text-xs
+                                 border-2 border-gray-700 hover:bg-gray-800
+                                 transition-all cursor-pointer"
+                          title="View {{ doc_count }} documents">
+                    {{ doc_count }}
+                  </button>
+                {% else %}
+                  <span class="inline-flex items-center justify-center w-7 h-7 rounded-lg
+                               bg-gray-50 text-gray-300 text-xs border border-gray-100"
+                        title="No documents">—</span>
+                {% endif %}
+              </td>
+
+              <!-- Actions -->
+              <td class="px-4 py-4">
+                <div class="flex items-center justify-center gap-2">
+                  <a href="{{ url_for('tr.edit_tr', tr_id=tr.id) }}"
+                     class="inline-flex items-center justify-center w-8 h-8 rounded-lg
+                            bg-blue-50 text-blue-600 hover:bg-blue-100 border-2 border-blue-200 hover:border-blue-400
+                            transition-all hover:scale-105"
+                     title="Edit">
+                    <svg class="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24" stroke-width="2">
+                      <path stroke-linecap="round" stroke-linejoin="round" d="M11 5H6a2 2 0 00-2 2v11a2 2 0 002 2h11a2 2 0 002-2v-5m-1.414-9.414a2 2 0 112.828 2.828L11.828 15H9v-2.828l8.586-8.586z"/>
+                    </svg>
+                  </a>
+
+                  <form method="post"
+                        action="{{ url_for('tr.delete_tr', tr_id=tr.id) }}"
+                        onsubmit="return confirm('Delete TR {{ tr.tr_no }}? This action cannot be undone.');">
+                    <button type="submit"
+                            class="inline-flex items-center justify-center w-8 h-8 rounded-lg
+                                   bg-red-50 text-red-600 hover:bg-red-100 border-2 border-red-200 hover:border-red-400
+                                   transition-all hover:scale-105"
+                            title="Delete">
+                      <svg class="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24" stroke-width="2">
+                        <path stroke-linecap="round" stroke-linejoin="round" d="M19 7l-.867 12.142A2 2 0 0116.138 21H7.862a2 2 0 01-1.995-1.858L5 7m5 4v6m4-6v6m1-10V4a1 1 0 00-1-1h-4a1 1 0 00-1 1v3M4 7h16"/>
                       </svg>
-                    </a>
-
-                    <form method="post"
-                          action="{{ url_for('tr.delete_tr', tr_id=tr.id) }}"
-                          onsubmit="return confirm('确认删除 TR {{ tr.tr_no }} 吗？此操作不可恢复。');">
-                      <button type="submit"
-                              class="inline-flex items-center justify-center w-8 h-8 rounded-lg
-                                     bg-rose-50 text-rose-600 hover:bg-rose-100 hover:text-rose-700
-                                     border border-rose-200 transition-all hover:scale-110"
-                              title="Delete">
-                        <svg class="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-                          <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M19 7l-.867 12.142A2 2 0 0116.138 21H7.862a2 2 0 01-1.995-1.858L5 7m5 4v6m4-6v6m1-10V4a1 1 0 00-1-1h-4a1 1 0 00-1 1v3M4 7h16"/>
-                        </svg>
-                      </button>
-                    </form>
-                  </div>
-                </td>
-              </tr>
-            {% endfor %}
-
-            {% if trs|length == 0 %}
-            <tr>
-              <td colspan="11" class="px-6 py-16 text-center">
-                <div class="flex flex-col items-center gap-3">
-                  <svg class="w-16 h-16 text-slate-300" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-                    <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M20 13V6a2 2 0 00-2-2H6a2 2 0 00-2 2v7m16 0v5a2 2 0 01-2 2H6a2 2 0 01-2-2v-5m16 0h-2.586a1 1 0 00-.707.293l-2.414 2.414a1 1 0 01-.707.293h-3.172a1 1 0 01-.707-.293l-2.414-2.414A1 1 0 006.586 13H4"/>
-                  </svg>
-                  <p class="text-slate-400 font-medium">暂无数据</p>
+                    </button>
+                  </form>
                 </div>
               </td>
             </tr>
-            {% endif %}
-          </tbody>
-        </table>
+          {% endfor %}
+
+          {% if trs|length == 0 %}
+          <tr>
+            <td colspan="11" class="px-6 py-16 text-center">
+              <div class="flex flex-col items-center gap-4">
+                <div class="w-20 h-20 bg-gray-100 rounded-full flex items-center justify-center">
+                  <svg class="w-10 h-10 text-gray-300" fill="none" stroke="currentColor" viewBox="0 0 24 24" stroke-width="2">
+                    <path stroke-linecap="round" stroke-linejoin="round" d="M20 13V6a2 2 0 00-2-2H6a2 2 0 00-2 2v7m16 0v5a2 2 0 01-2 2H6a2 2 0 01-2-2v-5m16 0h-2.586a1 1 0 00-.707.293l-2.414 2.414a1 1 0 01-.707.293h-3.172a1 1 0 01-.707-.293l-2.414-2.414A1 1 0 006.586 13H4"/>
+                  </svg>
+                </div>
+                <div>
+                  <p class="text-xl font-bold text-gray-900 mb-1">No reports found</p>
+                  <p class="text-sm text-gray-500">Click "New Report" to get started</p>
+                </div>
+              </div>
+            </td>
+          </tr>
+          {% endif %}
+        </tbody>
+      </table>
+    </div>
+
+    <!-- Pagination -->
+    {% if pagination.pages > 1 %}
+    <div class="px-6 py-4 border-t-2 border-gray-100 flex items-center justify-between">
+      <div class="text-sm text-gray-600">
+        {% if pagination.total > 0 %}
+          Showing <span class="font-bold text-gray-900">{{ (pagination.page - 1) * pagination.per_page + 1 }}</span>
+          to <span class="font-bold text-gray-900">{{ (pagination.page - 1) * pagination.per_page + trs|length }}</span>
+          of <span class="font-bold text-gray-900">{{ pagination.total }}</span> results
+        {% else %}
+          No results
+        {% endif %}
       </div>
 
-      <!-- 分页 -->
-      {% if pagination.pages > 1 %}
-      <div class="bg-slate-50 px-6 py-4 border-t border-slate-200 flex items-center justify-between">
-        <div class="text-sm text-slate-600">
-          {% if pagination.total > 0 %}
-            显示第 <span class="font-semibold text-slate-800">{{ (pagination.page - 1) * pagination.per_page + 1 }}</span>
-            - <span class="font-semibold text-slate-800">{{ (pagination.page - 1) * pagination.per_page + trs|length }}</span>
-            条，共 <span class="font-semibold text-slate-800">{{ pagination.total }}</span> 条
-          {% else %}
-            无结果
-          {% endif %}
+      <nav class="flex items-center gap-2">
+        {% if pagination.has_prev %}
+          <a class="px-4 py-2 rounded-lg border-2 border-gray-300 text-sm font-bold text-gray-700
+                    hover:bg-gray-100 hover:border-gray-900 transition"
+             href="{{ url_for('tr.index', page=pagination.prev_num, q=q, per_page=per_page) }}">
+            Previous
+          </a>
+        {% else %}
+          <span class="px-4 py-2 rounded-lg border-2 border-gray-200 text-sm font-bold text-gray-300 bg-gray-50">
+            Previous
+          </span>
+        {% endif %}
+
+        <div class="flex items-center gap-1">
+          {% for p in range(1, pagination.pages + 1) %}
+            {% if p == pagination.page %}
+              <span class="px-4 py-2 rounded-lg bg-gray-900 text-white text-sm font-bold">
+                {{ p }}
+              </span>
+            {% else %}
+              <a class="px-4 py-2 rounded-lg border-2 border-gray-200 text-sm font-bold text-gray-700
+                        hover:bg-gray-100 hover:border-gray-900 transition"
+                 href="{{ url_for('tr.index', page=p, q=q, per_page=per_page) }}">
+                {{ p }}
+              </a>
+            {% endif %}
+          {% endfor %}
         </div>
 
-        <nav class="flex items-center gap-2">
-          {% if pagination.has_prev %}
-            <a class="px-4 py-2 rounded-lg border-2 border-slate-300 text-sm font-medium text-slate-700
-                      hover:bg-slate-100 hover:border-slate-400 transition-all"
-               href="{{ url_for('tr.index', page=pagination.prev_num, q=q, per_page=per_page) }}">
-              上一页
-            </a>
-          {% else %}
-            <span class="px-4 py-2 rounded-lg border-2 border-slate-200 text-sm font-medium text-slate-400 bg-slate-100">
-              上一页
-            </span>
-          {% endif %}
-
-          <div class="flex items-center gap-1">
-            {% for p in range(1, pagination.pages + 1) %}
-              {% if p == pagination.page %}
-                <span class="px-4 py-2 rounded-lg bg-gradient-to-r from-slate-700 to-slate-900 text-white text-sm font-bold shadow-lg">
-                  {{ p }}
-                </span>
-              {% else %}
-                <a class="px-4 py-2 rounded-lg border-2 border-slate-200 text-sm font-medium text-slate-700
-                          hover:bg-slate-100 hover:border-slate-400 transition-all"
-                   href="{{ url_for('tr.index', page=p, q=q, per_page=per_page) }}">
-                  {{ p }}
-                </a>
-              {% endif %}
-            {% endfor %}
-          </div>
-
-          {% if pagination.has_next %}
-            <a class="px-4 py-2 rounded-lg border-2 border-slate-300 text-sm font-medium text-slate-700
-                      hover:bg-slate-100 hover:border-slate-400 transition-all"
-               href="{{ url_for('tr.index', page=pagination.next_num, q=q, per_page=per_page) }}">
-              下一页
-            </a>
-          {% else %}
-            <span class="px-4 py-2 rounded-lg border-2 border-slate-200 text-sm font-medium text-slate-400 bg-slate-100">
-              下一页
-            </span>
-          {% endif %}
-        </nav>
-      </div>
-      {% endif %}
-
+        {% if pagination.has_next %}
+          <a class="px-4 py-2 rounded-lg border-2 border-gray-300 text-sm font-bold text-gray-700
+                    hover:bg-gray-100 hover:border-gray-900 transition"
+             href="{{ url_for('tr.index', page=pagination.next_num, q=q, per_page=per_page) }}">
+            Next
+          </a>
+        {% else %}
+          <span class="px-4 py-2 rounded-lg border-2 border-gray-200 text-sm font-bold text-gray-300 bg-gray-50">
+            Next
+          </span>
+        {% endif %}
+      </nav>
     </div>
+    {% endif %}
+
   </div>
 </div>
 
 <script>
-// 打开文档模态框
 function openTRDocumentsModal(trId) {
-  // 创建模态框容器
   const container = document.createElement('div');
   container.id = 'tr-documents-modal-container';
   container.style.opacity = '0';
   container.style.transition = 'opacity 0.2s ease';
   document.body.appendChild(container);
 
-  // 防止页面滚动
   document.body.style.overflow = 'hidden';
 
-  // 加载文档列表
   fetch(`/tr/${trId}/documents/panel`)
     .then(response => {
-      if (!response.ok) {
-        throw new Error('加载失败');
-      }
+      if (!response.ok) throw new Error('Failed to load');
       return response.text();
     })
     .then(html => {
       container.innerHTML = html;
-      // 触发淡入动画
-      setTimeout(() => {
-        container.style.opacity = '1';
-      }, 10);
+      setTimeout(() => { container.style.opacity = '1'; }, 10);
     })
     .catch(error => {
-      console.error('加载文档失败:', error);
-      alert('加载文档列表失败,请重试');
+      console.error('Failed to load documents:', error);
+      alert('Failed to load documents. Please try again.');
       container.remove();
       document.body.style.overflow = '';
     });
 }
 
-// 关闭时恢复页面滚动
 window.closeTRDocumentsModal = function(event) {
-  if (event && event.target !== event.currentTarget) {
-    return;
-  }
+  if (event && event.target !== event.currentTarget) return;
 
   const container = document.getElementById('tr-documents-modal-container');
   if (container) {

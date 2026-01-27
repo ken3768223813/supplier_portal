@@ -1,49 +1,53 @@
 {% extends "layout/base.html" %}
 {% block content %}
 
-<div class="max-w-4xl mx-auto">
-  
-  <!-- 面包屑 -->
-  <div class="mb-6 flex items-center gap-2 text-sm text-slate-600">
-    <a href="{{ url_for('knowledge.index') }}" class="hover:text-slate-900 transition">知识库</a>
-    <svg class="w-4 h-4 text-slate-400" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+<div class="max-w-4xl mx-auto px-6 py-6">
+
+  <!-- Breadcrumb -->
+  <div class="mb-6 flex items-center gap-2 text-sm text-gray-500">
+    <a href="{{ url_for('knowledge.index') }}" class="hover:text-gray-900 transition font-medium">Knowledge Base</a>
+    <svg class="w-4 h-4 text-gray-300" fill="none" stroke="currentColor" viewBox="0 0 24 24">
       <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M9 5l7 7-7 7"/>
     </svg>
-    <span class="text-slate-900 font-medium">快速记录</span>
+    <span class="text-gray-900 font-semibold">Quick Add</span>
   </div>
 
-  <!-- 表单卡片 -->
-  <div class="bg-white rounded-2xl shadow-lg border border-slate-200 overflow-hidden">
-    
-    <!-- 头部 -->
-    <div class="bg-gradient-to-r from-indigo-600 to-purple-600 px-8 py-6">
-      <h1 class="text-2xl font-bold text-white flex items-center gap-3">
-        <svg class="w-8 h-8" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-          <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M12 4v16m8-8H4"/>
-        </svg>
-        记录新知识
-      </h1>
-      <p class="text-indigo-100 mt-2">记录工作中的经验、问题和解决方案</p>
+  <!-- Form Card -->
+  <div class="bg-white rounded-2xl border-2 border-gray-200 overflow-hidden">
+
+    <!-- Header -->
+    <div class="px-8 py-6 border-b-2 border-gray-100">
+      <div class="flex items-center gap-4">
+        <div class="w-14 h-14 bg-purple-500 rounded-xl flex items-center justify-center">
+          <svg class="w-7 h-7 text-white" fill="none" stroke="currentColor" viewBox="0 0 24 24" stroke-width="2">
+            <path stroke-linecap="round" stroke-linejoin="round" d="M12 4v16m8-8H4"/>
+          </svg>
+        </div>
+        <div>
+          <h1 class="text-3xl font-bold text-gray-900">Add Knowledge</h1>
+          <p class="text-sm text-gray-500 mt-1">Document your engineering experience and solutions</p>
+        </div>
+      </div>
     </div>
 
-    <!-- 表单 -->
+    <!-- Form -->
     <form method="post" class="p-8">
-      
-      <!-- 工艺类型 -->
+
+      <!-- Process Type -->
       <div class="mb-6">
-        <label class="block text-sm font-bold text-slate-700 mb-3">
-          工艺类型 <span class="text-rose-500">*</span>
+        <label class="block text-sm font-bold text-gray-700 mb-3">
+          Process Type <span class="text-red-500">*</span>
         </label>
         <div class="grid grid-cols-3 gap-3">
           {% for slug, info in processes.items() %}
           <label class="relative cursor-pointer">
             <input type="radio" name="process" value="{{ slug }}" required
                    class="peer sr-only">
-            <div class="px-4 py-3 rounded-xl border-2 border-slate-200 
-                        peer-checked:border-indigo-500 peer-checked:bg-indigo-50
-                        hover:border-slate-300 transition-all text-center">
-              <div class="text-2xl mb-1">{{ info.icon }}</div>
-              <div class="text-sm font-semibold text-slate-700 peer-checked:text-indigo-700">
+            <div class="px-4 py-3 rounded-xl border-2 border-gray-200
+                        peer-checked:border-gray-900 peer-checked:bg-gray-50
+                        hover:border-gray-400 transition-all text-center">
+
+              <div class="text-sm font-bold text-gray-700">
                 {{ info.name }}
               </div>
             </div>
@@ -52,48 +56,49 @@
         </div>
       </div>
 
-      <!-- 标题 -->
+      <!-- Title -->
       <div class="mb-6">
-        <label class="block text-sm font-bold text-slate-700 mb-2">
-          知识标题 <span class="text-rose-500">*</span>
+        <label class="block text-sm font-bold text-gray-700 mb-2">
+          Title <span class="text-red-500">*</span>
         </label>
         <input type="text" name="title" required
-               placeholder="例如：焊接温度过高导致的虚焊问题"
-               class="w-full px-4 py-3 rounded-xl border-2 border-slate-200
-                      focus:outline-none focus:border-indigo-400 transition-all">
+               placeholder="e.g., Welding defects due to excessive temperature"
+               class="w-full px-4 py-3 rounded-xl border-2 border-gray-200
+                      focus:outline-none focus:border-gray-900 transition-all">
       </div>
 
-      <!-- 内容 -->
+      <!-- Content -->
       <div class="mb-6">
-        <label class="block text-sm font-bold text-slate-700 mb-2">
-          详细内容 <span class="text-rose-500">*</span>
+        <label class="block text-sm font-bold text-gray-700 mb-2">
+          Detailed Content <span class="text-red-500">*</span>
         </label>
         <textarea name="content" rows="8" required
-                  placeholder="描述问题现象、原因分析、解决方案、预防措施等..."
-                  class="w-full px-4 py-3 rounded-xl border-2 border-slate-200
-                         focus:outline-none focus:border-indigo-400 transition-all resize-none"></textarea>
+                  placeholder="Describe the problem, root cause analysis, solution, and preventive measures..."
+                  class="w-full px-4 py-3 rounded-xl border-2 border-gray-200
+                         focus:outline-none focus:border-gray-900 transition-all resize-none"></textarea>
       </div>
 
       <div class="grid grid-cols-2 gap-6 mb-6">
-        <!-- 案例类型 -->
+
+        <!-- Case Type -->
         <div>
-          <label class="block text-sm font-bold text-slate-700 mb-2">案例类型</label>
+          <label class="block text-sm font-bold text-gray-700 mb-2">Case Type</label>
           <select name="case_type"
-                  class="w-full px-4 py-3 rounded-xl border-2 border-slate-200
-                         focus:outline-none focus:border-indigo-400 transition-all">
-            <option value="">请选择</option>
+                  class="w-full px-4 py-3 rounded-xl border-2 border-gray-200
+                         focus:outline-none focus:border-gray-900 transition-all cursor-pointer">
+            <option value="">Please select</option>
             {% for key, value in case_types.items() %}
               <option value="{{ key }}">{{ value }}</option>
             {% endfor %}
           </select>
         </div>
 
-        <!-- 优先级 -->
+        <!-- Priority -->
         <div>
-          <label class="block text-sm font-bold text-slate-700 mb-2">优先级</label>
+          <label class="block text-sm font-bold text-gray-700 mb-2">Priority</label>
           <select name="priority"
-                  class="w-full px-4 py-3 rounded-xl border-2 border-slate-200
-                         focus:outline-none focus:border-indigo-400 transition-all">
+                  class="w-full px-4 py-3 rounded-xl border-2 border-gray-200
+                         focus:outline-none focus:border-gray-900 transition-all cursor-pointer">
             {% for key, value in priorities.items() %}
               <option value="{{ key }}" {% if key == 'normal' %}selected{% endif %}>{{ value }}</option>
             {% endfor %}
@@ -102,46 +107,47 @@
       </div>
 
       <div class="grid grid-cols-2 gap-6 mb-6">
-        <!-- 供应商 -->
+
+        <!-- Supplier -->
         <div>
-          <label class="block text-sm font-bold text-slate-700 mb-2">关联供应商</label>
+          <label class="block text-sm font-bold text-gray-700 mb-2">Related Supplier</label>
           <input type="text" name="supplier_name"
-                 placeholder="可选"
-                 class="w-full px-4 py-3 rounded-xl border-2 border-slate-200
-                        focus:outline-none focus:border-indigo-400 transition-all">
+                 placeholder="Optional"
+                 class="w-full px-4 py-3 rounded-xl border-2 border-gray-200
+                        focus:outline-none focus:border-gray-900 transition-all">
         </div>
 
-        <!-- 零件号 -->
+        <!-- Part Number -->
         <div>
-          <label class="block text-sm font-bold text-slate-700 mb-2">关联零件号</label>
+          <label class="block text-sm font-bold text-gray-700 mb-2">Related Part Number</label>
           <input type="text" name="part_number"
-                 placeholder="可选"
-                 class="w-full px-4 py-3 rounded-xl border-2 border-slate-200
-                        focus:outline-none focus:border-indigo-400 transition-all">
+                 placeholder="Optional"
+                 class="w-full px-4 py-3 rounded-xl border-2 border-gray-200
+                        focus:outline-none focus:border-gray-900 transition-all font-mono">
         </div>
       </div>
 
-      <!-- 标签 -->
+      <!-- Tags -->
       <div class="mb-8">
-        <label class="block text-sm font-bold text-slate-700 mb-2">标签</label>
+        <label class="block text-sm font-bold text-gray-700 mb-2">Tags</label>
         <input type="text" name="tags"
-               placeholder="用逗号分隔，例如：虚焊,温度控制,工艺参数"
-               class="w-full px-4 py-3 rounded-xl border-2 border-slate-200
-                      focus:outline-none focus:border-indigo-400 transition-all">
-        <p class="mt-2 text-xs text-slate-500">添加标签便于后续搜索和分类</p>
+               placeholder="Separate with commas, e.g., welding, temperature, parameters"
+               class="w-full px-4 py-3 rounded-xl border-2 border-gray-200
+                      focus:outline-none focus:border-gray-900 transition-all">
+        <p class="mt-2 text-xs text-gray-500">Add tags to make searching and categorization easier</p>
       </div>
 
-      <!-- 操作按钮 -->
-      <div class="flex items-center gap-4 pt-6 border-t border-slate-200">
+      <!-- Action Buttons -->
+      <div class="flex items-center gap-4 pt-6 border-t-2 border-gray-100">
         <button type="submit"
-                class="flex-1 py-3 rounded-xl bg-gradient-to-r from-indigo-600 to-purple-600
-                       text-white font-bold shadow-lg hover:shadow-xl transition-all hover:scale-105">
-          保存知识
+                class="flex-1 py-3 rounded-xl bg-gray-900 text-white font-bold
+                       hover:bg-gray-800 transition-all hover:scale-105 active:scale-95">
+          Save Knowledge
         </button>
         <a href="{{ url_for('knowledge.index') }}"
-           class="px-6 py-3 rounded-xl border-2 border-slate-300 text-slate-700 font-semibold
-                  hover:bg-slate-50 transition-all">
-          取消
+           class="px-6 py-3 rounded-xl border-2 border-gray-300 text-gray-700 font-semibold
+                  hover:bg-gray-50 hover:border-gray-900 transition-all">
+          Cancel
         </a>
       </div>
     </form>

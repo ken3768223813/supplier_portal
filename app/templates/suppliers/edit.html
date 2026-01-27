@@ -2,87 +2,84 @@
 {% block content %}
 
 <style>
-  /* 输入框聚焦效果 */
   .form-input:focus {
-    box-shadow: 0 0 0 3px rgba(59, 130, 246, 0.1);
+    box-shadow: 0 0 0 3px rgba(0, 0, 0, 0.05);
   }
 
-  /* 开关按钮动画 */
   .toggle-checkbox:checked {
     background-color: #10b981;
     border-color: #10b981;
   }
-
-  .toggle-checkbox:checked + .toggle-label:before {
-    transform: translateX(1.25rem);
-  }
 </style>
 
-<div class="max-w-4xl mx-auto">
-  <!-- 面包屑导航 -->
-  <div class="mb-6 flex items-center gap-2 text-sm text-slate-600">
+<div class="max-w-4xl mx-auto px-6 py-6">
+
+  <!-- Breadcrumb -->
+  <div class="mb-6 flex items-center gap-2 text-sm text-gray-500">
     <a href="{{ url_for('suppliers.index') }}"
-       class="hover:text-slate-900 transition">供应商列表</a>
-    <svg class="w-4 h-4 text-slate-400" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+       class="hover:text-gray-900 transition font-medium">Suppliers</a>
+    <svg class="w-4 h-4 text-gray-300" fill="none" stroke="currentColor" viewBox="0 0 24 24">
       <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M9 5l7 7-7 7"/>
     </svg>
-    <span class="text-slate-900 font-medium">编辑供应商</span>
+    <span class="text-gray-900 font-semibold">Edit Supplier</span>
   </div>
 
-  <!-- 主卡片 -->
-  <div class="bg-white rounded-2xl shadow-lg border border-slate-200 overflow-hidden">
-    <!-- 头部 -->
-    <div class="bg-gradient-to-r from-amber-50 to-amber-100 px-8 py-6 border-b border-amber-200">
+  <!-- Main Card -->
+  <div class="bg-white rounded-2xl border-2 border-gray-200 overflow-hidden">
+
+    <!-- Header -->
+    <div class="px-8 py-6 border-b-2 border-gray-100">
       <div class="flex items-center justify-between">
-        <div class="flex items-center gap-3">
-          <div class="w-14 h-14 bg-amber-200 rounded-xl flex items-center justify-center">
-            <svg class="w-7 h-7 text-amber-600" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-              <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M11 5H6a2 2 0 00-2 2v11a2 2 0 002 2h11a2 2 0 002-2v-5m-1.414-9.414a2 2 0 112.828 2.828L11.828 15H9v-2.828l8.586-8.586z"/>
+        <div class="flex items-center gap-4">
+          <div class="w-14 h-14 bg-amber-500 rounded-xl flex items-center justify-center">
+            <svg class="w-7 h-7 text-white" fill="none" stroke="currentColor" viewBox="0 0 24 24" stroke-width="2">
+              <path stroke-linecap="round" stroke-linejoin="round" d="M11 5H6a2 2 0 00-2 2v11a2 2 0 002 2h11a2 2 0 002-2v-5m-1.414-9.414a2 2 0 112.828 2.828L11.828 15H9v-2.828l8.586-8.586z"/>
             </svg>
           </div>
           <div>
-            <h1 class="text-2xl font-bold text-slate-900">编辑供应商</h1>
-            <p class="text-sm text-slate-600 mt-1">Edit Supplier Information</p>
+            <h1 class="text-3xl font-bold text-gray-900">Edit Supplier</h1>
+            <p class="text-sm text-gray-500 mt-1">Update supplier information</p>
           </div>
         </div>
 
-        <!-- 显示当前供应商代码 -->
-        <div class="bg-white rounded-xl px-4 py-2 border border-amber-200 shadow-sm">
-          <div class="text-xs text-slate-500 mb-0.5">Supplier Code</div>
-          <div class="font-mono font-semibold text-slate-900">{{ supplier.code }}</div>
+        <!-- Current Supplier Code -->
+        <div class="bg-gray-100 rounded-xl px-4 py-2 border-2 border-gray-200">
+          <div class="text-xs text-gray-500 mb-0.5 font-semibold">Supplier Code</div>
+          <div class="font-mono font-bold text-gray-900">{{ supplier.code }}</div>
         </div>
       </div>
     </div>
 
-    <!-- 表单内容 -->
+    <!-- Form Content -->
     <form method="post" class="p-8">
       <div class="space-y-6">
-        <!-- 供应商代码（只读） -->
+
+        <!-- Supplier Code (Read-only) -->
         <div>
-          <label class="flex items-center gap-2 text-sm font-semibold text-slate-700 mb-2">
-            <svg class="w-4 h-4 text-slate-400" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-              <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M12 15v2m-6 4h12a2 2 0 002-2v-6a2 2 0 00-2-2H6a2 2 0 00-2 2v6a2 2 0 002 2zm10-10V7a4 4 0 00-8 0v4h8z"/>
+          <label class="flex items-center gap-2 text-sm font-bold text-gray-700 mb-2">
+            <svg class="w-4 h-4 text-gray-400" fill="none" stroke="currentColor" viewBox="0 0 24 24" stroke-width="2">
+              <path stroke-linecap="round" stroke-linejoin="round" d="M12 15v2m-6 4h12a2 2 0 002-2v-6a2 2 0 00-2-2H6a2 2 0 00-2 2v6a2 2 0 002 2zm10-10V7a4 4 0 00-8 0v4h8z"/>
             </svg>
-            供应商代码
-            <span class="text-xs text-slate-500 font-normal">(不可修改)</span>
+            Supplier Code
+            <span class="text-xs text-gray-500 font-normal">(Read-only)</span>
           </label>
           <input
             type="text"
             name="code"
             value="{{ supplier.code }}"
             readonly
-            class="w-full px-4 py-3 border-2 border-slate-200 rounded-xl text-sm
-                   bg-slate-50 text-slate-500 cursor-not-allowed font-mono">
-          <p class="mt-1.5 text-xs text-slate-500">供应商代码创建后不可修改</p>
+            class="w-full px-4 py-3 border-2 border-gray-200 rounded-xl text-sm
+                   bg-gray-50 text-gray-500 cursor-not-allowed font-mono font-semibold">
+          <p class="mt-2 text-xs text-gray-500">Supplier code cannot be changed after creation</p>
         </div>
 
-        <!-- 供应商名称 -->
+        <!-- Company Name -->
         <div>
-          <label class="flex items-center gap-2 text-sm font-semibold text-slate-700 mb-2">
-            <svg class="w-4 h-4 text-emerald-600" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-              <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M3.055 11H5a2 2 0 012 2v1a2 2 0 002 2 2 2 0 012 2v2.945M8 3.935V5.5A2.5 2.5 0 0010.5 8h.5a2 2 0 012 2 2 2 0 104 0 2 2 0 012-2h1.064M15 20.488V18a2 2 0 012-2h3.064M21 12a9 9 0 11-18 0 9 9 0 0118 0z"/>
+          <label class="flex items-center gap-2 text-sm font-bold text-gray-700 mb-2">
+            <svg class="w-4 h-4 text-green-600" fill="none" stroke="currentColor" viewBox="0 0 24 24" stroke-width="2">
+              <path stroke-linecap="round" stroke-linejoin="round" d="M3.055 11H5a2 2 0 012 2v1a2 2 0 002 2 2 2 0 012 2v2.945M8 3.935V5.5A2.5 2.5 0 0010.5 8h.5a2 2 0 012 2 2 2 0 104 0 2 2 0 012-2h1.064M15 20.488V18a2 2 0 012-2h3.064M21 12a9 9 0 11-18 0 9 9 0 0118 0z"/>
             </svg>
-            供应商英文名称 <span class="text-rose-500">*</span>
+            Company Name <span class="text-red-500">*</span>
           </label>
           <input
             type="text"
@@ -90,43 +87,43 @@
             value="{{ supplier.name }}"
             required
             placeholder="Supplier Company Name Ltd."
-            class="form-input w-full px-4 py-3 border-2 border-slate-200 rounded-xl text-sm
-                   focus:outline-none focus:border-emerald-400 transition-all
-                   placeholder:text-slate-400">
-          <p class="mt-1.5 text-xs text-slate-500">供应商的正式英文名称</p>
+            class="form-input w-full px-4 py-3 border-2 border-gray-200 rounded-xl text-sm
+                   focus:outline-none focus:border-gray-900 transition-all
+                   placeholder:text-gray-400">
+          <p class="mt-2 text-xs text-gray-500">Official company name in English</p>
         </div>
 
-        <!-- 中文名称 -->
+        <!-- Chinese Name -->
         <div>
-          <label class="flex items-center gap-2 text-sm font-semibold text-slate-700 mb-2">
-            <svg class="w-4 h-4 text-purple-600" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-              <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M7 8h10M7 12h4m1 8l-4-4H5a2 2 0 01-2-2V6a2 2 0 012-2h14a2 2 0 012 2v8a2 2 0 01-2 2h-3l-4 4z"/>
+          <label class="flex items-center gap-2 text-sm font-bold text-gray-700 mb-2">
+            <svg class="w-4 h-4 text-purple-600" fill="none" stroke="currentColor" viewBox="0 0 24 24" stroke-width="2">
+              <path stroke-linecap="round" stroke-linejoin="round" d="M7 8h10M7 12h4m1 8l-4-4H5a2 2 0 01-2-2V6a2 2 0 012-2h14a2 2 0 012 2v8a2 2 0 01-2 2h-3l-4 4z"/>
             </svg>
-            中文名称
+            Chinese Name
           </label>
           <input
             type="text"
             name="chinese_name"
             value="{{ supplier.chinese_name or '' }}"
-            placeholder="中文名称（选填）"
-            class="form-input w-full px-4 py-3 border-2 border-slate-200 rounded-xl text-sm
-                   focus:outline-none focus:border-purple-400 transition-all
-                   placeholder:text-slate-400">
-          <p class="mt-1.5 text-xs text-slate-500">供应商的中文名称，选填项</p>
+            placeholder="中文名称 (Optional)"
+            class="form-input w-full px-4 py-3 border-2 border-gray-200 rounded-xl text-sm
+                   focus:outline-none focus:border-gray-900 transition-all
+                   placeholder:text-gray-400">
+          <p class="mt-2 text-xs text-gray-500">Chinese company name (optional)</p>
         </div>
 
-        <!-- Active 状态开关 -->
-        <div class="bg-slate-50 rounded-xl p-5 border border-slate-200">
+        <!-- Active Status Toggle -->
+        <div class="bg-gray-50 rounded-xl p-6 border-2 border-gray-200">
           <div class="flex items-center justify-between">
             <div class="flex items-center gap-3">
-              <div class="w-10 h-10 bg-emerald-100 rounded-lg flex items-center justify-center">
-                <svg class="w-5 h-5 text-emerald-600" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-                  <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M9 12l2 2 4-4m6 2a9 9 0 11-18 0 9 9 0 0118 0z"/>
+              <div class="w-12 h-12 bg-green-100 rounded-xl flex items-center justify-center">
+                <svg class="w-6 h-6 text-green-600" fill="none" stroke="currentColor" viewBox="0 0 24 24" stroke-width="2">
+                  <path stroke-linecap="round" stroke-linejoin="round" d="M9 12l2 2 4-4m6 2a9 9 0 11-18 0 9 9 0 0118 0z"/>
                 </svg>
               </div>
               <div>
-                <p class="text-sm font-semibold text-slate-900">激活状态</p>
-                <p class="text-xs text-slate-500">停用后，该供应商将不显示在主列表中</p>
+                <p class="text-sm font-bold text-gray-900">Active Status</p>
+                <p class="text-xs text-gray-500">Inactive suppliers won't appear in the main list</p>
               </div>
             </div>
 
@@ -137,9 +134,9 @@
                 value="1"
                 {% if supplier.is_active %}checked{% endif %}
                 class="toggle-checkbox sr-only peer">
-              <div class="w-11 h-6 bg-slate-300 rounded-full peer
-                          peer-checked:bg-emerald-500
-                          peer-focus:ring-4 peer-focus:ring-emerald-200
+              <div class="w-11 h-6 bg-gray-300 rounded-full peer
+                          peer-checked:bg-green-500
+                          peer-focus:ring-4 peer-focus:ring-green-100
                           transition-all duration-300
                           after:content-[''] after:absolute after:top-[2px] after:left-[2px]
                           after:bg-white after:rounded-full after:h-5 after:w-5
@@ -149,111 +146,110 @@
           </div>
         </div>
 
-        <!-- 创建时间信息 -->
-        <div class="bg-blue-50 rounded-xl p-4 border border-blue-200">
+        <!-- Created Date Info -->
+        <div class="bg-blue-50 rounded-xl p-5 border-l-4 border-blue-500">
           <div class="flex items-center gap-3 text-sm">
-            <svg class="w-5 h-5 text-blue-600" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-              <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M13 16h-1v-4h-1m1-4h.01M21 12a9 9 0 11-18 0 9 9 0 0118 0z"/>
+            <svg class="w-5 h-5 text-blue-600" fill="none" stroke="currentColor" viewBox="0 0 24 24" stroke-width="2">
+              <path stroke-linecap="round" stroke-linejoin="round" d="M13 16h-1v-4h-1m1-4h.01M21 12a9 9 0 11-18 0 9 9 0 0118 0z"/>
             </svg>
             <div>
-              <span class="text-blue-900 font-semibold">创建时间：</span>
-              <span class="text-blue-700">{{ supplier.created_at.strftime('%Y-%m-%d %H:%M:%S') if supplier.created_at else '未知' }}</span>
+              <span class="text-blue-900 font-bold">Created: </span>
+              <span class="text-blue-700 font-medium">{{ supplier.created_at.strftime('%B %d, %Y at %H:%M') if supplier.created_at else 'Unknown' }}</span>
             </div>
           </div>
         </div>
       </div>
 
-      <!-- 操作按钮 -->
-      <div class="flex items-center gap-3 pt-8 border-t border-slate-200 mt-8">
+      <!-- Action Buttons -->
+      <div class="flex items-center gap-3 pt-8 border-t-2 border-gray-100 mt-8">
         <button
           type="submit"
           class="inline-flex items-center gap-2 px-6 py-3 rounded-xl
-                 bg-gradient-to-r from-amber-600 to-amber-700 text-white font-semibold
-                 shadow-lg shadow-amber-600/30 hover:shadow-xl hover:shadow-amber-600/40
-                 transition-all duration-200 hover:scale-105 active:scale-95">
-          <svg class="w-5 h-5" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-            <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M5 13l4 4L19 7"/>
+                 bg-gray-900 text-white font-bold
+                 hover:bg-gray-800 transition-all hover:scale-105 active:scale-95">
+          <svg class="w-5 h-5" fill="none" stroke="currentColor" viewBox="0 0 24 24" stroke-width="2">
+            <path stroke-linecap="round" stroke-linejoin="round" d="M5 13l4 4L19 7"/>
           </svg>
-          <span>保存更改</span>
+          <span>Save Changes</span>
         </button>
 
-        <a
-          href="{{ url_for('suppliers.index') }}"
-          class="inline-flex items-center gap-2 px-6 py-3 rounded-xl
-                 border-2 border-slate-300 bg-white text-slate-700 font-medium
-                 hover:bg-slate-50 hover:border-slate-400 transition-all">
-          <svg class="w-5 h-5" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-            <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M10 19l-7-7m0 0l7-7m-7 7h18"/>
+        <a href="{{ url_for('suppliers.index') }}"
+           class="inline-flex items-center gap-2 px-6 py-3 rounded-xl
+                  border-2 border-gray-300 bg-white text-gray-700 font-semibold
+                  hover:bg-gray-50 hover:border-gray-900 transition-all">
+          <svg class="w-5 h-5" fill="none" stroke="currentColor" viewBox="0 0 24 24" stroke-width="2">
+            <path stroke-linecap="round" stroke-linejoin="round" d="M10 19l-7-7m0 0l7-7m-7 7h18"/>
           </svg>
-          <span>返回列表</span>
+          <span>Back to List</span>
         </a>
 
         <div class="flex-1"></div>
 
-        <!-- 删除按钮 -->
+        <!-- Delete Button -->
         <button
           type="button"
-          onclick="if(confirm('确认删除供应商 {{ supplier.code }} 吗？\n\n此操作将同时删除：\n• 所有关联的零部件\n• 所有上传的文档\n\n此操作不可恢复！')) {
+          onclick="if(confirm('Delete supplier {{ supplier.code }}?\n\nThis will also delete:\n• All related parts\n• All uploaded documents\n\nThis action cannot be undone!')) {
             fetch('{{ url_for('suppliers.delete_supplier', supplier_id=supplier.id) }}', {
               method: 'POST',
               headers: {'Content-Type': 'application/x-www-form-urlencoded'}
             }).then(() => window.location.href = '{{ url_for('suppliers.index') }}');
           }"
           class="inline-flex items-center gap-2 px-6 py-3 rounded-xl
-                 bg-rose-50 text-rose-600 hover:bg-rose-100 hover:text-rose-700
-                 border-2 border-rose-200 font-medium transition-all hover:scale-105">
-          <svg class="w-5 h-5" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-            <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M19 7l-.867 12.142A2 2 0 0116.138 21H7.862a2 2 0 01-1.995-1.858L5 7m5 4v6m4-6v6m1-10V4a1 1 0 00-1-1h-4a1 1 0 00-1 1v3M4 7h16"/>
+                 bg-red-50 text-red-600 hover:bg-red-100 hover:text-red-700
+                 border-2 border-red-200 hover:border-red-400 font-semibold transition-all hover:scale-105">
+          <svg class="w-5 h-5" fill="none" stroke="currentColor" viewBox="0 0 24 24" stroke-width="2">
+            <path stroke-linecap="round" stroke-linejoin="round" d="M19 7l-.867 12.142A2 2 0 0116.138 21H7.862a2 2 0 01-1.995-1.858L5 7m5 4v6m4-6v6m1-10V4a1 1 0 00-1-1h-4a1 1 0 00-1 1v3M4 7h16"/>
           </svg>
-          <span>删除供应商</span>
+          <span>Delete Supplier</span>
         </button>
       </div>
     </form>
   </div>
 
-  <!-- 快速访问卡片 -->
-  <div class="mt-6 grid grid-cols-1 md:grid-cols-3 gap-4">
+  <!-- Quick Access Cards -->
+  <div class="mt-8 grid grid-cols-1 md:grid-cols-3 gap-5">
+
     <a href="{{ url_for('parts.list_parts', supplier_code=supplier.code) }}"
-       class="bg-white rounded-xl p-5 border border-slate-200 hover:shadow-lg transition-all hover:scale-105 group">
-      <div class="flex items-center gap-3">
-        <div class="w-12 h-12 bg-emerald-100 rounded-xl flex items-center justify-center group-hover:bg-emerald-200 transition-colors">
-          <svg class="w-6 h-6 text-emerald-600" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-            <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M19 11H5m14 0a2 2 0 012 2v6a2 2 0 01-2 2H5a2 2 0 01-2-2v-6a2 2 0 012-2m14 0V9a2 2 0 00-2-2M5 11V9a2 2 0 012-2m0 0V5a2 2 0 012-2h6a2 2 0 012 2v2M7 7h10"/>
+       class="bg-white rounded-xl p-5 border-2 border-gray-200 hover:border-gray-400 transition-all hover:scale-105 group">
+      <div class="flex items-center gap-4">
+        <div class="w-12 h-12 bg-green-100 rounded-xl flex items-center justify-center group-hover:bg-green-200 transition-colors">
+          <svg class="w-6 h-6 text-green-600" fill="none" stroke="currentColor" viewBox="0 0 24 24" stroke-width="2">
+            <path stroke-linecap="round" stroke-linejoin="round" d="M19 11H5m14 0a2 2 0 012 2v6a2 2 0 01-2 2H5a2 2 0 01-2-2v-6a2 2 0 012-2m14 0V9a2 2 0 00-2-2M5 11V9a2 2 0 012-2m0 0V5a2 2 0 012-2h6a2 2 0 012 2v2M7 7h10"/>
           </svg>
         </div>
         <div>
-          <h3 class="text-sm font-semibold text-slate-900 mb-0.5">零部件管理</h3>
-          <p class="text-xs text-slate-500">查看和管理零部件</p>
+          <h3 class="text-sm font-bold text-gray-900 mb-0.5">Parts</h3>
+          <p class="text-xs text-gray-500">View & manage parts</p>
         </div>
       </div>
     </a>
 
     <a href="{{ url_for('docs.list_docs', supplier_code=supplier.code) }}"
-       class="bg-white rounded-xl p-5 border border-slate-200 hover:shadow-lg transition-all hover:scale-105 group">
-      <div class="flex items-center gap-3">
+       class="bg-white rounded-xl p-5 border-2 border-gray-200 hover:border-gray-400 transition-all hover:scale-105 group">
+      <div class="flex items-center gap-4">
         <div class="w-12 h-12 bg-blue-100 rounded-xl flex items-center justify-center group-hover:bg-blue-200 transition-colors">
-          <svg class="w-6 h-6 text-blue-600" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-            <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M9 12h6m-6 4h6m2 5H7a2 2 0 01-2-2V5a2 2 0 012-2h5.586a1 1 0 01.707.293l5.414 5.414a1 1 0 01.293.707V19a2 2 0 01-2 2z"/>
+          <svg class="w-6 h-6 text-blue-600" fill="none" stroke="currentColor" viewBox="0 0 24 24" stroke-width="2">
+            <path stroke-linecap="round" stroke-linejoin="round" d="M9 12h6m-6 4h6m2 5H7a2 2 0 01-2-2V5a2 2 0 012-2h5.586a1 1 0 01.707.293l5.414 5.414a1 1 0 01.293.707V19a2 2 0 01-2 2z"/>
           </svg>
         </div>
         <div>
-          <h3 class="text-sm font-semibold text-slate-900 mb-0.5">文档管理</h3>
-          <p class="text-xs text-slate-500">查看和上传文档</p>
+          <h3 class="text-sm font-bold text-gray-900 mb-0.5">Documents</h3>
+          <p class="text-xs text-gray-500">View & upload docs</p>
         </div>
       </div>
     </a>
 
     <a href="{{ url_for('supplier_ws.overview', supplier_code=supplier.code) }}"
-       class="bg-white rounded-xl p-5 border border-slate-200 hover:shadow-lg transition-all hover:scale-105 group">
-      <div class="flex items-center gap-3">
+       class="bg-white rounded-xl p-5 border-2 border-gray-200 hover:border-gray-400 transition-all hover:scale-105 group">
+      <div class="flex items-center gap-4">
         <div class="w-12 h-12 bg-purple-100 rounded-xl flex items-center justify-center group-hover:bg-purple-200 transition-colors">
-          <svg class="w-6 h-6 text-purple-600" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-            <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M4 5a1 1 0 011-1h14a1 1 0 011 1v2a1 1 0 01-1 1H5a1 1 0 01-1-1V5zM4 13a1 1 0 011-1h6a1 1 0 011 1v6a1 1 0 01-1 1H5a1 1 0 01-1-1v-6zM16 13a1 1 0 011-1h2a1 1 0 011 1v6a1 1 0 01-1 1h-2a1 1 0 01-1-1v-6z"/>
+          <svg class="w-6 h-6 text-purple-600" fill="none" stroke="currentColor" viewBox="0 0 24 24" stroke-width="2">
+            <path stroke-linecap="round" stroke-linejoin="round" d="M4 5a1 1 0 011-1h14a1 1 0 011 1v2a1 1 0 01-1 1H5a1 1 0 01-1-1V5zM4 13a1 1 0 011-1h6a1 1 0 011 1v6a1 1 0 01-1 1H5a1 1 0 01-1-1v-6zM16 13a1 1 0 011-1h2a1 1 0 011 1v6a1 1 0 01-1 1h-2a1 1 0 01-1-1v-6z"/>
           </svg>
         </div>
         <div>
-          <h3 class="text-sm font-semibold text-slate-900 mb-0.5">工作台</h3>
-          <p class="text-xs text-slate-500">进入供应商工作台</p>
+          <h3 class="text-sm font-bold text-gray-900 mb-0.5">Workspace</h3>
+          <p class="text-xs text-gray-500">View full details</p>
         </div>
       </div>
     </a>
