@@ -2,251 +2,269 @@
 {% block content %}
 
 <style>
-  /* 输入框聚焦效果 */
   .form-input:focus {
-    box-shadow: 0 0 0 3px rgba(239, 68, 68, 0.1);
+    box-shadow: 0 0 0 3px rgba(0, 0, 0, 0.05);
   }
 
   .form-select:focus {
-    box-shadow: 0 0 0 3px rgba(239, 68, 68, 0.1);
+    box-shadow: 0 0 0 3px rgba(0, 0, 0, 0.05);
   }
 
-  /* 8D 状态选择器颜色 */
   .status-not-required { background-color: #f1f5f9; }
   .status-not-received { background-color: #fef3c7; }
   .status-reject { background-color: #fee2e2; }
   .status-pass { background-color: #d1fae5; }
 </style>
 
-<div class="max-w-6xl mx-auto">
-  <!-- 面包屑导航 -->
-  <div class="mb-6 flex items-center gap-2 text-sm text-slate-600">
+<div class="max-w-6xl mx-auto px-6 py-6">
+
+  <!-- Breadcrumb -->
+  <div class="mb-6 flex items-center gap-2 text-sm text-gray-500">
     <a href="{{ url_for('tr.index') }}"
-       class="hover:text-slate-900 transition">TR 列表</a>
-    <svg class="w-4 h-4 text-slate-400" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+       class="hover:text-gray-900 transition font-medium">Trouble Reports</a>
+    <svg class="w-4 h-4 text-gray-300" fill="none" stroke="currentColor" viewBox="0 0 24 24">
       <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M9 5l7 7-7 7"/>
     </svg>
-    <span class="text-slate-900 font-medium">
-      {% if mode == "edit" %}编辑 TR{% else %}新增 TR{% endif %}
+    <span class="text-gray-900 font-semibold">
+      {% if mode == "edit" %}Edit TR{% else %}New TR{% endif %}
     </span>
   </div>
 
-  <!-- 主卡片 -->
-  <div class="bg-white rounded-2xl shadow-lg border border-slate-200 overflow-hidden">
-    <!-- 头部 -->
-    <div class="bg-gradient-to-r from-rose-50 to-rose-100 px-8 py-6 border-b border-rose-200">
+  <!-- Main Card -->
+  <div class="bg-white rounded-2xl border-2 border-gray-200 overflow-hidden">
+
+    <!-- Header -->
+    <div class="px-8 py-6 border-b-2 border-gray-100">
       <div class="flex items-center justify-between">
-        <div class="flex items-center gap-3">
-          <div class="w-14 h-14 bg-rose-200 rounded-xl flex items-center justify-center">
+        <div class="flex items-center gap-4">
+          <div class="w-14 h-14 bg-red-500 rounded-xl flex items-center justify-center">
             {% if mode == "edit" %}
-              <svg class="w-7 h-7 text-rose-600" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-                <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M11 5H6a2 2 0 00-2 2v11a2 2 0 002 2h11a2 2 0 002-2v-5m-1.414-9.414a2 2 0 112.828 2.828L11.828 15H9v-2.828l8.586-8.586z"/>
+              <svg class="w-7 h-7 text-white" fill="none" stroke="currentColor" viewBox="0 0 24 24" stroke-width="2">
+                <path stroke-linecap="round" stroke-linejoin="round" d="M11 5H6a2 2 0 00-2 2v11a2 2 0 002 2h11a2 2 0 002-2v-5m-1.414-9.414a2 2 0 112.828 2.828L11.828 15H9v-2.828l8.586-8.586z"/>
               </svg>
             {% else %}
-              <svg class="w-7 h-7 text-rose-600" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-                <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M12 9v2m0 4h.01m-6.938 4h13.856c1.54 0 2.502-1.667 1.732-3L13.732 4c-.77-1.333-2.694-1.333-3.464 0L3.34 16c-.77 1.333.192 3 1.732 3z"/>
+              <svg class="w-7 h-7 text-white" fill="none" stroke="currentColor" viewBox="0 0 24 24" stroke-width="2">
+                <path stroke-linecap="round" stroke-linejoin="round" d="M12 9v2m0 4h.01m-6.938 4h13.856c1.54 0 2.502-1.667 1.732-3L13.732 4c-.77-1.333-2.694-1.333-3.464 0L3.34 16c-.77 1.333.192 3 1.732 3z"/>
               </svg>
             {% endif %}
           </div>
           <div>
-            <h1 class="text-2xl font-bold text-slate-900">
-              {% if mode == "edit" %}编辑 Trouble Report{% else %}新增 Trouble Report{% endif %}
+            <h1 class="text-3xl font-bold text-gray-900">
+              {% if mode == "edit" %}Edit Trouble Report{% else %}New Trouble Report{% endif %}
             </h1>
-            <p class="text-sm text-slate-600 mt-1">统一格式录入，便于追踪和分析</p>
+            <p class="text-sm text-gray-500 mt-1">Track quality issues and corrective actions</p>
           </div>
         </div>
 
         {% if mode == "edit" and tr %}
-          <div class="bg-white rounded-xl px-4 py-2 border border-rose-200 shadow-sm">
-            <div class="text-xs text-slate-500 mb-0.5">TR Number</div>
-            <div class="font-mono font-semibold text-slate-900">{{ tr.tr_no }}</div>
+          <div class="bg-gray-100 rounded-xl px-4 py-2 border-2 border-gray-200">
+            <div class="text-xs text-gray-500 mb-0.5 font-semibold">TR Number</div>
+            <div class="font-mono font-bold text-gray-900">{{ tr.tr_no }}</div>
           </div>
         {% endif %}
       </div>
     </div>
 
-    <!-- 表单内容 -->
+    <!-- Form Content -->
     <form method="post"
           action="{% if mode=='edit' %}{{ url_for('tr.edit_tr', tr_id=tr.id) }}{% else %}{{ url_for('tr.new_tr') }}{% endif %}"
           class="p-8">
 
-      <!-- 基本信息区块 -->
+      <!-- Basic Information -->
       <div class="mb-8">
-        <h2 class="text-lg font-bold text-slate-900 mb-4 flex items-center gap-2">
-          <svg class="w-5 h-5 text-rose-600" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-            <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M13 16h-1v-4h-1m1-4h.01M21 12a9 9 0 11-18 0 9 9 0 0118 0z"/>
+        <h2 class="text-lg font-bold text-gray-900 mb-4 flex items-center gap-2">
+          <svg class="w-5 h-5 text-red-600" fill="none" stroke="currentColor" viewBox="0 0 24 24" stroke-width="2">
+            <path stroke-linecap="round" stroke-linejoin="round" d="M13 16h-1v-4h-1m1-4h.01M21 12a9 9 0 11-18 0 9 9 0 0118 0z"/>
           </svg>
-          基本信息
+          Basic Information
         </h2>
 
         <div class="grid grid-cols-12 gap-4">
+
           <!-- TR No. -->
           <div class="col-span-12 md:col-span-4">
-            <label class="flex items-center gap-2 text-sm font-semibold text-slate-700 mb-2">
-              <svg class="w-4 h-4 text-rose-600" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-                <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M7 7h.01M7 3h5c.512 0 1.024.195 1.414.586l7 7a2 2 0 010 2.828l-7 7a2 2 0 01-2.828 0l-7-7A1.994 1.994 0 013 12V7a4 4 0 014-4z"/>
+            <label class="flex items-center gap-2 text-sm font-bold text-gray-700 mb-2">
+              <svg class="w-4 h-4 text-red-600" fill="none" stroke="currentColor" viewBox="0 0 24 24" stroke-width="2">
+                <path stroke-linecap="round" stroke-linejoin="round" d="M7 7h.01M7 3h5c.512 0 1.024.195 1.414.586l7 7a2 2 0 010 2.828l-7 7a2 2 0 01-2.828 0l-7-7A1.994 1.994 0 013 12V7a4 4 0 014-4z"/>
               </svg>
-              TR 编号 <span class="text-rose-500">*</span>
+              TR Number <span class="text-red-500">*</span>
             </label>
             <input name="tr_no" required
                    value="{{ tr.tr_no if tr else '' }}"
                    placeholder="TR-2024-001"
-                   class="form-input w-full px-4 py-3 border-2 border-slate-200 rounded-xl text-sm
-                          focus:outline-none focus:border-rose-400 transition-all
-                          placeholder:text-slate-400 font-mono">
+                   class="form-input w-full px-4 py-3 border-2 border-gray-200 rounded-xl text-sm
+                          focus:outline-none focus:border-gray-900 transition-all
+                          placeholder:text-gray-400 font-mono font-semibold">
           </div>
 
           <!-- Supplier Name -->
-          <div class="col-span-12 md:col-span-8">
-            <label class="flex items-center gap-2 text-sm font-semibold text-slate-700 mb-2">
-              <svg class="w-4 h-4 text-blue-600" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-                <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M19 21V5a2 2 0 00-2-2H7a2 2 0 00-2 2v16m14 0h2m-2 0h-5m-9 0H3m2 0h5M9 7h1m-1 4h1m4-4h1m-1 4h1m-5 10v-5a1 1 0 011-1h2a1 1 0 011 1v5m-4 0h4"/>
-              </svg>
-              供应商名称 <span class="text-rose-500">*</span>
-            </label>
-            <input name="supplier_name" required
-                   value="{{ tr.supplier_name if tr else '' }}"
-                   placeholder="供应商英文名称"
-                   class="form-input w-full px-4 py-3 border-2 border-slate-200 rounded-xl text-sm
-                          focus:outline-none focus:border-blue-400 transition-all
-                          placeholder:text-slate-400">
-          </div>
+<!-- 在 TR 表单中，找到 Supplier Name 字段，替换为： -->
+
+            <!-- Supplier Name -->
+            <div class="col-span-12 md:col-span-8">
+              <label class="flex items-center gap-2 text-sm font-bold text-gray-700 mb-2">
+                <svg class="w-4 h-4 text-blue-600" fill="none" stroke="currentColor" viewBox="0 0 24 24" stroke-width="2">
+                  <path stroke-linecap="round" stroke-linejoin="round" d="M19 21V5a2 2 0 00-2-2H7a2 2 0 00-2 2v16m14 0h2m-2 0h-5m-9 0H3m2 0h5M9 7h1m-1 4h1m4-4h1m-1 4h1m-5 10v-5a1 1 0 011-1h2a1 1 0 011 1v5m-4 0h4"/>
+                </svg>
+                Supplier Name <span class="text-red-500">*</span>
+              </label>
+
+              <select name="supplier_name" required
+                      class="form-select w-full px-4 py-3 border-2 border-gray-200 rounded-xl text-sm
+                             focus:outline-none focus:border-gray-900 transition-all cursor-pointer">
+                <option value="">Select a supplier</option>
+                {% for supplier in suppliers %}
+                  <option value="{{ supplier.name }}"
+                          {% if tr and tr.supplier_name == supplier.name %}selected{% endif %}>
+                    {{ supplier.supplier_code }} - {{ supplier.name }}
+                  </option>
+                {% endfor %}
+              </select>
+
+              <p class="mt-2 text-xs text-gray-500">
+                Don't see your supplier?
+                <a href="{{ url_for('suppliers.new_supplier') }}" target="_blank" class="text-blue-600 hover:text-blue-700 font-semibold">
+                  Add new supplier
+                </a>
+              </p>
+            </div>
 
           <!-- Part Number -->
           <div class="col-span-12 md:col-span-6">
-            <label class="flex items-center gap-2 text-sm font-semibold text-slate-700 mb-2">
-              <svg class="w-4 h-4 text-emerald-600" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-                <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M19 11H5m14 0a2 2 0 012 2v6a2 2 0 01-2 2H5a2 2 0 01-2-2v-6a2 2 0 012-2m14 0V9a2 2 0 00-2-2M5 11V9a2 2 0 012-2m0 0V5a2 2 0 012-2h6a2 2 0 012 2v2M7 7h10"/>
+            <label class="flex items-center gap-2 text-sm font-bold text-gray-700 mb-2">
+              <svg class="w-4 h-4 text-green-600" fill="none" stroke="currentColor" viewBox="0 0 24 24" stroke-width="2">
+                <path stroke-linecap="round" stroke-linejoin="round" d="M19 11H5m14 0a2 2 0 012 2v6a2 2 0 01-2 2H5a2 2 0 01-2-2v-6a2 2 0 012-2m14 0V9a2 2 0 00-2-2M5 11V9a2 2 0 012-2m0 0V5a2 2 0 012-2h6a2 2 0 012 2v2M7 7h10"/>
               </svg>
-              零部件编号
+              Part Number
             </label>
             <input name="part_number"
                    value="{{ tr.part_number if tr and tr.part_number else '' }}"
-                   placeholder="零部件 P/N"
-                   class="form-input w-full px-4 py-3 border-2 border-slate-200 rounded-xl text-sm
-                          focus:outline-none focus:border-emerald-400 transition-all
-                          placeholder:text-slate-400 font-mono">
+                   placeholder="Part P/N"
+                   class="form-input w-full px-4 py-3 border-2 border-gray-200 rounded-xl text-sm
+                          focus:outline-none focus:border-gray-900 transition-all
+                          placeholder:text-gray-400 font-mono">
           </div>
 
           <!-- Part Name -->
           <div class="col-span-12 md:col-span-6">
-            <label class="flex items-center gap-2 text-sm font-semibold text-slate-700 mb-2">
-              <svg class="w-4 h-4 text-purple-600" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-                <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M4 6h16M4 12h16M4 18h7"/>
+            <label class="flex items-center gap-2 text-sm font-bold text-gray-700 mb-2">
+              <svg class="w-4 h-4 text-purple-600" fill="none" stroke="currentColor" viewBox="0 0 24 24" stroke-width="2">
+                <path stroke-linecap="round" stroke-linejoin="round" d="M4 6h16M4 12h16M4 18h7"/>
               </svg>
-              零部件名称
+              Part Name
             </label>
             <input name="part_name"
                    value="{{ tr.part_name if tr and tr.part_name else '' }}"
-                   placeholder="零部件名称或描述"
-                   class="form-input w-full px-4 py-3 border-2 border-slate-200 rounded-xl text-sm
-                          focus:outline-none focus:border-purple-400 transition-all
-                          placeholder:text-slate-400">
+                   placeholder="Part name or description"
+                   class="form-input w-full px-4 py-3 border-2 border-gray-200 rounded-xl text-sm
+                          focus:outline-none focus:border-gray-900 transition-all
+                          placeholder:text-gray-400">
           </div>
         </div>
       </div>
 
-      <!-- 问题描述区块 -->
+      <!-- Issue Description -->
       <div class="mb-8">
-        <h2 class="text-lg font-bold text-slate-900 mb-4 flex items-center gap-2">
-          <svg class="w-5 h-5 text-amber-600" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-            <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M12 9v2m0 4h.01m-6.938 4h13.856c1.54 0 2.502-1.667 1.732-3L13.732 4c-.77-1.333-2.694-1.333-3.464 0L3.34 16c-.77 1.333.192 3 1.732 3z"/>
+        <h2 class="text-lg font-bold text-gray-900 mb-4 flex items-center gap-2">
+          <svg class="w-5 h-5 text-amber-600" fill="none" stroke="currentColor" viewBox="0 0 24 24" stroke-width="2">
+            <path stroke-linecap="round" stroke-linejoin="round" d="M12 9v2m0 4h.01m-6.938 4h13.856c1.54 0 2.502-1.667 1.732-3L13.732 4c-.77-1.333-2.694-1.333-3.464 0L3.34 16c-.77 1.333.192 3 1.732 3z"/>
           </svg>
-          问题描述
+          Issue Description
         </h2>
 
         <div>
-          <label class="flex items-center gap-2 text-sm font-semibold text-slate-700 mb-2">
-            <svg class="w-4 h-4 text-amber-600" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-              <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M9 12h6m-6 4h6m2 5H7a2 2 0 01-2-2V5a2 2 0 012-2h5.586a1 1 0 01.707.293l5.414 5.414a1 1 0 01.293.707V19a2 2 0 01-2 2z"/>
+          <label class="flex items-center gap-2 text-sm font-bold text-gray-700 mb-2">
+            <svg class="w-4 h-4 text-amber-600" fill="none" stroke="currentColor" viewBox="0 0 24 24" stroke-width="2">
+              <path stroke-linecap="round" stroke-linejoin="round" d="M9 12h6m-6 4h6m2 5H7a2 2 0 01-2-2V5a2 2 0 012-2h5.586a1 1 0 01.707.293l5.414 5.414a1 1 0 01.293.707V19a2 2 0 01-2 2z"/>
             </svg>
-            问题详细描述 <span class="text-rose-500">*</span>
+            Detailed Description <span class="text-red-500">*</span>
           </label>
           <textarea
             name="issue_description"
             rows="6"
             required
-            placeholder="请详细描述问题：&#10;• 现象：发生了什么问题&#10;• 条件：在什么情况下发生&#10;• 影响：造成了什么影响&#10;• 临时措施：已采取的临时应对措施（如有）"
-            class="form-input w-full px-4 py-3 border-2 border-slate-200 rounded-xl text-sm
-                   focus:outline-none focus:border-amber-400 transition-all
-                   placeholder:text-slate-400 resize-y leading-6">{{ tr.issue_description if tr else "" }}</textarea>
-          <p class="mt-1.5 text-xs text-slate-500">建议按统一格式描述，便于后续分析和追踪</p>
+            placeholder="Describe the issue in detail:&#10;• Symptom: What happened&#10;• Conditions: When/where it occurred&#10;• Impact: What was affected&#10;• Temporary actions: Any immediate measures taken"
+            class="form-input w-full px-4 py-3 border-2 border-gray-200 rounded-xl text-sm
+                   focus:outline-none focus:border-gray-900 transition-all
+                   placeholder:text-gray-400 resize-y leading-6">{{ tr.issue_description if tr else "" }}</textarea>
+          <p class="mt-2 text-xs text-gray-500">Structured format recommended for better tracking and analysis</p>
         </div>
       </div>
 
-      <!-- 状态管理区块 -->
+      <!-- Status Management -->
       <div class="mb-8">
-        <h2 class="text-lg font-bold text-slate-900 mb-4 flex items-center gap-2">
-          <svg class="w-5 h-5 text-indigo-600" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-            <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M9 5H7a2 2 0 00-2 2v12a2 2 0 002 2h10a2 2 0 002-2V7a2 2 0 00-2-2h-2M9 5a2 2 0 002 2h2a2 2 0 002-2M9 5a2 2 0 012-2h2a2 2 0 012 2"/>
+        <h2 class="text-lg font-bold text-gray-900 mb-4 flex items-center gap-2">
+          <svg class="w-5 h-5 text-indigo-600" fill="none" stroke="currentColor" viewBox="0 0 24 24" stroke-width="2">
+            <path stroke-linecap="round" stroke-linejoin="round" d="M9 5H7a2 2 0 00-2 2v12a2 2 0 002 2h10a2 2 0 002-2V7a2 2 0 00-2-2h-2M9 5a2 2 0 002 2h2a2 2 0 002-2M9 5a2 2 0 012-2h2a2 2 0 012 2"/>
           </svg>
-          状态管理
+          Status Management
         </h2>
 
         <div class="grid grid-cols-12 gap-4">
+
           <!-- Severity -->
           <div class="col-span-12 md:col-span-3">
-            <label class="flex items-center gap-2 text-sm font-semibold text-slate-700 mb-2">
-              <svg class="w-4 h-4 text-rose-600" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-                <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M12 9v2m0 4h.01m-6.938 4h13.856c1.54 0 2.502-1.667 1.732-3L13.732 4c-.77-1.333-2.694-1.333-3.464 0L3.34 16c-.77 1.333.192 3 1.732 3z"/>
+            <label class="flex items-center gap-2 text-sm font-bold text-gray-700 mb-2">
+              <svg class="w-4 h-4 text-red-600" fill="none" stroke="currentColor" viewBox="0 0 24 24" stroke-width="2">
+                <path stroke-linecap="round" stroke-linejoin="round" d="M12 9v2m0 4h.01m-6.938 4h13.856c1.54 0 2.502-1.667 1.732-3L13.732 4c-.77-1.333-2.694-1.333-3.464 0L3.34 16c-.77 1.333.192 3 1.732 3z"/>
               </svg>
-              严重等级
+              Severity
             </label>
             <input name="severity"
                    value="{{ tr.severity if tr and tr.severity else '' }}"
                    placeholder="S0/S1/40/100..."
-                   class="form-input w-full px-4 py-3 border-2 border-slate-200 rounded-xl text-sm
-                          focus:outline-none focus:border-rose-400 transition-all
-                          placeholder:text-slate-400 font-mono">
+                   class="form-input w-full px-4 py-3 border-2 border-gray-200 rounded-xl text-sm
+                          focus:outline-none focus:border-gray-900 transition-all
+                          placeholder:text-gray-400 font-mono">
           </div>
 
           <!-- 8D Status -->
           <div class="col-span-12 md:col-span-3">
-            <label class="flex items-center gap-2 text-sm font-semibold text-slate-700 mb-2">
-              <svg class="w-4 h-4 text-blue-600" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-                <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M9 12h6m-6 4h6m2 5H7a2 2 0 01-2-2V5a2 2 0 012-2h5.586a1 1 0 01.707.293l5.414 5.414a1 1 0 01.293.707V19a2 2 0 01-2 2z"/>
+            <label class="flex items-center gap-2 text-sm font-bold text-gray-700 mb-2">
+              <svg class="w-4 h-4 text-blue-600" fill="none" stroke="currentColor" viewBox="0 0 24 24" stroke-width="2">
+                <path stroke-linecap="round" stroke-linejoin="round" d="M9 12h6m-6 4h6m2 5H7a2 2 0 01-2-2V5a2 2 0 012-2h5.586a1 1 0 01.707.293l5.414 5.414a1 1 0 01.293.707V19a2 2 0 01-2 2z"/>
               </svg>
-              8D 状态
+              8D Status
             </label>
             <select id="eight_d_status" name="eight_d_status"
-                    class="form-select w-full px-4 py-3 border-2 border-slate-200 rounded-xl text-sm
-                           focus:outline-none focus:border-blue-400 transition-all cursor-pointer">
+                    class="form-select w-full px-4 py-3 border-2 border-gray-200 rounded-xl text-sm
+                           focus:outline-none focus:border-gray-900 transition-all cursor-pointer">
               {% set d8 = (tr.eight_d_status if tr and tr.eight_d_status else "NOT_REQUIRED") %}
-              <option value="NOT_REQUIRED" {% if d8=="NOT_REQUIRED" %}selected{% endif %}>⚪ 不要求 8D</option>
-              <option value="NOT_RECEIVED" {% if d8=="NOT_RECEIVED" %}selected{% endif %}>🟡 要求但未收到</option>
-              <option value="RECEIVED_REJECT" {% if d8=="RECEIVED_REJECT" %}selected{% endif %}>🔴 已收到 (Reject)</option>
-              <option value="RECEIVED_PASS" {% if d8=="RECEIVED_PASS" %}selected{% endif %}>🟢 已收到 (Pass)</option>
+              <option value="NOT_REQUIRED" {% if d8=="NOT_REQUIRED" %}selected{% endif %}>⚪ Not Required</option>
+              <option value="NOT_RECEIVED" {% if d8=="NOT_RECEIVED" %}selected{% endif %}>🟡 Required but Not Received</option>
+              <option value="RECEIVED_REJECT" {% if d8=="RECEIVED_REJECT" %}selected{% endif %}>🔴 Received (Reject)</option>
+              <option value="RECEIVED_PASS" {% if d8=="RECEIVED_PASS" %}selected{% endif %}>🟢 Received (Pass)</option>
             </select>
           </div>
 
           <!-- 8D Reference -->
           <div class="col-span-12 md:col-span-3">
-            <label class="flex items-center gap-2 text-sm font-semibold text-slate-700 mb-2">
-              <svg class="w-4 h-4 text-indigo-600" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-                <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M13.828 10.172a4 4 0 00-5.656 0l-4 4a4 4 0 105.656 5.656l1.102-1.101m-.758-4.899a4 4 0 005.656 0l4-4a4 4 0 00-5.656-5.656l-1.1 1.1"/>
+            <label class="flex items-center gap-2 text-sm font-bold text-gray-700 mb-2">
+              <svg class="w-4 h-4 text-indigo-600" fill="none" stroke="currentColor" viewBox="0 0 24 24" stroke-width="2">
+                <path stroke-linecap="round" stroke-linejoin="round" d="M13.828 10.172a4 4 0 00-5.656 0l-4 4a4 4 0 105.656 5.656l1.102-1.101m-.758-4.899a4 4 0 005.656 0l4-4a4 4 0 00-5.656-5.656l-1.1 1.1"/>
               </svg>
-              8D 参考
+              8D Reference
             </label>
             <input id="eight_d" name="eight_d"
                    value="{{ tr.eight_d if tr and tr.eight_d else '' }}"
-                   placeholder="8D编号/文件名/链接..."
-                   class="form-input w-full px-4 py-3 border-2 border-slate-200 rounded-xl text-sm
-                          focus:outline-none focus:border-indigo-400 transition-all
-                          placeholder:text-slate-400 font-mono">
-            <p class="mt-1.5 text-xs text-slate-500">用于追溯 8D 报告的编号或链接</p>
+                   placeholder="8D number/filename/link..."
+                   class="form-input w-full px-4 py-3 border-2 border-gray-200 rounded-xl text-sm
+                          focus:outline-none focus:border-gray-900 transition-all
+                          placeholder:text-gray-400 font-mono">
+            <p class="mt-2 text-xs text-gray-500">For tracking 8D report number or link</p>
           </div>
 
           <!-- Status -->
           <div class="col-span-12 md:col-span-3">
-            <label class="flex items-center gap-2 text-sm font-semibold text-slate-700 mb-2">
-              <svg class="w-4 h-4 text-emerald-600" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-                <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M9 12l2 2 4-4m6 2a9 9 0 11-18 0 9 9 0 0118 0z"/>
+            <label class="flex items-center gap-2 text-sm font-bold text-gray-700 mb-2">
+              <svg class="w-4 h-4 text-green-600" fill="none" stroke="currentColor" viewBox="0 0 24 24" stroke-width="2">
+                <path stroke-linecap="round" stroke-linejoin="round" d="M9 12l2 2 4-4m6 2a9 9 0 11-18 0 9 9 0 0118 0z"/>
               </svg>
-              处理状态
+              Processing Status
             </label>
             <select name="status"
-                    class="form-select w-full px-4 py-3 border-2 border-slate-200 rounded-xl text-sm
-                           focus:outline-none focus:border-emerald-400 transition-all cursor-pointer">
+                    class="form-select w-full px-4 py-3 border-2 border-gray-200 rounded-xl text-sm
+                           focus:outline-none focus:border-gray-900 transition-all cursor-pointer">
               {% set current = (tr.status if tr and tr.status else "Open") %}
               <option value="Open" {% if current=="Open" %}selected{% endif %}>🔵 Open</option>
               <option value="In Progress" {% if current=="In Progress" %}selected{% endif %}>🟡 In Progress</option>
@@ -256,69 +274,68 @@
         </div>
       </div>
 
-      <!-- 备注区块 -->
+      <!-- Remarks -->
       <div class="mb-8">
-        <h2 class="text-lg font-bold text-slate-900 mb-4 flex items-center gap-2">
-          <svg class="w-5 h-5 text-slate-600" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-            <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M7 8h10M7 12h4m1 8l-4-4H5a2 2 0 01-2-2V6a2 2 0 012-2h14a2 2 0 012 2v8a2 2 0 01-2 2h-3l-4 4z"/>
+        <h2 class="text-lg font-bold text-gray-900 mb-4 flex items-center gap-2">
+          <svg class="w-5 h-5 text-gray-600" fill="none" stroke="currentColor" viewBox="0 0 24 24" stroke-width="2">
+            <path stroke-linecap="round" stroke-linejoin="round" d="M7 8h10M7 12h4m1 8l-4-4H5a2 2 0 01-2-2V6a2 2 0 012-2h14a2 2 0 012 2v8a2 2 0 01-2 2h-3l-4 4z"/>
           </svg>
-          备注
+          Remarks
         </h2>
 
         <div>
-          <label class="text-sm font-semibold text-slate-700 mb-2 block">附加说明</label>
+          <label class="text-sm font-bold text-gray-700 mb-2 block">Additional Notes</label>
           <input name="remark"
                  value="{{ tr.remark if tr and tr.remark else '' }}"
-                 placeholder="其他需要记录的信息..."
-                 class="form-input w-full px-4 py-3 border-2 border-slate-200 rounded-xl text-sm
-                        focus:outline-none focus:border-slate-400 transition-all
-                        placeholder:text-slate-400">
+                 placeholder="Any other information to record..."
+                 class="form-input w-full px-4 py-3 border-2 border-gray-200 rounded-xl text-sm
+                        focus:outline-none focus:border-gray-900 transition-all
+                        placeholder:text-gray-400">
         </div>
       </div>
 
-      <!-- 操作按钮 -->
-      <div class="flex items-center gap-3 pt-6 border-t border-slate-200">
+      <!-- Action Buttons -->
+      <div class="flex items-center gap-3 pt-6 border-t-2 border-gray-100">
         <button type="submit"
                 class="inline-flex items-center gap-2 px-6 py-3 rounded-xl
-                       bg-gradient-to-r from-rose-600 to-rose-700 text-white font-semibold
-                       shadow-lg shadow-rose-600/30 hover:shadow-xl hover:shadow-rose-600/40
-                       transition-all duration-200 hover:scale-105 active:scale-95">
-          <svg class="w-5 h-5" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-            <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M5 13l4 4L19 7"/>
+                       bg-gray-900 text-white font-bold
+                       hover:bg-gray-800 transition-all hover:scale-105 active:scale-95">
+          <svg class="w-5 h-5" fill="none" stroke="currentColor" viewBox="0 0 24 24" stroke-width="2">
+            <path stroke-linecap="round" stroke-linejoin="round" d="M5 13l4 4L19 7"/>
           </svg>
-          <span>{% if mode == "edit" %}保存更改{% else %}创建 TR{% endif %}</span>
+          <span>{% if mode == "edit" %}Save Changes{% else %}Create TR{% endif %}</span>
         </button>
 
         <a href="{{ url_for('tr.index') }}"
            class="inline-flex items-center gap-2 px-6 py-3 rounded-xl
-                  border-2 border-slate-300 bg-white text-slate-700 font-medium
-                  hover:bg-slate-50 hover:border-slate-400 transition-all">
-          <svg class="w-5 h-5" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-            <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M10 19l-7-7m0 0l7-7m-7 7h18"/>
+                  border-2 border-gray-300 bg-white text-gray-700 font-semibold
+                  hover:bg-gray-50 hover:border-gray-900 transition-all">
+          <svg class="w-5 h-5" fill="none" stroke="currentColor" viewBox="0 0 24 24" stroke-width="2">
+            <path stroke-linecap="round" stroke-linejoin="round" d="M10 19l-7-7m0 0l7-7m-7 7h18"/>
           </svg>
-          <span>返回列表</span>
+          <span>Back to List</span>
         </a>
       </div>
     </form>
 
-    <!-- 文档管理区块 (仅编辑模式显示) -->
+    <!-- Document Management (Edit Mode Only) -->
     {% if mode == "edit" and tr %}
     <div class="px-8 pb-8">
-      <div class="border-t border-slate-200 pt-8">
-        <h2 class="text-lg font-bold text-slate-900 mb-4 flex items-center gap-2">
-          <svg class="w-5 h-5 text-indigo-600" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-            <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M7 21h10a2 2 0 002-2V9.414a1 1 0 00-.293-.707l-5.414-5.414A1 1 0 0012.586 3H7a2 2 0 00-2 2v14a2 2 0 002 2z"/>
+      <div class="border-t-2 border-gray-100 pt-8">
+        <h2 class="text-lg font-bold text-gray-900 mb-4 flex items-center gap-2">
+          <svg class="w-5 h-5 text-indigo-600" fill="none" stroke="currentColor" viewBox="0 0 24 24" stroke-width="2">
+            <path stroke-linecap="round" stroke-linejoin="round" d="M7 21h10a2 2 0 002-2V9.414a1 1 0 00-.293-.707l-5.414-5.414A1 1 0 0012.586 3H7a2 2 0 00-2 2v14a2 2 0 002 2z"/>
           </svg>
-          相关文档
+          Related Documents
         </h2>
 
-        <!-- 上传表单 -->
-        <div class="bg-gradient-to-br from-indigo-50 to-blue-50 rounded-xl p-6 border-2 border-indigo-200 mb-6">
-          <h3 class="text-sm font-bold text-indigo-900 mb-4 flex items-center gap-2">
-            <svg class="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-              <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M7 16a4 4 0 01-.88-7.903A5 5 0 1115.9 6L16 6a5 5 0 011 9.9M15 13l-3-3m0 0l-3 3m3-3v12"/>
+        <!-- Upload Form -->
+        <div class="bg-indigo-50 rounded-xl p-6 border-2 border-indigo-200 mb-6">
+          <h3 class="text-sm font-bold text-gray-900 mb-4 flex items-center gap-2">
+            <svg class="w-4 h-4 text-indigo-600" fill="none" stroke="currentColor" viewBox="0 0 24 24" stroke-width="2">
+              <path stroke-linecap="round" stroke-linejoin="round" d="M7 16a4 4 0 01-.88-7.903A5 5 0 1115.9 6L16 6a5 5 0 011 9.9M15 13l-3-3m0 0l-3 3m3-3v12"/>
             </svg>
-            上传新文档
+            Upload New Document
           </h3>
 
           <form method="post"
@@ -327,149 +344,148 @@
                 class="grid grid-cols-12 gap-4">
 
             <div class="col-span-12 md:col-span-3">
-              <label class="text-xs font-semibold text-slate-700 mb-1.5 block">文档类型</label>
+              <label class="text-xs font-bold text-gray-700 mb-1.5 block">Document Type</label>
               <select name="doc_type" required
-                      class="w-full px-3 py-2 border-2 border-indigo-200 rounded-lg text-sm
-                             focus:outline-none focus:border-indigo-400 bg-white">
-                <option value="quality_report">质量报告</option>
-                <option value="test_report">测试报告</option>
-                <option value="8d_report">8D报告</option>
-                <option value="photo">现场照片</option>
-                <option value="capa">纠正预防措施</option>
-                <option value="other">其他文档</option>
+                      class="w-full px-3 py-2 border-2 border-gray-200 rounded-lg text-sm
+                             focus:outline-none focus:border-gray-900 bg-white cursor-pointer">
+                <option value="quality_report">Quality Report</option>
+                <option value="test_report">Test Report</option>
+                <option value="8d_report">8D Report</option>
+                <option value="photo">Photos</option>
+                <option value="capa">CAPA</option>
+                <option value="other">Other</option>
               </select>
             </div>
 
             <div class="col-span-12 md:col-span-4">
-              <label class="text-xs font-semibold text-slate-700 mb-1.5 block">文档标题</label>
-              <input type="text" name="title" placeholder="输入文档标题（可选，留空则使用文件名）"
-                     class="w-full px-3 py-2 border-2 border-indigo-200 rounded-lg text-sm
-                            focus:outline-none focus:border-indigo-400 placeholder:text-slate-400">
+              <label class="text-xs font-bold text-gray-700 mb-1.5 block">Document Title</label>
+              <input type="text" name="title" placeholder="Enter title (optional, uses filename if blank)"
+                     class="w-full px-3 py-2 border-2 border-gray-200 rounded-lg text-sm
+                            focus:outline-none focus:border-gray-900 placeholder:text-gray-400">
             </div>
 
             <div class="col-span-12 md:col-span-5">
-              <label class="text-xs font-semibold text-slate-700 mb-1.5 block">选择文件</label>
+              <label class="text-xs font-bold text-gray-700 mb-1.5 block">Select File</label>
               <div class="flex gap-2">
                 <input type="file" name="file" required
-                       class="flex-1 px-3 py-2 border-2 border-indigo-200 rounded-lg text-sm
-                              focus:outline-none focus:border-indigo-400 bg-white
+                       class="flex-1 px-3 py-2 border-2 border-gray-200 rounded-lg text-sm
+                              focus:outline-none focus:border-gray-900 bg-white
                               file:mr-3 file:py-1 file:px-3 file:rounded file:border-0
-                              file:text-xs file:font-semibold file:bg-indigo-100 file:text-indigo-700
-                              hover:file:bg-indigo-200 cursor-pointer">
+                              file:text-xs file:font-bold file:bg-gray-100 file:text-gray-700
+                              hover:file:bg-gray-200 cursor-pointer">
                 <button type="submit"
-                        class="px-5 py-2 rounded-lg bg-gradient-to-r from-indigo-600 to-indigo-700
-                               text-white text-sm font-semibold hover:from-indigo-700 hover:to-indigo-800
-                               transition-all shadow-lg shadow-indigo-600/30 hover:scale-105 active:scale-95">
-                  上传
+                        class="px-5 py-2 rounded-lg bg-gray-900 text-white text-sm font-bold
+                               hover:bg-gray-800 transition-all hover:scale-105 active:scale-95">
+                  Upload
                 </button>
               </div>
-              <p class="text-xs text-slate-500 mt-1">
-                支持：PDF, Word, Excel, PPT, 图片, ZIP (最大50MB)
+              <p class="text-xs text-gray-500 mt-1">
+                PDF, Office, Images, ZIP supported (max 50MB)
               </p>
             </div>
 
             <div class="col-span-12">
-              <label class="text-xs font-semibold text-slate-700 mb-1.5 block">备注（可选）</label>
-              <input type="text" name="remark" placeholder="关于此文档的说明..."
-                     class="w-full px-3 py-2 border-2 border-indigo-200 rounded-lg text-sm
-                            focus:outline-none focus:border-indigo-400 placeholder:text-slate-400">
+              <label class="text-xs font-bold text-gray-700 mb-1.5 block">Remarks (Optional)</label>
+              <input type="text" name="remark" placeholder="Notes about this document..."
+                     class="w-full px-3 py-2 border-2 border-gray-200 rounded-lg text-sm
+                            focus:outline-none focus:border-gray-900 placeholder:text-gray-400">
             </div>
           </form>
         </div>
 
-        <!-- 已上传文档列表 -->
+        <!-- Uploaded Documents List -->
         {% if documents %}
         <div class="space-y-3">
-          <h3 class="text-sm font-bold text-slate-700 mb-3">已上传文档 ({{ documents|length }})</h3>
+          <h3 class="text-sm font-bold text-gray-700 mb-3">Uploaded Documents ({{ documents|length }})</h3>
           {% for doc in documents %}
-          <div class="bg-white rounded-xl p-4 border-2 border-slate-200 hover:border-indigo-300
-                      transition-all hover:shadow-md group">
+          <div class="bg-white rounded-xl p-4 border-2 border-gray-200 hover:border-gray-400 transition-all group">
             <div class="flex items-start gap-4">
-              <!-- 文档图标 -->
-              <div class="w-12 h-12 rounded-lg bg-gradient-to-br flex items-center justify-center shrink-0
-                          {% if doc.doc_type == 'quality_report' %}from-blue-100 to-blue-200
-                          {% elif doc.doc_type == 'test_report' %}from-emerald-100 to-emerald-200
-                          {% elif doc.doc_type == '8d_report' %}from-purple-100 to-purple-200
-                          {% elif doc.doc_type == 'photo' %}from-pink-100 to-pink-200
-                          {% elif doc.doc_type == 'capa' %}from-amber-100 to-amber-200
-                          {% else %}from-slate-100 to-slate-200{% endif %}">
+
+              <!-- Document Icon -->
+              <div class="w-12 h-12 rounded-lg flex items-center justify-center shrink-0 border-2
+                          {% if doc.doc_type == 'quality_report' %}bg-blue-100 border-blue-200
+                          {% elif doc.doc_type == 'test_report' %}bg-green-100 border-green-200
+                          {% elif doc.doc_type == '8d_report' %}bg-purple-100 border-purple-200
+                          {% elif doc.doc_type == 'photo' %}bg-pink-100 border-pink-200
+                          {% elif doc.doc_type == 'capa' %}bg-amber-100 border-amber-200
+                          {% else %}bg-gray-100 border-gray-200{% endif %}">
                 {% if doc.mime and 'image' in doc.mime %}
-                  <svg class="w-6 h-6 text-pink-600" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-                    <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M4 16l4.586-4.586a2 2 0 012.828 0L16 16m-2-2l1.586-1.586a2 2 0 012.828 0L20 14m-6-6h.01M6 20h12a2 2 0 002-2V6a2 2 0 00-2-2H6a2 2 0 00-2 2v12a2 2 0 002 2z"/>
+                  <svg class="w-6 h-6 text-pink-600" fill="none" stroke="currentColor" viewBox="0 0 24 24" stroke-width="2">
+                    <path stroke-linecap="round" stroke-linejoin="round" d="M4 16l4.586-4.586a2 2 0 012.828 0L16 16m-2-2l1.586-1.586a2 2 0 012.828 0L20 14m-6-6h.01M6 20h12a2 2 0 002-2V6a2 2 0 00-2-2H6a2 2 0 00-2 2v12a2 2 0 002 2z"/>
                   </svg>
                 {% elif doc.mime and 'pdf' in doc.mime %}
-                  <svg class="w-6 h-6 text-red-600" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-                    <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M7 21h10a2 2 0 002-2V9.414a1 1 0 00-.293-.707l-5.414-5.414A1 1 0 0012.586 3H7a2 2 0 00-2 2v14a2 2 0 002 2z"/>
+                  <svg class="w-6 h-6 text-red-600" fill="none" stroke="currentColor" viewBox="0 0 24 24" stroke-width="2">
+                    <path stroke-linecap="round" stroke-linejoin="round" d="M7 21h10a2 2 0 002-2V9.414a1 1 0 00-.293-.707l-5.414-5.414A1 1 0 0012.586 3H7a2 2 0 00-2 2v14a2 2 0 002 2z"/>
                   </svg>
                 {% else %}
-                  <svg class="w-6 h-6 text-slate-600" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-                    <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M9 12h6m-6 4h6m2 5H7a2 2 0 01-2-2V5a2 2 0 012-2h5.586a1 1 0 01.707.293l5.414 5.414a1 1 0 01.293.707V19a2 2 0 01-2 2z"/>
+                  <svg class="w-6 h-6 text-gray-600" fill="none" stroke="currentColor" viewBox="0 0 24 24" stroke-width="2">
+                    <path stroke-linecap="round" stroke-linejoin="round" d="M9 12h6m-6 4h6m2 5H7a2 2 0 01-2-2V5a2 2 0 012-2h5.586a1 1 0 01.707.293l5.414 5.414a1 1 0 01.293.707V19a2 2 0 01-2 2z"/>
                   </svg>
                 {% endif %}
               </div>
 
-              <!-- 文档信息 -->
+              <!-- Document Info -->
               <div class="flex-1 min-w-0">
                 <div class="flex items-start justify-between gap-3 mb-2">
                   <div>
-                    <h4 class="font-semibold text-slate-900 text-sm">{{ doc.title }}</h4>
-                    <p class="text-xs text-slate-500 mt-0.5">{{ doc.original_name }}</p>
+                    <h4 class="font-bold text-gray-900 text-sm">{{ doc.title }}</h4>
+                    <p class="text-xs text-gray-500 mt-0.5 font-mono">{{ doc.original_name }}</p>
                   </div>
-                  <span class="px-2 py-1 rounded-md text-xs font-medium shrink-0
-                               {% if doc.doc_type == 'quality_report' %}bg-blue-100 text-blue-700
-                               {% elif doc.doc_type == 'test_report' %}bg-emerald-100 text-emerald-700
-                               {% elif doc.doc_type == '8d_report' %}bg-purple-100 text-purple-700
-                               {% elif doc.doc_type == 'photo' %}bg-pink-100 text-pink-700
-                               {% elif doc.doc_type == 'capa' %}bg-amber-100 text-amber-700
-                               {% else %}bg-slate-100 text-slate-700{% endif %}">
+                  <span class="px-2 py-1 rounded-md text-xs font-bold border-2 shrink-0
+                               {% if doc.doc_type == 'quality_report' %}bg-blue-50 text-blue-700 border-blue-200
+                               {% elif doc.doc_type == 'test_report' %}bg-green-50 text-green-700 border-green-200
+                               {% elif doc.doc_type == '8d_report' %}bg-purple-50 text-purple-700 border-purple-200
+                               {% elif doc.doc_type == 'photo' %}bg-pink-50 text-pink-700 border-pink-200
+                               {% elif doc.doc_type == 'capa' %}bg-amber-50 text-amber-700 border-amber-200
+                               {% else %}bg-gray-50 text-gray-700 border-gray-200{% endif %}">
                     {{ doc_types[doc.doc_type] }}
                   </span>
                 </div>
 
-                <div class="flex items-center gap-4 text-xs text-slate-500">
+                <div class="flex items-center gap-4 text-xs text-gray-500 font-semibold">
                   <span>{{ (doc.size / 1024 / 1024)|round(2) }} MB</span>
-                  <span>{{ doc.created_at.strftime('%Y-%m-%d %H:%M') }}</span>
+                  <span>{{ doc.created_at.strftime('%b %d, %Y %H:%M') }}</span>
                   {% if doc.remark %}
                   <span class="truncate max-w-xs" title="{{ doc.remark }}">📝 {{ doc.remark }}</span>
                   {% endif %}
                 </div>
               </div>
 
-              <!-- 操作按钮 -->
+              <!-- Action Buttons -->
               <div class="flex items-center gap-2 shrink-0">
                 <a href="{{ url_for('tr.view_document', tr_id=tr.id, doc_id=doc.id) }}"
                    target="_blank"
                    class="inline-flex items-center justify-center w-8 h-8 rounded-lg
                           bg-blue-50 text-blue-600 hover:bg-blue-100 hover:text-blue-700
-                          border border-blue-200 transition-all hover:scale-110"
-                   title="查看">
-                  <svg class="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-                    <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M15 12a3 3 0 11-6 0 3 3 0 016 0z"/>
-                    <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M2.458 12C3.732 7.943 7.523 5 12 5c4.478 0 8.268 2.943 9.542 7-1.274 4.057-5.064 7-9.542 7-4.477 0-8.268-2.943-9.542-7z"/>
+                          border-2 border-blue-200 hover:border-blue-400 transition-all hover:scale-110"
+                   title="View">
+                  <svg class="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24" stroke-width="2">
+                    <path stroke-linecap="round" stroke-linejoin="round" d="M15 12a3 3 0 11-6 0 3 3 0 016 0z"/>
+                    <path stroke-linecap="round" stroke-linejoin="round" d="M2.458 12C3.732 7.943 7.523 5 12 5c4.478 0 8.268 2.943 9.542 7-1.274 4.057-5.064 7-9.542 7-4.477 0-8.268-2.943-9.542-7z"/>
                   </svg>
                 </a>
 
                 <a href="{{ url_for('tr.download_document', tr_id=tr.id, doc_id=doc.id) }}"
                    class="inline-flex items-center justify-center w-8 h-8 rounded-lg
-                          bg-emerald-50 text-emerald-600 hover:bg-emerald-100 hover:text-emerald-700
-                          border border-emerald-200 transition-all hover:scale-110"
-                   title="下载">
-                  <svg class="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-                    <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M4 16v1a3 3 0 003 3h10a3 3 0 003-3v-1m-4-4l-4 4m0 0l-4-4m4 4V4"/>
+                          bg-green-50 text-green-600 hover:bg-green-100 hover:text-green-700
+                          border-2 border-green-200 hover:border-green-400 transition-all hover:scale-110"
+                   title="Download">
+                  <svg class="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24" stroke-width="2">
+                    <path stroke-linecap="round" stroke-linejoin="round" d="M4 16v1a3 3 0 003 3h10a3 3 0 003-3v-1m-4-4l-4 4m0 0l-4-4m4 4V4"/>
                   </svg>
                 </a>
 
                 <form method="post"
                       action="{{ url_for('tr.delete_document', tr_id=tr.id, doc_id=doc.id) }}"
-                      onsubmit="return confirm('确认删除文档「{{ doc.title }}」吗？');"
+                      onsubmit="return confirm('Delete document {{ doc.title }}?');"
                       class="inline">
                   <button type="submit"
                           class="inline-flex items-center justify-center w-8 h-8 rounded-lg
-                                 bg-rose-50 text-rose-600 hover:bg-rose-100 hover:text-rose-700
-                                 border border-rose-200 transition-all hover:scale-110"
-                          title="删除">
-                    <svg class="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-                      <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M19 7l-.867 12.142A2 2 0 0116.138 21H7.862a2 2 0 01-1.995-1.858L5 7m5 4v6m4-6v6m1-10V4a1 1 0 00-1-1h-4a1 1 0 00-1 1v3M4 7h16"/>
+                                 bg-red-50 text-red-600 hover:bg-red-100 hover:text-red-700
+                                 border-2 border-red-200 hover:border-red-400 transition-all hover:scale-110"
+                          title="Delete">
+                    <svg class="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24" stroke-width="2">
+                      <path stroke-linecap="round" stroke-linejoin="round" d="M19 7l-.867 12.142A2 2 0 0116.138 21H7.862a2 2 0 01-1.995-1.858L5 7m5 4v6m4-6v6m1-10V4a1 1 0 00-1-1h-4a1 1 0 00-1 1v3M4 7h16"/>
                     </svg>
                   </button>
                 </form>
@@ -479,11 +495,11 @@
           {% endfor %}
         </div>
         {% else %}
-        <div class="text-center py-8 bg-slate-50 rounded-xl border-2 border-dashed border-slate-300">
-          <svg class="w-12 h-12 text-slate-300 mx-auto mb-3" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-            <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M7 21h10a2 2 0 002-2V9.414a1 1 0 00-.293-.707l-5.414-5.414A1 1 0 0012.586 3H7a2 2 0 00-2 2v14a2 2 0 002 2z"/>
+        <div class="text-center py-8 bg-gray-50 rounded-xl border-2 border-dashed border-gray-300">
+          <svg class="w-12 h-12 text-gray-300 mx-auto mb-3" fill="none" stroke="currentColor" viewBox="0 0 24 24" stroke-width="2">
+            <path stroke-linecap="round" stroke-linejoin="round" d="M7 21h10a2 2 0 002-2V9.414a1 1 0 00-.293-.707l-5.414-5.414A1 1 0 0012.586 3H7a2 2 0 00-2 2v14a2 2 0 002 2z"/>
           </svg>
-          <p class="text-sm text-slate-500">暂无相关文档</p>
+          <p class="text-sm text-gray-500 font-semibold">No documents yet</p>
         </div>
         {% endif %}
       </div>
@@ -503,16 +519,14 @@
       const value = statusSelect.value;
       const notRequired = (value === "NOT_REQUIRED");
 
-      // 更新样式
       if (notRequired) {
-        refInput.classList.add("bg-slate-50", "text-slate-500");
-        refInput.placeholder = "不要求 8D，可留空";
+        refInput.classList.add("bg-gray-50", "text-gray-500");
+        refInput.placeholder = "Not required, can leave blank";
       } else {
-        refInput.classList.remove("bg-slate-50", "text-slate-500");
-        refInput.placeholder = "8D编号/文件名/链接...";
+        refInput.classList.remove("bg-gray-50", "text-gray-500");
+        refInput.placeholder = "8D number/filename/link...";
       }
 
-      // 更新选择器背景色（视觉提示）
       statusSelect.classList.remove("status-not-required", "status-not-received", "status-reject", "status-pass");
 
       switch(value) {

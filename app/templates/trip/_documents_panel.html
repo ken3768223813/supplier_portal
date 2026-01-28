@@ -1,11 +1,8 @@
 <style>
   .modal-overlay {
     position: fixed;
-    top: 0;
-    left: 0;
-    right: 0;
-    bottom: 0;
-    background: rgba(0, 0, 0, 0.6);
+    inset: 0;
+    background: rgba(0, 0, 0, 0.55);
     display: flex;
     align-items: center;
     justify-content: center;
@@ -19,26 +16,20 @@
   }
 
   @keyframes slideUp {
-    from {
-      opacity: 0;
-      transform: translateY(20px);
-    }
-    to {
-      opacity: 1;
-      transform: translateY(0);
-    }
+    from { opacity: 0; transform: translateY(18px); }
+    to   { opacity: 1; transform: translateY(0); }
   }
 
   .modal-dialog {
     background: white;
     border-radius: 1.5rem;
-    max-width: 900px;
-    width: 90%;
-    max-height: 85vh;
+    max-width: 920px;
+    width: 92%;
+    max-height: 86vh;
     display: flex;
     flex-direction: column;
-    box-shadow: 0 25px 50px -12px rgba(0, 0, 0, 0.4);
-    animation: slideUp 0.3s ease;
+    box-shadow: 0 25px 55px -18px rgba(0, 0, 0, 0.45);
+    animation: slideUp 0.25s ease;
     border: 2px solid #e5e7eb;
   }
 
@@ -48,34 +39,38 @@
   }
 
   .doc-item {
-    transition: all 0.2s ease;
+    transition: all 0.18s ease;
   }
-
   .doc-item:hover {
     transform: translateX(2px);
   }
 </style>
 
-<div class="modal-overlay" onclick="closeTripDocumentsModal(event)">
+<div id="trip-documents-overlay" class="modal-overlay" data-trip-docs-overlay>
+
   <div class="modal-dialog" onclick="event.stopPropagation()">
 
     <!-- Modal Header -->
     <div class="bg-gray-50 rounded-t-2xl px-8 py-6 border-b-2 border-gray-200 flex-shrink-0">
-      <div class="flex items-center justify-between">
-        <div class="flex items-center gap-4">
-          <div class="w-14 h-14 bg-indigo-500 rounded-xl flex items-center justify-center">
+      <div class="flex items-center justify-between gap-4">
+        <div class="flex items-center gap-4 min-w-0">
+          <!-- icon: 银灰风格 -->
+          <div class="w-14 h-14 bg-slate-800 rounded-xl flex items-center justify-center shrink-0">
             <svg class="w-7 h-7 text-white" fill="none" stroke="currentColor" viewBox="0 0 24 24" stroke-width="2">
               <path stroke-linecap="round" stroke-linejoin="round" d="M7 21h10a2 2 0 002-2V9.414a1 1 0 00-.293-.707l-5.414-5.414A1 1 0 0012.586 3H7a2 2 0 00-2 2v14a2 2 0 002 2z"/>
             </svg>
           </div>
-          <div>
+
+          <div class="min-w-0">
             <div class="text-sm font-bold text-gray-500 mb-1">Trip Documents</div>
-            <div class="text-2xl font-bold text-gray-900 font-mono">{{ trip.trip_no }}</div>
-            <div class="text-sm font-semibold text-gray-600 mt-1">{{ trip.supplier_name }}</div>
+            <div class="text-2xl font-bold text-gray-900 font-mono truncate">{{ trip.trip_no }}</div>
+            <div class="text-sm font-semibold text-gray-600 mt-1 truncate">{{ trip.supplier_name }}</div>
           </div>
         </div>
 
-        <button onclick="closeTripDocumentsModal()"
+        <!-- Close button: 关键修复（type=button + 传 this） -->
+        <button type="button"
+                onclick="closeTripDocumentsModal(); return false;"
                 class="w-10 h-10 rounded-xl bg-white hover:bg-gray-100
                        flex items-center justify-center transition-all hover:scale-110 active:scale-95
                        border-2 border-gray-300"
@@ -84,6 +79,7 @@
             <path stroke-linecap="round" stroke-linejoin="round" d="M6 18L18 6M6 6l12 12"/>
           </svg>
         </button>
+
       </div>
     </div>
 
@@ -94,12 +90,14 @@
         <!-- Documents Header -->
         <div class="flex items-center justify-between mb-5">
           <h3 class="text-lg font-bold text-gray-900 flex items-center gap-2">
-            <svg class="w-5 h-5 text-indigo-600" fill="none" stroke="currentColor" viewBox="0 0 24 24" stroke-width="2">
+            <svg class="w-5 h-5 text-slate-700" fill="none" stroke="currentColor" viewBox="0 0 24 24" stroke-width="2">
               <path stroke-linecap="round" stroke-linejoin="round" d="M9 12h6m-6 4h6m2 5H7a2 2 0 01-2-2V5a2 2 0 012-2h5.586a1 1 0 01.707.293l5.414 5.414a1 1 0 01.293.707V19a2 2 0 01-2 2z"/>
             </svg>
             Document List
           </h3>
-          <div class="bg-indigo-100 text-indigo-700 px-4 py-1.5 rounded-full text-sm font-bold border-2 border-indigo-200">
+
+          <!-- Total badge：银灰 -->
+          <div class="bg-gray-100 text-gray-700 px-4 py-1.5 rounded-full text-sm font-bold border-2 border-gray-200">
             {{ documents|length }} Total
           </div>
         </div>
@@ -110,23 +108,18 @@
           <div class="doc-item bg-white rounded-xl p-5 border-2 border-gray-200 hover:border-gray-400">
             <div class="flex items-start gap-4">
 
-              <!-- Document Icon -->
-              <div class="w-14 h-14 rounded-xl flex items-center justify-center shrink-0 border-2
-                          {% if 'audit' in doc.doc_type %}bg-purple-100 border-purple-200
-                          {% elif 'report' in doc.doc_type %}bg-blue-100 border-blue-200
-                          {% elif 'photo' in doc.doc_type %}bg-pink-100 border-pink-200
-                          {% else %}bg-gray-100 border-gray-200{% endif %}">
-
+              <!-- Document Icon：银灰 -->
+              <div class="w-14 h-14 rounded-xl flex items-center justify-center shrink-0 border-2 bg-gray-100 border-gray-200">
                 {% if doc.mime and 'image' in doc.mime %}
-                  <svg class="w-7 h-7 text-pink-600" fill="none" stroke="currentColor" viewBox="0 0 24 24" stroke-width="2">
+                  <svg class="w-7 h-7 text-slate-700" fill="none" stroke="currentColor" viewBox="0 0 24 24" stroke-width="2">
                     <path stroke-linecap="round" stroke-linejoin="round" d="M4 16l4.586-4.586a2 2 0 012.828 0L16 16m-2-2l1.586-1.586a2 2 0 012.828 0L20 14m-6-6h.01M6 20h12a2 2 0 002-2V6a2 2 0 00-2-2H6a2 2 0 00-2 2v12a2 2 0 002 2z"/>
                   </svg>
                 {% elif doc.mime and 'pdf' in doc.mime %}
-                  <svg class="w-7 h-7 text-red-600" fill="none" stroke="currentColor" viewBox="0 0 24 24" stroke-width="2">
+                  <svg class="w-7 h-7 text-slate-700" fill="none" stroke="currentColor" viewBox="0 0 24 24" stroke-width="2">
                     <path stroke-linecap="round" stroke-linejoin="round" d="M7 21h10a2 2 0 002-2V9.414a1 1 0 00-.293-.707l-5.414-5.414A1 1 0 0012.586 3H7a2 2 0 00-2 2v14a2 2 0 002 2z"/>
                   </svg>
                 {% else %}
-                  <svg class="w-7 h-7 text-gray-600" fill="none" stroke="currentColor" viewBox="0 0 24 24" stroke-width="2">
+                  <svg class="w-7 h-7 text-slate-700" fill="none" stroke="currentColor" viewBox="0 0 24 24" stroke-width="2">
                     <path stroke-linecap="round" stroke-linejoin="round" d="M9 12h6m-6 4h6m2 5H7a2 2 0 01-2-2V5a2 2 0 012-2h5.586a1 1 0 01.707.293l5.414 5.414a1 1 0 01.293.707V19a2 2 0 01-2 2z"/>
                   </svg>
                 {% endif %}
@@ -136,26 +129,25 @@
               <div class="flex-1 min-w-0">
                 <div class="flex items-start justify-between gap-3 mb-2">
                   <div class="flex-1 min-w-0">
-                    <h4 class="font-bold text-gray-900 text-base mb-1">{{ doc.title }}</h4>
+                    <h4 class="font-bold text-gray-900 text-base mb-1 truncate">{{ doc.title }}</h4>
                     <p class="text-xs text-gray-500 truncate font-mono">{{ doc.original_name }}</p>
                   </div>
 
+                  <!-- doc type badge：银灰统一 -->
                   <span class="px-3 py-1.5 rounded-lg text-xs font-bold border-2 shrink-0
-                               {% if 'audit' in doc.doc_type %}bg-purple-50 text-purple-700 border-purple-200
-                               {% elif 'report' in doc.doc_type %}bg-blue-50 text-blue-700 border-blue-200
-                               {% elif 'photo' in doc.doc_type %}bg-pink-50 text-pink-700 border-pink-200
-                               {% else %}bg-gray-50 text-gray-700 border-gray-200{% endif %}">
+                               bg-gray-50 text-gray-700 border-gray-200">
                     {{ doc_types[doc.doc_type] }}
                   </span>
                 </div>
 
-                <div class="flex items-center gap-4 text-xs text-gray-500 mb-3 font-semibold">
+                <div class="flex items-center gap-3 text-xs text-gray-500 mb-3 font-semibold flex-wrap">
                   <span class="flex items-center gap-1.5 bg-gray-100 px-2 py-1 rounded border border-gray-200">
                     <svg class="w-3.5 h-3.5" fill="none" stroke="currentColor" viewBox="0 0 24 24">
                       <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M4 7v10c0 2.21 3.582 4 8 4s8-1.79 8-4V7M4 7c0 2.21 3.582 4 8 4s8-1.79 8-4M4 7c0-2.21 3.582-4 8-4s8 1.79 8 4"/>
                     </svg>
                     {{ (doc.size / 1024 / 1024)|round(2) }} MB
                   </span>
+
                   <span class="flex items-center gap-1.5 bg-gray-100 px-2 py-1 rounded border border-gray-200">
                     <svg class="w-3.5 h-3.5" fill="none" stroke="currentColor" viewBox="0 0 24 24">
                       <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M8 7V3m8 4V3m-9 8h10M5 21h14a2 2 0 002-2V7a2 2 0 00-2-2H5a2 2 0 00-2 2v12a2 2 0 002 2z"/>
@@ -165,9 +157,9 @@
                 </div>
 
                 {% if doc.remark %}
-                <div class="bg-amber-50 border-l-4 border-amber-500 px-3 py-2 rounded-r-lg">
+                <div class="bg-gray-50 border-l-4 border-gray-300 px-3 py-2 rounded-r-lg">
                   <p class="text-xs text-gray-700 font-medium flex items-start gap-2">
-                    <svg class="w-4 h-4 text-amber-600 mt-0.5 flex-shrink-0" fill="none" stroke="currentColor" viewBox="0 0 24 24" stroke-width="2">
+                    <svg class="w-4 h-4 text-slate-700 mt-0.5 flex-shrink-0" fill="none" stroke="currentColor" viewBox="0 0 24 24" stroke-width="2">
                       <path stroke-linecap="round" stroke-linejoin="round" d="M13 16h-1v-4h-1m1-4h.01M21 12a9 9 0 11-18 0 9 9 0 0118 0z"/>
                     </svg>
                     <span>{{ doc.remark }}</span>
@@ -178,28 +170,33 @@
 
               <!-- Action Buttons -->
               <div class="flex flex-col gap-2 shrink-0">
-                <a href="{{ url_for('trip.view_document', trip_id=trip.id, doc_id=doc.id) }}"
-                   target="_blank"
-                   class="inline-flex items-center justify-center gap-2 px-4 py-2.5 rounded-xl
-                          bg-gray-900 text-white font-bold text-sm
-                          hover:bg-gray-800 transition-all hover:scale-105 active:scale-95 whitespace-nowrap">
-                  <svg class="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24" stroke-width="2">
-                    <path stroke-linecap="round" stroke-linejoin="round" d="M15 12a3 3 0 11-6 0 3 3 0 016 0z"/>
-                    <path stroke-linecap="round" stroke-linejoin="round" d="M2.458 12C3.732 7.943 7.523 5 12 5c4.478 0 8.268 2.943 9.542 7-1.274 4.057-5.064 7-9.542 7-4.477 0-8.268-2.943-9.542-7z"/>
-                  </svg>
-                  View
-                </a>
+                <form method="post"
+                      action="{{ url_for('trip.open_local_document', trip_id=trip.id, doc_id=doc.id) }}">
+                  <button type="submit"
+                          class="inline-flex items-center justify-center gap-2 px-4 py-2.5 rounded-xl
+                                 bg-slate-900 text-white font-bold text-sm
+                                 hover:bg-slate-800 transition-all hover:scale-105 active:scale-95 whitespace-nowrap">
+                    <svg class="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24" stroke-width="2">
+                      <path stroke-linecap="round" stroke-linejoin="round" d="M14 3h7v7m0-7L10 14"/>
+                      <path stroke-linecap="round" stroke-linejoin="round" d="M5 10v11h11"/>
+                    </svg>
+                    Open
+                  </button>
+                </form>
 
-                <a href="{{ url_for('trip.download_document', trip_id=trip.id, doc_id=doc.id) }}"
+                <a href="{{ url_for('trip.edit_trip', trip_id=trip.id) }}"
+                   onclick="closeTripDocumentsModal(null, this)"
                    class="inline-flex items-center justify-center gap-2 px-4 py-2.5 rounded-xl
-                          bg-green-50 text-green-600 hover:bg-green-100 hover:text-green-700
-                          border-2 border-green-200 hover:border-green-400 font-bold text-sm transition-all hover:scale-105 active:scale-95 whitespace-nowrap">
+                          bg-gray-50 text-gray-700 hover:bg-gray-100
+                          border-2 border-gray-200 hover:border-gray-400
+                          font-bold text-sm transition-all hover:scale-105 active:scale-95 whitespace-nowrap">
                   <svg class="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24" stroke-width="2">
-                    <path stroke-linecap="round" stroke-linejoin="round" d="M4 16v1a3 3 0 003 3h10a3 3 0 003-3v-1m-4-4l-4 4m0 0l-4-4m4 4V4"/>
+                    <path stroke-linecap="round" stroke-linejoin="round" d="M11 5H6a2 2 0 00-2 2v11a2 2 0 002 2h11a2 2 0 002-2v-5m-1.414-9.414a2 2 0 112.828 2.828L11.828 15H9v-2.828l8.586-8.586z"/>
                   </svg>
-                  Download
+                  Manage
                 </a>
               </div>
+
             </div>
           </div>
           {% endfor %}
@@ -220,10 +217,10 @@
               <p class="text-gray-500 text-sm">This trip has no uploaded documents</p>
             </div>
             <a href="{{ url_for('trip.edit_trip', trip_id=trip.id) }}"
-               onclick="closeTripDocumentsModal()"
+               onclick="closeTripDocumentsModal(null, this)"
                class="inline-flex items-center gap-2 px-5 py-2.5 rounded-xl mt-2
-                      bg-gray-900 text-white font-bold
-                      hover:bg-gray-800 transition-all hover:scale-105 active:scale-95">
+                      bg-slate-900 text-white font-bold
+                      hover:bg-slate-800 transition-all hover:scale-105 active:scale-95">
               <svg class="w-5 h-5" fill="none" stroke="currentColor" viewBox="0 0 24 24" stroke-width="2">
                 <path stroke-linecap="round" stroke-linejoin="round" d="M7 16a4 4 0 01-.88-7.903A5 5 0 1115.9 6L16 6a5 5 0 011 9.9M15 13l-3-3m0 0l-3 3m3-3v12"/>
               </svg>
@@ -237,29 +234,4 @@
   </div>
 </div>
 
-<script>
-function closeTripDocumentsModal(event) {
-  if (event && event.target !== event.currentTarget) {
-    return;
-  }
 
-  const container = document.getElementById('trip-documents-modal-container');
-  if (container) {
-    container.style.opacity = '0';
-    setTimeout(() => {
-      container.remove();
-      document.body.style.overflow = '';
-    }, 200);
-  }
-}
-
-document.addEventListener('keydown', function(e) {
-  if (e.key === 'Escape') {
-    closeTripDocumentsModal();
-  }
-});
-
-document.querySelector('.modal-body-scroll')?.addEventListener('wheel', function(e) {
-  e.stopPropagation();
-});
-</script>

@@ -6,22 +6,11 @@
     box-shadow: 0 0 0 3px rgba(0, 0, 0, 0.05);
   }
 
-  .upload-zone {
-    transition: all 0.3s ease;
-  }
+  .upload-zone { transition: all 0.3s ease; }
+  .upload-zone:hover { border-color: #6366f1; background: #eef2ff; }
 
-  .upload-zone:hover {
-    border-color: #6366f1;
-    background: #eef2ff;
-  }
-
-  .doc-item {
-    transition: all 0.2s ease;
-  }
-
-  .doc-item:hover {
-    transform: translateX(2px);
-  }
+  .doc-item { transition: all 0.2s ease; }
+  .doc-item:hover { transform: translateX(2px); }
 </style>
 
 <div class="max-w-6xl mx-auto px-6 py-6">
@@ -73,7 +62,9 @@
     </div>
 
     <!-- Form Content -->
-    <form method="post" class="p-8">
+    <form method="post"
+          action="{% if mode == 'edit' %}{{ url_for('trip.edit_trip', trip_id=trip.id) }}{% else %}{{ url_for('trip.new_trip') }}{% endif %}"
+          class="p-8">
 
       <!-- Basic Information -->
       <div class="mb-8">
@@ -135,56 +126,98 @@
 
         <div class="grid grid-cols-1 md:grid-cols-2 gap-6">
 
-          <!-- Supplier Code -->
-          <div>
-            <label class="flex items-center gap-2 text-sm font-bold text-gray-700 mb-2">
-              <svg class="w-4 h-4 text-blue-600" fill="none" stroke="currentColor" viewBox="0 0 24 24" stroke-width="2">
-                <path stroke-linecap="round" stroke-linejoin="round" d="M7 7h.01M7 3h5c.512 0 1.024.195 1.414.586l7 7a2 2 0 010 2.828l-7 7a2 2 0 01-2.828 0l-7-7A1.994 1.994 0 013 12V7a4 4 0 014-4z"/>
-              </svg>
-              Supplier Code
-            </label>
-            <input name="supplier_code"
-                   value="{{ trip.supplier_code if trip and trip.supplier_code else '' }}"
-                   placeholder="e.g., SUP001"
-                   class="form-input w-full rounded-xl border-2 border-gray-200 px-4 py-3 text-sm
-                          focus:outline-none focus:border-gray-900 transition-all
-                          placeholder:text-gray-400 font-mono font-semibold">
-          </div>
-
-          <!-- Supplier Name -->
-          <div>
-            <label class="flex items-center gap-2 text-sm font-bold text-gray-700 mb-2">
-              <svg class="w-4 h-4 text-blue-600" fill="none" stroke="currentColor" viewBox="0 0 24 24" stroke-width="2">
-                <path stroke-linecap="round" stroke-linejoin="round" d="M19 21V5a2 2 0 00-2-2H7a2 2 0 00-2 2v16m14 0h2m-2 0h-5m-9 0H3m2 0h5M9 7h1m-1 4h1m4-4h1m-1 4h1m-5 10v-5a1 1 0 011-1h2a1 1 0 011 1v5m-4 0h4"/>
-              </svg>
-              Supplier Name <span class="text-red-500">*</span>
-            </label>
-            <input name="supplier_name" required
-                   value="{{ trip.supplier_name if trip else '' }}"
-                   placeholder="Enter full supplier name"
-                   class="form-input w-full rounded-xl border-2 border-gray-200 px-4 py-3 text-sm
-                          focus:outline-none focus:border-gray-900 transition-all
-                          placeholder:text-gray-400">
-          </div>
-
-          <!-- Supplier Location -->
+          <!-- Supplier Selection (Optional) -->
           <div class="md:col-span-2">
             <label class="flex items-center gap-2 text-sm font-bold text-gray-700 mb-2">
-              <svg class="w-4 h-4 text-green-600" fill="none" stroke="currentColor" viewBox="0 0 24 24" stroke-width="2">
-                <path stroke-linecap="round" stroke-linejoin="round" d="M17.657 16.657L13.414 20.9a1.998 1.998 0 01-2.827 0l-4.244-4.243a8 8 0 1111.314 0z"/>
-                <path stroke-linecap="round" stroke-linejoin="round" d="M15 11a3 3 0 11-6 0 3 3 0 016 0z"/>
-              </svg>
-              Supplier Location
+              Select Supplier (Optional)
             </label>
-            <input name="supplier_location"
-                   value="{{ trip.supplier_location if trip and trip.supplier_location else '' }}"
-                   placeholder="Full address"
-                   class="form-input w-full rounded-xl border-2 border-gray-200 px-4 py-3 text-sm
-                          focus:outline-none focus:border-gray-900 transition-all
-                          placeholder:text-gray-400">
+
+            <select id="supplierSelect" name="supplier_id"
+                    class="w-full px-4 py-3 border-2 border-gray-200 rounded-xl text-sm
+                           focus:outline-none focus:border-gray-900 transition-all cursor-pointer">
+              <option value="">— Not in list / Manual input below —</option>
+              {% for supplier in suppliers %}
+                <option value="{{ supplier.id }}"
+                        data-code="{{ supplier.code }}"
+                        data-name="{{ supplier.name }}"
+                        {% if trip and trip.supplier_code == supplier.code and trip.supplier_name == supplier.name %}selected{% endif %}>
+                  {{ supplier.code }} - {{ supplier.name }}
+                </option>
+              {% endfor %}
+            </select>
+
+            <p class="mt-2 text-xs text-gray-500">
+              If not in list, leave it unselected and fill in Supplier Name manually.
+              <a href="{{ url_for('suppliers.new_supplier') }}" target="_blank"
+                 class="text-blue-600 hover:text-blue-700 font-semibold ml-1">
+                Add new supplier
+              </a>
+            </p>
           </div>
+
+          <!-- Supplier Code (optional) -->
+<!--          <div>-->
+<!--            <label class="text-sm font-bold text-gray-700 mb-2 block">Supplier Code (Optional)</label>-->
+<!--            <input name="supplier_code" id="supplierCodeInput"-->
+<!--                   value="{{ trip.supplier_code if trip and trip.supplier_code else '' }}"-->
+<!--                   placeholder="e.g. ZSU0026419"-->
+<!--                   class="w-full px-4 py-3 border-2 border-gray-200 rounded-xl text-sm-->
+<!--                          focus:outline-none focus:border-gray-900 transition-all-->
+<!--                          placeholder:text-gray-400 font-mono">-->
+<!--          </div>-->
+
+          <!-- Supplier Name (required) -->
+<!--          <div>-->
+<!--            <label class="text-sm font-bold text-gray-700 mb-2 block">-->
+<!--              Supplier Name <span class="text-red-500">*</span>-->
+<!--            </label>-->
+<!--            <input name="supplier_name" id="supplierNameInput" required-->
+<!--                   value="{{ trip.supplier_name if trip else '' }}"-->
+<!--                   placeholder="Enter supplier name"-->
+<!--                   class="w-full px-4 py-3 border-2 border-gray-200 rounded-xl text-sm-->
+<!--                          focus:outline-none focus:border-gray-900 transition-all-->
+<!--                          placeholder:text-gray-400">-->
+<!--          </div>-->
+
+          <!-- Supplier Location -->
+<!--          <div class="md:col-span-2">-->
+<!--            <label class="text-sm font-bold text-gray-700 mb-2 block">Supplier Location</label>-->
+<!--            <input name="supplier_location"-->
+<!--                   value="{{ trip.supplier_location if trip and trip.supplier_location else '' }}"-->
+<!--                   placeholder="Full address"-->
+<!--                   class="w-full px-4 py-3 border-2 border-gray-200 rounded-xl text-sm-->
+<!--                          focus:outline-none focus:border-gray-900 transition-all">-->
+<!--          </div>-->
         </div>
       </div>
+
+      <script>
+      (function () {
+        const select = document.getElementById('supplierSelect');
+        const codeInput = document.getElementById('supplierCodeInput');
+        const nameInput = document.getElementById('supplierNameInput');
+
+        if (!select || !codeInput || !nameInput) return;
+
+        function syncSupplier() {
+          const opt = select.options[select.selectedIndex];
+          const supplierId = opt && opt.value ? opt.value : "";
+
+          if (!supplierId) return; // 不选择：保留手动输入
+
+          const code = opt.getAttribute('data-code') || "";
+          const name = opt.getAttribute('data-name') || "";
+
+          if (code) codeInput.value = code;
+          if (name) nameInput.value = name;
+        }
+
+        select.addEventListener('change', syncSupplier);
+        window.addEventListener('DOMContentLoaded', function () {
+          if (select.value) syncSupplier();
+        });
+      })();
+      </script>
 
       <!-- Trip Details -->
       <div class="mb-8">
@@ -196,10 +229,8 @@
         </h2>
 
         <div class="grid grid-cols-1 md:grid-cols-2 gap-6 mb-6">
-
-          <!-- Start Date -->
           <div>
-            <label class="flex items-center gap-2 text-sm font-bold text-gray-700 mb-2">
+            <label class="text-sm font-bold text-gray-700 mb-2 block">
               Start Date <span class="text-red-500">*</span>
             </label>
             <input type="date" name="start_date" required
@@ -208,9 +239,8 @@
                           focus:outline-none focus:border-gray-900 transition-all">
           </div>
 
-          <!-- End Date -->
           <div>
-            <label class="flex items-center gap-2 text-sm font-bold text-gray-700 mb-2">
+            <label class="text-sm font-bold text-gray-700 mb-2 block">
               End Date <span class="text-red-500">*</span>
             </label>
             <input type="date" name="end_date" required
@@ -220,9 +250,8 @@
           </div>
         </div>
 
-        <!-- Purpose -->
         <div>
-          <label class="flex items-center gap-2 text-sm font-bold text-gray-700 mb-2">
+          <label class="text-sm font-bold text-gray-700 mb-2 block">
             Trip Purpose <span class="text-red-500">*</span>
           </label>
           <textarea name="purpose" rows="4" required
@@ -242,12 +271,10 @@
           Status & Notes
         </h2>
 
+        {% if mode == "edit" %}
         <div class="grid grid-cols-1 md:grid-cols-2 gap-6 mb-6">
-          {% if mode == "edit" %}
           <div>
-            <label class="flex items-center gap-2 text-sm font-bold text-gray-700 mb-2">
-              Trip Status
-            </label>
+            <label class="text-sm font-bold text-gray-700 mb-2 block">Trip Status</label>
             <select name="status"
                     class="form-select w-full rounded-xl border-2 border-gray-200 px-4 py-3 text-sm
                            focus:outline-none focus:border-gray-900 transition-all cursor-pointer">
@@ -258,10 +285,9 @@
               {% endfor %}
             </select>
           </div>
-          {% endif %}
         </div>
+        {% endif %}
 
-        <!-- Notes -->
         <div>
           <label class="text-sm font-bold text-gray-700 mb-2 block">Additional Notes</label>
           <textarea name="notes" rows="3"
@@ -301,7 +327,6 @@
   {% if mode == "edit" and trip %}
   <div class="mt-8 bg-white rounded-2xl border-2 border-gray-200 overflow-hidden">
 
-    <!-- Documents Header -->
     <div class="px-8 py-5 border-b-2 border-gray-100">
       <div class="flex items-center justify-between">
         <div class="flex items-center gap-4">
@@ -325,7 +350,7 @@
     <div class="p-8">
       <div class="grid grid-cols-1 lg:grid-cols-5 gap-8">
 
-        <!-- Upload Section -->
+        <!-- Upload -->
         <div class="lg:col-span-2">
           <div class="bg-gray-50 rounded-2xl p-6 border-2 border-gray-200">
             <h3 class="text-lg font-bold text-gray-900 mb-4 flex items-center gap-2">
@@ -340,7 +365,6 @@
                   action="{{ url_for('trip.upload_document', trip_id=trip.id) }}"
                   class="space-y-4">
 
-              <!-- File Upload Zone -->
               <div class="upload-zone border-2 border-dashed border-gray-300 rounded-xl p-6 text-center cursor-pointer hover:border-indigo-400 hover:bg-indigo-50 transition-all">
                 <input type="file" name="file" required id="tripFileInput"
                        class="hidden"
@@ -362,7 +386,6 @@
                 <p id="tripFileName" class="text-xs text-green-600 font-semibold mt-2 hidden"></p>
               </div>
 
-              <!-- Document Type -->
               <div>
                 <label class="text-xs font-bold text-gray-700 mb-1.5 block">Document Type</label>
                 <select name="doc_type" required
@@ -374,7 +397,6 @@
                 </select>
               </div>
 
-              <!-- Title -->
               <div>
                 <label class="text-xs font-bold text-gray-700 mb-1.5 block">Document Title</label>
                 <input name="title" placeholder="e.g., On-site Audit Report"
@@ -384,7 +406,6 @@
                 <p class="mt-1 text-xs text-gray-500">Leave blank to use filename</p>
               </div>
 
-              <!-- Remarks -->
               <div>
                 <label class="text-xs font-bold text-gray-700 mb-1.5 block">Remarks</label>
                 <textarea name="remark" rows="3" placeholder="Notes about this document..."
@@ -422,27 +443,17 @@
                   <div class="flex items-start justify-between gap-4">
                     <div class="flex-1">
                       <div class="flex items-center gap-3 mb-2">
-                        <span class="inline-flex items-center gap-1.5 px-3 py-1 rounded-lg text-xs font-bold border
-                                     {% if 'audit' in doc.doc_type %}bg-purple-50 text-purple-700 border-purple-200
-                                     {% elif 'report' in doc.doc_type %}bg-blue-50 text-blue-700 border-blue-200
-                                     {% elif 'photo' in doc.doc_type %}bg-pink-50 text-pink-700 border-pink-200
-                                     {% else %}bg-gray-50 text-gray-700 border-gray-200{% endif %}">
-                          {{ doc_types[doc.doc_type] }}
+                        <span class="inline-flex items-center gap-1.5 px-3 py-1 rounded-lg text-xs font-bold border bg-gray-50 text-gray-700 border-gray-200">
+                          {{ doc_types.get(doc.doc_type, doc.doc_type) }}
                         </span>
                         <span class="text-sm font-bold text-gray-900">{{ doc.title }}</span>
                       </div>
 
                       <div class="flex items-center gap-4 text-xs text-gray-500 mb-2 font-medium">
                         <span class="flex items-center gap-1.5">
-                          <svg class="w-3.5 h-3.5" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-                            <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M12 8v4l3 3m6-3a9 9 0 11-18 0 9 9 0 0118 0z"/>
-                          </svg>
                           {{ doc.created_at.strftime('%b %d, %Y %H:%M') }}
                         </span>
                         <span class="flex items-center gap-1.5">
-                          <svg class="w-3.5 h-3.5" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-                            <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M7 21h10a2 2 0 002-2V9.414a1 1 0 00-.293-.707l-5.414-5.414A1 1 0 0012.586 3H7a2 2 0 00-2 2v14a2 2 0 002 2z"/>
-                          </svg>
                           {{ doc.original_name }}
                         </span>
                         <span>{{ (doc.size / 1024 / 1024)|round(2) }} MB</span>
@@ -461,10 +472,6 @@
                          class="inline-flex items-center gap-1.5 px-3 py-2 rounded-lg
                                 bg-blue-50 text-blue-600 hover:bg-blue-100 hover:text-blue-700
                                 border-2 border-blue-200 hover:border-blue-400 transition-all text-xs font-bold whitespace-nowrap">
-                        <svg class="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24" stroke-width="2">
-                          <path stroke-linecap="round" stroke-linejoin="round" d="M15 12a3 3 0 11-6 0 3 3 0 016 0z"/>
-                          <path stroke-linecap="round" stroke-linejoin="round" d="M2.458 12C3.732 7.943 7.523 5 12 5c4.478 0 8.268 2.943 9.542 7-1.274 4.057-5.064 7-9.542 7-4.477 0-8.268-2.943-9.542-7z"/>
-                        </svg>
                         View
                       </a>
 
@@ -472,9 +479,6 @@
                          class="inline-flex items-center gap-1.5 px-3 py-2 rounded-lg
                                 bg-green-50 text-green-600 hover:bg-green-100 hover:text-green-700
                                 border-2 border-green-200 hover:border-green-400 transition-all text-xs font-bold whitespace-nowrap">
-                        <svg class="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24" stroke-width="2">
-                          <path stroke-linecap="round" stroke-linejoin="round" d="M4 16v1a3 3 0 003 3h10a3 3 0 003-3v-1m-4-4l-4 4m0 0l-4-4m4 4V4"/>
-                        </svg>
                         Download
                       </a>
 
@@ -485,9 +489,6 @@
                                 class="w-full inline-flex items-center gap-1.5 px-3 py-2 rounded-lg
                                        bg-red-50 text-red-600 hover:bg-red-100 hover:text-red-700
                                        border-2 border-red-200 hover:border-red-400 transition-all text-xs font-bold">
-                          <svg class="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24" stroke-width="2">
-                            <path stroke-linecap="round" stroke-linejoin="round" d="M19 7l-.867 12.142A2 2 0 0116.138 21H7.862a2 2 0 01-1.995-1.858L5 7m5 4v6m4-6v6m1-10V4a1 1 0 00-1-1h-4a1 1 0 00-1 1v3M4 7h16"/>
-                          </svg>
                           Delete
                         </button>
                       </form>
@@ -498,20 +499,12 @@
             </div>
           {% else %}
             <div class="rounded-2xl border-2 border-dashed border-gray-200 bg-gray-50 p-8 text-center">
-              <div class="flex flex-col items-center gap-4">
-                <div class="w-16 h-16 bg-gray-200 rounded-full flex items-center justify-center">
-                  <svg class="w-8 h-8 text-gray-400" fill="none" stroke="currentColor" viewBox="0 0 24 24" stroke-width="2">
-                    <path stroke-linecap="round" stroke-linejoin="round" d="M7 21h10a2 2 0 002-2V9.414a1 1 0 00-.293-.707l-5.414-5.414A1 1 0 0012.586 3H7a2 2 0 00-2 2v14a2 2 0 002 2z"/>
-                  </svg>
-                </div>
-                <div>
-                  <p class="text-lg font-bold text-gray-900 mb-1">No documents yet</p>
-                  <p class="text-sm text-gray-500">Upload your first document from the left</p>
-                </div>
-              </div>
+              <p class="text-lg font-bold text-gray-900 mb-1">No documents yet</p>
+              <p class="text-sm text-gray-500">Upload your first document from the left</p>
             </div>
           {% endif %}
         </div>
+
       </div>
     </div>
   </div>
