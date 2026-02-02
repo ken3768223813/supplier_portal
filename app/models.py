@@ -15,16 +15,20 @@ class Supplier(db.Model):
 
 class Part(db.Model):
     __tablename__ = "parts"
+
     id = db.Column(db.Integer, primary_key=True)
     supplier_id = db.Column(db.Integer, db.ForeignKey("suppliers.id"), nullable=False)
-
-    pn = db.Column(db.String(128), nullable=False)          # part number
-    description = db.Column(db.String(255))
+    pn = db.Column(db.String(128), nullable=False, index=True)
+    description = db.Column(db.Text)
     project = db.Column(db.String(128))
     remark = db.Column(db.Text)
     created_at = db.Column(db.DateTime, default=datetime.utcnow)
+    updated_at = db.Column(db.DateTime, default=datetime.utcnow, onupdate=datetime.utcnow)
 
-    documents = db.relationship("Document", backref="part", lazy=True, cascade="all, delete-orphan")
+    # ✅ 添加复合唯一约束
+    __table_args__ = (
+        db.UniqueConstraint('supplier_id', 'pn', name='uq_supplier_part_number'),
+    )
 
 
 class Document(db.Model):
@@ -326,3 +330,356 @@ class FileLibrary(db.Model):
         if self.tags:
             return [tag.strip() for tag in self.tags.split(',') if tag.strip()]
         return []
+
+
+"""
+Audit Findings Database Models
+审核发现数据库模型
+"""
+
+class AuditReport(db.Model):
+    """审核报告主表"""
+    __tablename__ = 'audit_reports'
+
+    id = db.Column(db.Integer, primary_key=True)
+
+    # 基本信息
+    audit_no = db.Column(db.String(50), unique=True, nullable=False, index=True)
+    audit_type = db.Column(db.String(50), default='ANFIA')  # ANFIA, SQA, etc.
+
+    # 供应商信息
+    supplier_id = db.Column(db.Integer, db.ForeignKey('suppliers.id'), nullable=True)
+    supplier_name = db.Column(db.String(255), nullable=False, index=True)
+
+    # 审核信息
+    audit_date = db.Column(db.Date, nullable=False, index=True)
+    auditor = db.Column(db.String(100), nullable=False)  # 审核员
+
+    # 文件信息
+    original_filename = db.Column(db.String(255))
+    stored_filename = db.Column(db.String(255))
+    file_path = db.Column(db.String(500))
+
+    # 统计信息
+    total_findings = db.Column(db.Integer, default=0)  # 总问题数
+    open_findings = db.Column(db.Integer, default=0)  # 未关闭问题数
+    closed_findings = db.Column(db.Integer, default=0)  # 已关闭问题数
+
+    # 状态
+    status = db.Column(db.String(30), default='open')  # open, in_progress, closed
+
+    # 备注
+    notes = db.Column(db.Text)
+
+    # 时间戳
+    created_at = db.Column(db.DateTime, default=datetime.utcnow, nullable=False, index=True)
+    updated_at = db.Column(db.DateTime, default=datetime.utcnow, onupdate=datetime.utcnow)
+
+    # 关联
+    findings = db.relationship('AuditFinding', backref='report', lazy='dynamic',
+                               cascade='all, delete-orphan')
+
+    def __repr__(self):
+        return f'<AuditReport {self.audit_no}>'
+
+    def update_statistics(self):
+        """更新统计信息"""
+        self.total_findings = self.findings.count()
+        self.open_findings = self.findings.filter_by(status='open').count() + \
+                             self.findings.filter_by(status='in_progress').count()
+        self.closed_findings = self.findings.filter_by(status='closed').count()
+
+        # 如果所有问题都关闭，报告状态改为 closed
+        if self.total_findings > 0 and self.closed_findings == self.total_findings:
+            self.status = 'closed'
+        elif self.open_findings > 0:
+            self.status = 'in_progress'
+
+
+class AuditFinding(db.Model):
+    """审核发现/问题点表"""
+    __tablename__ = 'audit_findings'
+
+    id = db.Column(db.Integer, primary_key=True)
+    report_id = db.Column(db.Integer, db.ForeignKey('audit_reports.id'),
+                          nullable=False, index=True)
+
+    # 条款信息
+    section = db.Column(db.String(100))  # Section 1, 2, 3, 4
+    clause_no = db.Column(db.String(50))  # 1.1, 2.3, etc.
+    clause_title = db.Column(db.String(255))  # 条款标题
+    requirement = db.Column(db.Text)  # 要求描述
+
+    # 问题描述
+    finding = db.Column(db.Text, nullable=False)  # 发现的问题
+    evidence = db.Column(db.Text)  # 证据
+
+    # 严重程度
+    severity = db.Column(db.String(20), default='minor')
+    # critical, major, minor, observation
+
+    # 供应商回复
+    supplier_response = db.Column(db.Text)  # 供应商回复
+    root_cause = db.Column(db.Text)  # 根本原因
+    corrective_action = db.Column(db.Text)  # 纠正措施
+    preventive_action = db.Column(db.Text)  # 预防措施
+
+    # 责任人和时间
+    responsible_person = db.Column(db.String(100))  # 供应商负责人
+    target_date = db.Column(db.Date)  # 目标完成日期
+    actual_completion_date = db.Column(db.Date)  # 实际完成日期
+
+    # 状态
+    status = db.Column(db.String(30), default='open', nullable=False, index=True)
+    # open: 未开始
+    # in_progress: 进行中
+    # pending_verification: 待验证
+    # closed: 已关闭
+
+    # SQE 验证
+    verification_date = db.Column(db.Date)  # 验证日期
+    verification_result = db.Column(db.String(50))  # pass, fail
+    verification_notes = db.Column(db.Text)  # 验证备注
+
+    # 进展更新
+    progress_updates = db.relationship('FindingProgress', backref='finding',
+                                       lazy='dynamic', cascade='all, delete-orphan',
+                                       order_by='FindingProgress.created_at.desc()')
+
+    # 附件
+    attachments = db.relationship('FindingAttachment', backref='finding',
+                                  lazy='dynamic', cascade='all, delete-orphan')
+
+    # 时间戳
+    created_at = db.Column(db.DateTime, default=datetime.utcnow, nullable=False)
+    updated_at = db.Column(db.DateTime, default=datetime.utcnow, onupdate=datetime.utcnow)
+
+    def __repr__(self):
+        return f'<AuditFinding {self.clause_no}: {self.status}>'
+
+    @property
+    def is_overdue(self):
+        """是否逾期"""
+        if self.status in ['closed'] or not self.target_date:
+            return False
+        return datetime.now().date() > self.target_date
+
+    @property
+    def days_until_due(self):
+        """距离到期天数"""
+        if not self.target_date:
+            return None
+        delta = self.target_date - datetime.now().date()
+        return delta.days
+
+
+class FindingProgress(db.Model):
+    """问题点进展更新记录"""
+    __tablename__ = 'finding_progress'
+
+    id = db.Column(db.Integer, primary_key=True)
+    finding_id = db.Column(db.Integer, db.ForeignKey('audit_findings.id'),
+                           nullable=False, index=True)
+
+    # 更新内容
+    update_type = db.Column(db.String(50), nullable=False)
+    # status_change, supplier_update, sqe_comment, verification
+
+    old_status = db.Column(db.String(30))
+    new_status = db.Column(db.String(30))
+
+    comment = db.Column(db.Text)  # 更新说明
+    updated_by = db.Column(db.String(100))  # 更新人
+
+    created_at = db.Column(db.DateTime, default=datetime.utcnow, nullable=False, index=True)
+
+    def __repr__(self):
+        return f'<FindingProgress {self.update_type}>'
+
+
+class FindingAttachment(db.Model):
+    """问题点附件"""
+    __tablename__ = 'finding_attachments'
+
+    id = db.Column(db.Integer, primary_key=True)
+    finding_id = db.Column(db.Integer, db.ForeignKey('audit_findings.id'),
+                           nullable=False, index=True)
+
+    # 附件信息
+    title = db.Column(db.String(255))
+    attachment_type = db.Column(db.String(50))  # photo, document, evidence
+
+    # 文件信息
+    original_name = db.Column(db.String(255), nullable=False)
+    stored_name = db.Column(db.String(255), nullable=False)
+    rel_path = db.Column(db.String(500), nullable=False)
+    mime = db.Column(db.String(100))
+    size = db.Column(db.Integer)
+
+    # 时间戳
+    created_at = db.Column(db.DateTime, default=datetime.utcnow, nullable=False)
+
+    def __repr__(self):
+        return f'<FindingAttachment {self.title}>'
+
+
+"""
+Task Management Database Models
+任务管理数据库模型
+"""
+
+
+class Task(db.Model):
+    """任务管理表"""
+    __tablename__ = 'tasks'
+
+    id = db.Column(db.Integer, primary_key=True)
+
+    # 基本信息
+    task_no = db.Column(db.String(50), unique=True, nullable=False, index=True)  # TASK-2026-001
+    title = db.Column(db.String(255), nullable=False, index=True)  # 任务标题
+    description = db.Column(db.Text)  # 详细描述
+
+    # 来源信息
+    source = db.Column(db.String(50), nullable=False, index=True)
+    # boss_request(上级指示), customer_complaint(客户投诉),
+    # supplier_issue(供应商问题), internal_audit(内部审核), other(其他)
+
+    source_reference = db.Column(db.String(255))  # 来源引用（邮件主题、会议名称等）
+    requester = db.Column(db.String(100))  # 任务发起人
+
+    # 分类
+    category = db.Column(db.String(50), index=True)
+    # quality_issue(质量问题), supplier_audit(供应商审核),
+    # documentation(文档工作), training(培训), meeting(会议), other(其他)
+
+    # 优先级
+    priority = db.Column(db.String(20), default='medium', nullable=False, index=True)
+    # urgent(紧急), high(高), medium(中), low(低)
+
+    # 时间管理
+    due_date = db.Column(db.Date, index=True)  # 截止日期
+    start_date = db.Column(db.Date)  # 开始日期
+    completed_date = db.Column(db.Date)  # 完成日期
+
+    # 状态
+    status = db.Column(db.String(30), default='pending', nullable=False, index=True)
+    # pending(待处理), in_progress(进行中), on_hold(暂停),
+    # completed(已完成), cancelled(已取消)
+
+    # 进度
+    progress = db.Column(db.Integer, default=0)  # 完成百分比 0-100
+
+    # 关联信息（可选）
+    related_supplier = db.Column(db.String(255))  # 关联供应商
+    related_tr_no = db.Column(db.String(50))  # 关联 TR 编号
+    related_audit_no = db.Column(db.String(50))  # 关联审核编号
+    related_trip_no = db.Column(db.String(50))  # 关联出差编号
+
+    # 工作量估算
+    estimated_hours = db.Column(db.Float)  # 预计工时
+    actual_hours = db.Column(db.Float)  # 实际工时
+
+    # 备注和附件
+    notes = db.Column(db.Text)  # 备注
+
+    # 提醒设置
+    reminder_enabled = db.Column(db.Boolean, default=True)  # 是否开启提醒
+    reminder_days_before = db.Column(db.Integer, default=1)  # 提前几天提醒
+
+    # 时间戳
+    created_at = db.Column(db.DateTime, default=datetime.utcnow, nullable=False, index=True)
+    updated_at = db.Column(db.DateTime, default=datetime.utcnow, onupdate=datetime.utcnow)
+
+    # 关联
+    updates = db.relationship('TaskUpdate', backref='task', lazy='dynamic',
+                              cascade='all, delete-orphan',
+                              order_by='TaskUpdate.created_at.desc()')
+
+    attachments = db.relationship('TaskAttachment', backref='task', lazy='dynamic',
+                                  cascade='all, delete-orphan')
+
+    def __repr__(self):
+        return f'<Task {self.task_no}: {self.title}>'
+
+    @property
+    def is_overdue(self):
+        """是否逾期"""
+        if self.status in ['completed', 'cancelled'] or not self.due_date:
+            return False
+        return datetime.now().date() > self.due_date
+
+    @property
+    def days_until_due(self):
+        """距离到期天数"""
+        if not self.due_date:
+            return None
+        delta = self.due_date - datetime.now().date()
+        return delta.days
+
+    @property
+    def is_urgent_reminder(self):
+        """是否需要紧急提醒（即将到期）"""
+        if not self.reminder_enabled or not self.due_date:
+            return False
+        if self.status in ['completed', 'cancelled']:
+            return False
+        days_left = self.days_until_due
+        if days_left is None:
+            return False
+        return 0 <= days_left <= self.reminder_days_before
+
+
+class TaskUpdate(db.Model):
+    """任务进展更新记录"""
+    __tablename__ = 'task_updates'
+
+    id = db.Column(db.Integer, primary_key=True)
+    task_id = db.Column(db.Integer, db.ForeignKey('tasks.id'),
+                        nullable=False, index=True)
+
+    # 更新内容
+    update_type = db.Column(db.String(50), nullable=False)
+    # status_change(状态变更), progress_update(进度更新),
+    # comment(评论), milestone(里程碑)
+
+    old_status = db.Column(db.String(30))  # 旧状态
+    new_status = db.Column(db.String(30))  # 新状态
+
+    old_progress = db.Column(db.Integer)  # 旧进度
+    new_progress = db.Column(db.Integer)  # 新进度
+
+    content = db.Column(db.Text)  # 更新内容
+    updated_by = db.Column(db.String(100))  # 更新人
+
+    created_at = db.Column(db.DateTime, default=datetime.utcnow,
+                           nullable=False, index=True)
+
+    def __repr__(self):
+        return f'<TaskUpdate {self.update_type}>'
+
+
+class TaskAttachment(db.Model):
+    """任务附件"""
+    __tablename__ = 'task_attachments'
+
+    id = db.Column(db.Integer, primary_key=True)
+    task_id = db.Column(db.Integer, db.ForeignKey('tasks.id'),
+                        nullable=False, index=True)
+
+    # 附件信息
+    title = db.Column(db.String(255))
+    attachment_type = db.Column(db.String(50))  # email, document, photo, other
+
+    # 文件信息
+    original_name = db.Column(db.String(255), nullable=False)
+    stored_name = db.Column(db.String(255), nullable=False)
+    rel_path = db.Column(db.String(500), nullable=False)
+    mime = db.Column(db.String(100))
+    size = db.Column(db.Integer)
+
+    # 时间戳
+    created_at = db.Column(db.DateTime, default=datetime.utcnow, nullable=False)
+
+    def __repr__(self):
+        return f'<TaskAttachment {self.title}>'

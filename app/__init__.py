@@ -54,6 +54,12 @@ def create_app(test_config=None):
     from app.blueprints.file import file_bp
     app.register_blueprint(file_bp, url_prefix='/file')
 
+    from app.blueprints.tasks import tasks_bp
+    app.register_blueprint(tasks_bp, url_prefix='/tasks')
+
+    from app.blueprints.audit import audit_bp
+    app.register_blueprint(audit_bp)
+
     # CLI：初始化数据库 + 导入种子数据
     from .seed import seed_suppliers
 

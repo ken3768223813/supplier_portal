@@ -1,0 +1,180 @@
+{% extends "layout/base.html" %}
+{% block content %}
+
+<div class="max-w-4xl mx-auto px-6 py-6">
+
+  <!-- Breadcrumb -->
+  <div class="mb-6 flex items-center gap-2 text-sm text-gray-500">
+    <a href="{{ url_for('audit.index') }}" class="hover:text-gray-900 transition font-medium">Audit Findings</a>
+    <svg class="w-4 h-4 text-gray-300" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+      <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M9 5l7 7-7 7"/>
+    </svg>
+    <span class="text-gray-900 font-semibold">Upload Report</span>
+  </div>
+
+  <!-- Form Card -->
+  <div class="bg-white rounded-2xl border-2 border-gray-200 overflow-hidden">
+
+    <!-- Header -->
+    <div class="px-8 py-6 border-b-2 border-gray-100">
+      <div class="flex items-center gap-4">
+        <div class="w-14 h-14 bg-indigo-500 rounded-xl flex items-center justify-center">
+          <svg class="w-7 h-7 text-white" fill="none" stroke="currentColor" viewBox="0 0 24 24" stroke-width="2">
+            <path stroke-linecap="round" stroke-linejoin="round" d="M7 16a4 4 0 01-.88-7.903A5 5 0 1115.9 6L16 6a5 5 0 011 9.9M15 13l-3-3m0 0l-3 3m3-3v12"/>
+          </svg>
+        </div>
+        <div>
+          <h1 class="text-3xl font-bold text-gray-900">Upload Audit Report</h1>
+          <p class="text-sm text-gray-500 mt-1">Upload ANFIA Excel report to auto-extract findings or PDF report for manual entry</p>
+        </div>
+      </div>
+    </div>
+
+    <!-- Form -->
+    <form method="post" enctype="multipart/form-data" class="p-8">
+
+      <!-- Basic Information -->
+      <div class="mb-8">
+        <h2 class="text-lg font-bold text-gray-900 mb-4 flex items-center gap-2">
+          <svg class="w-5 h-5 text-indigo-600" fill="none" stroke="currentColor" viewBox="0 0 24 24" stroke-width="2">
+            <path stroke-linecap="round" stroke-linejoin="round" d="M13 16h-1v-4h-1m1-4h.01M21 12a9 9 0 11-18 0 9 9 0 0118 0z"/>
+          </svg>
+          Basic Information
+        </h2>
+
+        <div class="grid grid-cols-2 gap-4">
+
+          <!-- Audit Type -->
+          <div>
+            <label class="block text-sm font-bold text-gray-700 mb-2">
+              Audit Type <span class="text-red-500">*</span>
+            </label>
+            <select name="audit_type" required
+                    class="w-full px-4 py-3 border-2 border-gray-200 rounded-xl text-sm font-semibold
+                           focus:outline-none focus:border-gray-900 transition-all cursor-pointer">
+              <option value="ANFIA">ANFIA Audit</option>
+              <option value="SQA Report">SQA Report</option>
+              <option value="Process Audit">Process Audit</option>
+              <option value="Product Audit">Product Audit</option>
+            </select>
+          </div>
+
+          <!-- Audit Date -->
+          <div>
+            <label class="block text-sm font-bold text-gray-700 mb-2">
+              Audit Date <span class="text-red-500">*</span>
+            </label>
+            <input type="date" name="audit_date" required
+                   class="w-full px-4 py-3 border-2 border-gray-200 rounded-xl text-sm
+                          focus:outline-none focus:border-gray-900 transition-all">
+          </div>
+
+          <!-- Supplier -->
+          <div>
+            <label class="block text-sm font-bold text-gray-700 mb-2">
+              Supplier Name <span class="text-red-500">*</span>
+            </label>
+            <select name="supplier_name" required
+                    class="w-full px-4 py-3 border-2 border-gray-200 rounded-xl text-sm font-semibold
+                           focus:outline-none focus:border-gray-900 transition-all cursor-pointer">
+              <option value="">Select supplier</option>
+              {% for supplier in suppliers %}
+              <option value="{{ supplier.name }}">{{ supplier.code }} - {{ supplier.name }}</option>
+              {% endfor %}
+            </select>
+          </div>
+
+          <!-- Auditor -->
+          <div>
+            <label class="block text-sm font-bold text-gray-700 mb-2">
+              Auditor <span class="text-red-500">*</span>
+            </label>
+            <input type="text" name="auditor" required
+                   placeholder="Your name"
+                   class="w-full px-4 py-3 border-2 border-gray-200 rounded-xl text-sm
+                          focus:outline-none focus:border-gray-900 transition-all">
+          </div>
+        </div>
+      </div>
+
+      <!-- File Upload -->
+      <div class="mb-8">
+        <h2 class="text-lg font-bold text-gray-900 mb-4 flex items-center gap-2">
+          <svg class="w-5 h-5 text-blue-600" fill="none" stroke="currentColor" viewBox="0 0 24 24" stroke-width="2">
+            <path stroke-linecap="round" stroke-linejoin="round" d="M7 21h10a2 2 0 002-2V9.414a1 1 0 00-.293-.707l-5.414-5.414A1 1 0 0012.586 3H7a2 2 0 00-2 2v14a2 2 0 002 2z"/>
+          </svg>
+          Upload Audit Report
+        </h2>
+
+        <div class="border-2 border-dashed border-gray-300 rounded-xl p-8 text-center hover:border-gray-900 hover:bg-gray-50 transition-all cursor-pointer">
+          <input type="file" name="file" required id="fileInput"
+                 class="hidden"
+                 accept=".xlsx,.xls,.xlsm,.pdf"
+                 onchange="updateFileName(this)">
+          <label for="fileInput" class="cursor-pointer">
+            <div class="flex flex-col items-center gap-3">
+              <div class="w-16 h-16 bg-blue-100 rounded-full flex items-center justify-center border-2 border-blue-200">
+                <svg class="w-8 h-8 text-blue-600" fill="none" stroke="currentColor" viewBox="0 0 24 24" stroke-width="2">
+                  <path stroke-linecap="round" stroke-linejoin="round" d="M7 16a4 4 0 01-.88-7.903A5 5 0 1115.9 6L16 6a5 5 0 011 9.9M15 13l-3-3m0 0l-3 3m3-3v12"/>
+                </svg>
+              </div>
+              <div>
+                <p class="text-sm font-bold text-gray-700">Click to select audit report file</p>
+                <p class="text-xs text-gray-500 mt-1">Excel (.xlsx, .xls, .xlsm) or PDF (.pdf) - max 50MB</p>
+              </div>
+            </div>
+          </label>
+          <p id="fileName" class="text-sm text-green-600 font-semibold mt-3 hidden"></p>
+        </div>
+
+        <!-- Help Text -->
+        <div class="mt-4 p-4 bg-blue-50 rounded-xl border-2 border-blue-200">
+          <p class="text-xs font-semibold text-blue-900 mb-2">
+            💡 <strong>Auto-extraction:</strong> Excel ANFIA reports will auto-extract findings from the "Action Plan" sheet.
+          </p>
+          <p class="text-xs font-semibold text-blue-900">
+            📄 <strong>Manual entry:</strong> PDF reports (SQA, Process Audit, etc.) require manual finding entry after upload.
+          </p>
+        </div>
+      </div>
+
+      <!-- Notes -->
+      <div class="mb-8">
+        <label class="block text-sm font-bold text-gray-700 mb-2">Notes</label>
+        <textarea name="notes" rows="3"
+                  placeholder="Additional notes about this audit..."
+                  class="w-full px-4 py-3 border-2 border-gray-200 rounded-xl text-sm
+                         focus:outline-none focus:border-gray-900 transition-all resize-none"></textarea>
+      </div>
+
+      <!-- Action Buttons -->
+      <div class="flex items-center gap-3 pt-6 border-t-2 border-gray-100">
+        <button type="submit"
+                class="flex-1 py-3 rounded-xl bg-gray-900 text-white font-bold
+                       hover:bg-gray-800 transition-all hover:scale-105 active:scale-95">
+          Upload Report
+        </button>
+        <a href="{{ url_for('audit.index') }}"
+           class="px-6 py-3 rounded-xl border-2 border-gray-300 text-gray-700 font-semibold
+                  hover:bg-gray-50 hover:border-gray-900 transition-all">
+          Cancel
+        </a>
+      </div>
+    </form>
+
+  </div>
+</div>
+
+<script>
+function updateFileName(input) {
+  const fileName = document.getElementById('fileName');
+  if (input.files && input.files[0]) {
+    fileName.textContent = '✓ ' + input.files[0].name;
+    fileName.classList.remove('hidden');
+  } else {
+    fileName.classList.add('hidden');
+  }
+}
+</script>
+
+{% endblock %}

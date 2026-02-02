@@ -1,0 +1,492 @@
+{% extends "layout/base.html" %}
+{% block content %}
+
+<div class="max-w-7xl mx-auto px-6 py-6">
+  
+  <!-- Breadcrumb -->
+  <div class="mb-6 flex items-center gap-2 text-sm text-gray-500">
+    <a href="{{ url_for('audit.index') }}" class="hover:text-gray-900 transition font-medium">Audit Findings</a>
+    <svg class="w-4 h-4 text-gray-300" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+      <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M9 5l7 7-7 7"/>
+    </svg>
+    <span class="text-gray-900 font-semibold">{{ report.audit_no }}</span>
+  </div>
+
+  <!-- Report Header -->
+  <div class="bg-white rounded-2xl border-2 border-gray-200 p-8 mb-6">
+    <div class="flex items-start justify-between mb-6">
+      <div>
+        <div class="flex items-center gap-3 mb-3">
+          <span class="px-4 py-2 rounded-lg bg-blue-100 text-blue-700 font-bold border-2 border-blue-200">
+            {{ report.audit_no }}
+          </span>
+          <span class="px-4 py-2 rounded-lg bg-gray-100 text-gray-700 font-bold">
+            {{ report.audit_type }}
+          </span>
+          {% if report.status == 'open' %}
+          <span class="px-4 py-2 rounded-lg bg-amber-100 text-amber-700 font-bold">
+            🟡 Open
+          </span>
+          {% elif report.status == 'in_progress' %}
+          <span class="px-4 py-2 rounded-lg bg-purple-100 text-purple-700 font-bold">
+            🟣 In Progress
+          </span>
+          {% else %}
+          <span class="px-4 py-2 rounded-lg bg-green-100 text-green-700 font-bold">
+            🟢 Closed
+          </span>
+          {% endif %}
+        </div>
+        
+        <h1 class="text-3xl font-bold text-gray-900 mb-2">{{ report.supplier_name }}</h1>
+        <div class="flex items-center gap-4 text-sm text-gray-500 font-semibold">
+          <span>📅 {{ report.audit_date.strftime('%b %d, %Y') }}</span>
+          <span>👤 {{ report.auditor }}</span>
+        </div>
+      </div>
+
+      <div class="flex items-center gap-2">
+        <a href="{{ url_for('audit.download_report', report_id=report.id) }}"
+           class="px-5 py-3 rounded-xl bg-green-50 text-green-700 font-bold border-2 border-green-200
+                  hover:bg-green-100 transition-all">
+          Download Excel
+        </a>
+      </div>
+    </div>
+
+    <!-- Stats -->
+    <div class="grid grid-cols-4 gap-4">
+      <div class="p-4 bg-gray-50 rounded-xl border-2 border-gray-200">
+        <div class="text-2xl font-bold text-gray-900">{{ report.total_findings }}</div>
+        <div class="text-xs text-gray-500 font-semibold">Total Findings</div>
+      </div>
+      <div class="p-4 bg-amber-50 rounded-xl border-2 border-amber-200">
+        <div class="text-2xl font-bold text-amber-700">{{ report.open_findings }}</div>
+        <div class="text-xs text-gray-500 font-semibold">Open</div>
+      </div>
+      <div class="p-4 bg-green-50 rounded-xl border-2 border-green-200">
+        <div class="text-2xl font-bold text-green-700">{{ report.closed_findings }}</div>
+        <div class="text-xs text-gray-500 font-semibold">Closed</div>
+      </div>
+      <div class="p-4 bg-blue-50 rounded-xl border-2 border-blue-200">
+        <div class="text-2xl font-bold text-blue-700">
+          {{ ((report.closed_findings / report.total_findings * 100) if report.total_findings > 0 else 0)|round(0)|int }}%
+        </div>
+        <div class="text-xs text-gray-500 font-semibold">Progress</div>
+      </div>
+    </div>
+  </div>
+
+  <!-- Filters -->
+  <div class="flex items-center gap-3 mb-6">
+    <a href="{{ url_for('audit.report_detail', report_id=report.id) }}"
+       class="px-4 py-2 rounded-xl font-bold transition-all
+              {% if not request.args.get('status') %}bg-gray-900 text-white{% else %}bg-gray-100 text-gray-700 hover:bg-gray-200{% endif %}">
+      All ({{ report.total_findings }})
+    </a>
+    <a href="{{ url_for('audit.report_detail', report_id=report.id, status='open') }}"
+       class="px-4 py-2 rounded-xl font-bold transition-all
+              {% if request.args.get('status')=='open' %}bg-amber-500 text-white{% else %}bg-amber-50 text-amber-700 hover:bg-amber-100{% endif %}">
+      Open
+    </a>
+    <a href="{{ url_for('audit.report_detail', report_id=report.id, status='in_progress') }}"
+       class="px-4 py-2 rounded-xl font-bold transition-all
+              {% if request.args.get('status')=='in_progress' %}bg-purple-500 text-white{% else %}bg-purple-50 text-purple-700 hover:bg-purple-100{% endif %}">
+      In Progress
+    </a>
+    <a href="{{ url_for('audit.report_detail', report_id=report.id, status='pending_verification') }}"
+       class="px-4 py-2 rounded-xl font-bold transition-all
+              {% if request.args.get('status')=='pending_verification' %}bg-blue-500 text-white{% else %}bg-blue-50 text-blue-700 hover:bg-blue-100{% endif %}">
+      Pending Verification
+    </a>
+    <a href="{{ url_for('audit.report_detail', report_id=report.id, status='closed') }}"
+       class="px-4 py-2 rounded-xl font-bold transition-all
+              {% if request.args.get('status')=='closed' %}bg-green-500 text-white{% else %}bg-green-50 text-green-700 hover:bg-green-100{% endif %}">
+      Closed
+    </a>
+  </div>
+
+
+    <!-- Add Finding Button (在 Findings List 之前) -->
+    <div class="mb-4 flex justify-end">
+      <button onclick="toggleAddFindingForm()"
+              class="inline-flex items-center gap-2 px-5 py-2 rounded-xl bg-gray-900 text-white font-bold
+                     hover:bg-gray-800 transition-all hover:scale-105 active:scale-95">
+        <svg class="w-5 h-5" fill="none" stroke="currentColor" viewBox="0 0 24 24" stroke-width="2">
+          <path stroke-linecap="round" stroke-linejoin="round" d="M12 4v16m8-8H4"/>
+        </svg>
+        Add Finding
+      </button>
+    </div>
+
+    <!-- Add Finding Form (Collapsible) -->
+    <div id="addFindingForm" class="hidden bg-white rounded-xl border-2 border-gray-200 p-6 mb-6">
+      <h3 class="text-lg font-bold text-gray-900 mb-4">Add New Finding</h3>
+
+      <form method="post" action="{{ url_for('audit.add_finding', report_id=report.id) }}">
+        <div class="space-y-4">
+
+          <div class="grid grid-cols-2 gap-4">
+            <!-- Clause No -->
+            <div>
+              <label class="block text-xs font-bold text-gray-700 mb-2">
+                Clause No. <span class="text-red-500">*</span>
+              </label>
+              <input type="text" name="clause_no" required
+                     placeholder="e.g., 3.0, 2.14"
+                     class="w-full px-4 py-2 border-2 border-gray-200 rounded-xl text-sm
+                            focus:outline-none focus:border-gray-900 transition-all">
+            </div>
+
+            <!-- Severity -->
+            <div>
+              <label class="block text-xs font-bold text-gray-700 mb-2">
+                Severity <span class="text-red-500">*</span>
+              </label>
+              <select name="severity" required
+                      class="w-full px-4 py-2 border-2 border-gray-200 rounded-xl text-sm font-semibold
+                             focus:outline-none focus:border-gray-900 transition-all cursor-pointer">
+                <option value="observation">Observation</option>
+                <option value="minor">Minor</option>
+                <option value="major">Major</option>
+                <option value="critical">Critical</option>
+              </select>
+            </div>
+          </div>
+
+          <!-- Clause Title -->
+          <div>
+            <label class="block text-xs font-bold text-gray-700 mb-2">Clause Title</label>
+            <input type="text" name="clause_title"
+                   placeholder="e.g., Document Control"
+                   class="w-full px-4 py-2 border-2 border-gray-200 rounded-xl text-sm
+                          focus:outline-none focus:border-gray-900 transition-all">
+          </div>
+
+          <!-- Finding Description -->
+          <div>
+            <label class="block text-xs font-bold text-gray-700 mb-2">
+              Finding Description <span class="text-red-500">*</span>
+            </label>
+            <textarea name="finding" rows="3" required
+                      placeholder="Describe the issue found during the audit..."
+                      class="w-full px-4 py-2 border-2 border-gray-200 rounded-xl text-sm
+                             focus:outline-none focus:border-gray-900 transition-all resize-none"></textarea>
+          </div>
+
+          <!-- Evidence -->
+          <div>
+            <label class="block text-xs font-bold text-gray-700 mb-2">Evidence</label>
+            <textarea name="evidence" rows="2"
+                      placeholder="Photos, documents, observations..."
+                      class="w-full px-4 py-2 border-2 border-gray-200 rounded-xl text-sm
+                             focus:outline-none focus:border-gray-900 transition-all resize-none"></textarea>
+          </div>
+
+          <div class="grid grid-cols-2 gap-4">
+            <!-- Target Date -->
+            <div>
+              <label class="block text-xs font-bold text-gray-700 mb-2">Target Date</label>
+              <input type="date" name="target_date"
+                     class="w-full px-4 py-2 border-2 border-gray-200 rounded-xl text-sm
+                            focus:outline-none focus:border-gray-900 transition-all">
+            </div>
+
+            <!-- Responsible Person -->
+            <div>
+              <label class="block text-xs font-bold text-gray-700 mb-2">Responsible Person</label>
+              <input type="text" name="responsible_person"
+                     placeholder="Supplier contact name"
+                     class="w-full px-4 py-2 border-2 border-gray-200 rounded-xl text-sm
+                            focus:outline-none focus:border-gray-900 transition-all">
+            </div>
+          </div>
+
+          <!-- Action Buttons -->
+          <div class="flex items-center gap-3 pt-4 border-t-2 border-gray-100">
+            <button type="submit"
+                    class="px-6 py-2 rounded-xl bg-gray-900 text-white font-bold
+                           hover:bg-gray-800 transition-all">
+              Add Finding
+            </button>
+            <button type="button" onclick="toggleAddFindingForm()"
+                    class="px-6 py-2 rounded-xl border-2 border-gray-300 text-gray-700 font-semibold
+                           hover:bg-gray-50 hover:border-gray-900 transition-all">
+              Cancel
+            </button>
+          </div>
+        </div>
+      </form>
+    </div>
+  <!-- Findings List -->
+  <div class="space-y-4">
+    {% if findings %}
+      {% for finding in findings %}
+      <div class="bg-white rounded-xl border-2 border-gray-200 overflow-hidden">
+
+        <!-- Finding Header -->
+          <!-- Finding Header -->
+        <div class="px-6 py-4 bg-gray-50 border-b-2 border-gray-100">
+          <div class="flex items-start justify-between gap-4">
+            <div class="flex-1 min-w-0">
+              <!-- Status Badges - 统一风格 -->
+              <div class="flex items-center gap-2 mb-3 flex-wrap">
+                <!-- 条款号 - 黑色保持 -->
+                <span class="px-3 py-1 rounded-lg bg-gray-900 text-white text-xs font-bold">
+                  {{ finding.clause_no }}
+                </span>
+
+                <!-- 严重程度 - 统一使用灰色系 + 小圆点 -->
+                {% if finding.severity == 'critical' %}
+                <span class="px-3 py-1 rounded-lg bg-gray-100 text-gray-700 text-xs font-bold border-2 border-gray-300">
+                  <span class="inline-block w-2 h-2 bg-red-500 rounded-full mr-1.5"></span>Critical
+                </span>
+                {% elif finding.severity == 'major' %}
+                <span class="px-3 py-1 rounded-lg bg-gray-100 text-gray-700 text-xs font-bold border-2 border-gray-300">
+                  <span class="inline-block w-2 h-2 bg-orange-500 rounded-full mr-1.5"></span>Major
+                </span>
+                {% elif finding.severity == 'minor' %}
+                <span class="px-3 py-1 rounded-lg bg-gray-100 text-gray-700 text-xs font-bold border-2 border-gray-300">
+                  <span class="inline-block w-2 h-2 bg-yellow-500 rounded-full mr-1.5"></span>Minor
+                </span>
+                {% else %}
+                <span class="px-3 py-1 rounded-lg bg-gray-100 text-gray-700 text-xs font-bold border-2 border-gray-300">
+                  <span class="inline-block w-2 h-2 bg-blue-500 rounded-full mr-1.5"></span>Observation
+                </span>
+                {% endif %}
+
+                <!-- 状态 - 统一灰色系 + 圆点 -->
+                {% if finding.status == 'open' %}
+                <span class="px-3 py-1 rounded-lg bg-gray-100 text-gray-700 text-xs font-bold border-2 border-gray-300">
+                  <span class="inline-block w-2 h-2 bg-amber-500 rounded-full mr-1.5"></span>Open
+                </span>
+                {% elif finding.status == 'in_progress' %}
+                <span class="px-3 py-1 rounded-lg bg-gray-100 text-gray-700 text-xs font-bold border-2 border-gray-300">
+                  <span class="inline-block w-2 h-2 bg-purple-500 rounded-full mr-1.5"></span>In Progress
+                </span>
+                {% elif finding.status == 'pending_verification' %}
+                <span class="px-3 py-1 rounded-lg bg-gray-100 text-gray-700 text-xs font-bold border-2 border-gray-300">
+                  <span class="inline-block w-2 h-2 bg-blue-500 rounded-full mr-1.5"></span>Pending Verification
+                </span>
+                {% else %}
+                <span class="px-3 py-1 rounded-lg bg-gray-100 text-gray-700 text-xs font-bold border-2 border-gray-300">
+                  <span class="inline-block w-2 h-2 bg-green-500 rounded-full mr-1.5"></span>Closed
+                </span>
+                {% endif %}
+
+                <!-- 逾期标签 - 灰色系 + 红点 -->
+                {% if finding.is_overdue and finding.status not in ['closed'] %}
+                <span class="px-3 py-1 rounded-lg bg-gray-100 text-gray-700 text-xs font-bold border-2 border-gray-300">
+                  <span class="inline-block w-2 h-2 bg-red-500 rounded-full mr-1.5 animate-pulse"></span>Overdue
+                </span>
+                {% endif %}
+              </div>
+
+              <!-- Finding Description -->
+              <div class="text-sm text-gray-600 leading-relaxed">
+                {% if finding.finding|length > 120 %}
+                  {{ finding.finding[:120] }}...
+                {% else %}
+                  {{ finding.finding }}
+                {% endif %}
+              </div>
+
+              {% if finding.target_date %}
+              <div class="text-xs text-gray-500 mt-2 font-semibold">
+                📅 Target: {{ finding.target_date.strftime('%b %d, %Y') }}
+                {% if finding.days_until_due is not none %}
+                  {% if finding.days_until_due < 0 %}
+                    <span class="text-gray-700">({{ finding.days_until_due|abs }} days overdue)</span>
+                  {% elif finding.days_until_due == 0 %}
+                    <span class="text-gray-700">(Due today)</span>
+                  {% elif finding.days_until_due <= 7 %}
+                    <span class="text-gray-700">({{ finding.days_until_due }} days left)</span>
+                  {% endif %}
+                {% endif %}
+              </div>
+              {% endif %}
+            </div>
+
+            <!-- View/Update 按钮 - 统一风格 -->
+            <button onclick="toggleFinding({{ finding.id }})"
+                    class="px-4 py-2 rounded-lg bg-white text-gray-700 font-semibold text-sm
+                           hover:bg-gray-50 border-2 border-gray-300 hover:border-gray-900 transition-all shrink-0">
+              View / Update
+            </button>
+          </div>
+        </div>
+
+        <!-- Finding Details (Collapsible) -->
+        <div id="finding-{{ finding.id }}" class="hidden px-6 py-6 space-y-6">
+
+          <!-- Finding Description -->
+          <div>
+            <h4 class="text-sm font-bold text-gray-700 mb-2">Finding:</h4>
+            <p class="text-sm text-gray-600 leading-relaxed">{{ finding.finding }}</p>
+          </div>
+
+          {% if finding.evidence %}
+          <div>
+            <h4 class="text-sm font-bold text-gray-700 mb-2">Evidence:</h4>
+            <p class="text-sm text-gray-600 leading-relaxed">{{ finding.evidence }}</p>
+          </div>
+          {% endif %}
+
+          <!-- Supplier Response Form -->
+          <div class="border-t-2 border-gray-100 pt-6">
+            <h4 class="text-sm font-bold text-gray-900 mb-4">Supplier Response & Action Plan:</h4>
+            
+            <form method="post" action="{{ url_for('audit.update_finding', finding_id=finding.id) }}">
+              
+              <div class="space-y-4">
+                
+                <!-- Root Cause -->
+                <div>
+                  <label class="block text-xs font-bold text-gray-700 mb-2">Root Cause</label>
+                  <textarea name="root_cause" rows="2"
+                            class="w-full px-4 py-2 border-2 border-gray-200 rounded-xl text-sm
+                                   focus:outline-none focus:border-gray-900 transition-all resize-none">{{ finding.root_cause or '' }}</textarea>
+                </div>
+
+                <!-- Corrective Action -->
+                <div>
+                  <label class="block text-xs font-bold text-gray-700 mb-2">Corrective Action</label>
+                  <textarea name="corrective_action" rows="3"
+                            class="w-full px-4 py-2 border-2 border-gray-200 rounded-xl text-sm
+                                   focus:outline-none focus:border-gray-900 transition-all resize-none">{{ finding.corrective_action or '' }}</textarea>
+                </div>
+
+                <!-- Preventive Action -->
+                <div>
+                  <label class="block text-xs font-bold text-gray-700 mb-2">Preventive Action</label>
+                  <textarea name="preventive_action" rows="2"
+                            class="w-full px-4 py-2 border-2 border-gray-200 rounded-xl text-sm
+                                   focus:outline-none focus:border-gray-900 transition-all resize-none">{{ finding.preventive_action or '' }}</textarea>
+                </div>
+
+                <div class="grid grid-cols-2 gap-4">
+                  
+                  <!-- Responsible Person -->
+                  <div>
+                    <label class="block text-xs font-bold text-gray-700 mb-2">Responsible Person</label>
+                    <input type="text" name="responsible_person" value="{{ finding.responsible_person or '' }}"
+                           class="w-full px-4 py-2 border-2 border-gray-200 rounded-xl text-sm
+                                  focus:outline-none focus:border-gray-900 transition-all">
+                  </div>
+
+                  <!-- Target Date -->
+                  <div>
+                    <label class="block text-xs font-bold text-gray-700 mb-2">Target Date</label>
+                    <input type="date" name="target_date" value="{{ finding.target_date.strftime('%Y-%m-%d') if finding.target_date else '' }}"
+                           class="w-full px-4 py-2 border-2 border-gray-200 rounded-xl text-sm
+                                  focus:outline-none focus:border-gray-900 transition-all">
+                  </div>
+
+                  <!-- Status -->
+                  <div>
+                    <label class="block text-xs font-bold text-gray-700 mb-2">Status</label>
+                    <select name="status"
+                            class="w-full px-4 py-2 border-2 border-gray-200 rounded-xl text-sm font-semibold
+                                   focus:outline-none focus:border-gray-900 transition-all cursor-pointer">
+                      <option value="open" {% if finding.status=='open' %}selected{% endif %}>Open</option>
+                      <option value="in_progress" {% if finding.status=='in_progress' %}selected{% endif %}>In Progress</option>
+                      <option value="pending_verification" {% if finding.status=='pending_verification' %}selected{% endif %}>Pending Verification</option>
+                      <option value="closed" {% if finding.status=='closed' %}selected{% endif %}>Closed</option>
+                    </select>
+                  </div>
+
+                  <!-- Verification Result (SQE only) -->
+                  <div>
+                    <label class="block text-xs font-bold text-gray-700 mb-2">SQE Verification</label>
+                    <select name="verification_result"
+                            class="w-full px-4 py-2 border-2 border-gray-200 rounded-xl text-sm font-semibold
+                                   focus:outline-none focus:border-gray-900 transition-all cursor-pointer">
+                      <option value="">Not Verified</option>
+                      <option value="pass" {% if finding.verification_result=='pass' %}selected{% endif %}>✅ Pass</option>
+                      <option value="fail" {% if finding.verification_result=='fail' %}selected{% endif %}>❌ Fail</option>
+                    </select>
+                  </div>
+                </div>
+
+                <!-- Update Comment -->
+                <div>
+                  <label class="block text-xs font-bold text-gray-700 mb-2">Update Comment</label>
+                  <textarea name="comment" rows="2" placeholder="Add progress update or comment..."
+                            class="w-full px-4 py-2 border-2 border-gray-200 rounded-xl text-sm
+                                   focus:outline-none focus:border-gray-900 transition-all resize-none"></textarea>
+                </div>
+
+                <!-- Save Button -->
+                <div class="flex items-center gap-3 pt-4">
+                  <button type="submit"
+                          class="px-6 py-2 rounded-xl bg-gray-900 text-white font-bold
+                                 hover:bg-gray-800 transition-all">
+                    Save Update
+                  </button>
+                </div>
+
+              </div>
+            </form>
+          </div>
+
+          <!-- Progress History -->
+          {% if finding.progress_updates.count() > 0 %}
+          <div class="border-t-2 border-gray-100 pt-6">
+            <h4 class="text-sm font-bold text-gray-900 mb-4">Progress History:</h4>
+            <div class="space-y-3">
+              {% for update in finding.progress_updates %}
+              <div class="p-3 bg-gray-50 rounded-lg border-2 border-gray-200">
+                <div class="flex items-start justify-between mb-2">
+                  <span class="text-xs font-bold text-gray-700">{{ update.update_type|replace('_', ' ')|title }}</span>
+                  <span class="text-xs text-gray-500">{{ update.created_at.strftime('%b %d, %Y %H:%M') }}</span>
+                </div>
+                {% if update.comment %}
+                <p class="text-xs text-gray-600">{{ update.comment }}</p>
+                {% endif %}
+                {% if update.old_status and update.new_status %}
+                <p class="text-xs text-gray-500 mt-1">
+                  Status: <span class="font-semibold">{{ update.old_status }}</span> → <span class="font-semibold">{{ update.new_status }}</span>
+                </p>
+                {% endif %}
+              </div>
+              {% endfor %}
+            </div>
+          </div>
+          {% endif %}
+
+        </div>
+
+      </div>
+      {% endfor %}
+    {% else %}
+      <div class="text-center py-12 bg-white rounded-xl border-2 border-dashed border-gray-300">
+        <p class="text-sm font-semibold text-gray-500">No findings match the selected filter</p>
+      </div>
+    {% endif %}
+  </div>
+
+</div>
+
+<script>
+function toggleFinding(id) {
+  const element = document.getElementById('finding-' + id);
+  element.classList.toggle('hidden');
+}
+
+function toggleFinding(id) {
+  const element = document.getElementById('finding-' + id);
+  element.classList.toggle('hidden');
+}
+
+function toggleAddFindingForm() {
+  const form = document.getElementById('addFindingForm');
+  form.classList.toggle('hidden');
+
+  // 如果显示表单，滚动到表单位置
+  if (!form.classList.contains('hidden')) {
+    form.scrollIntoView({ behavior: 'smooth', block: 'start' });
+  }
+}
+</script>
+
+{% endblock %}

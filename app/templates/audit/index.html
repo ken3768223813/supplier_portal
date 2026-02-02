@@ -1,0 +1,251 @@
+{% extends "layout/base.html" %}
+{% block content %}
+
+<div class="max-w-7xl mx-auto px-6 py-6">
+
+  <!-- Header -->
+  <div class="mb-6 flex items-center justify-between">
+    <div>
+      <h1 class="text-3xl font-bold text-gray-900 flex items-center gap-3">
+        <svg class="w-9 h-9 text-indigo-600" fill="none" stroke="currentColor" viewBox="0 0 24 24" stroke-width="2">
+          <path stroke-linecap="round" stroke-linejoin="round" d="M9 5H7a2 2 0 00-2 2v12a2 2 0 002 2h10a2 2 0 002-2V7a2 2 0 00-2-2h-2M9 5a2 2 0 002 2h2a2 2 0 002-2M9 5a2 2 0 012-2h2a2 2 0 012 2"/>
+        </svg>
+        Audit Findings
+      </h1>
+      <p class="text-sm text-gray-500 mt-1">Supplier audit reports and action tracking</p>
+    </div>
+
+    <a href="{{ url_for('audit.upload_report') }}"
+       class="inline-flex items-center gap-2 px-5 py-3 rounded-xl bg-gray-900 text-white font-bold
+              hover:bg-gray-800 transition-all hover:scale-105 active:scale-95">
+      <svg class="w-5 h-5" fill="none" stroke="currentColor" viewBox="0 0 24 24" stroke-width="2">
+        <path stroke-linecap="round" stroke-linejoin="round" d="M12 4v16m8-8H4"/>
+      </svg>
+      Upload Report
+    </a>
+  </div>
+
+  <!-- Stats Cards -->
+  <div class="grid grid-cols-1 md:grid-cols-4 gap-4 mb-6">
+
+    <!-- Total Reports -->
+    <div class="bg-white rounded-xl p-5 border-2 border-gray-200">
+      <div class="flex items-center gap-4">
+        <div class="w-12 h-12 bg-blue-100 rounded-xl flex items-center justify-center border-2 border-blue-200">
+          <svg class="w-6 h-6 text-blue-600" fill="none" stroke="currentColor" viewBox="0 0 24 24" stroke-width="2">
+            <path stroke-linecap="round" stroke-linejoin="round" d="M9 12h6m-6 4h6m2 5H7a2 2 0 01-2-2V5a2 2 0 012-2h5.586a1 1 0 01.707.293l5.414 5.414a1 1 0 01.293.707V19a2 2 0 01-2 2z"/>
+          </svg>
+        </div>
+        <div>
+          <div class="text-2xl font-bold text-gray-900">{{ stats.total_reports }}</div>
+          <div class="text-xs text-gray-500 font-semibold">Total Reports</div>
+        </div>
+      </div>
+    </div>
+
+    <!-- Open Findings -->
+    <div class="bg-white rounded-xl p-5 border-2 border-gray-200">
+      <div class="flex items-center gap-4">
+        <div class="w-12 h-12 bg-amber-100 rounded-xl flex items-center justify-center border-2 border-amber-200">
+          <svg class="w-6 h-6 text-amber-600" fill="none" stroke="currentColor" viewBox="0 0 24 24" stroke-width="2">
+            <path stroke-linecap="round" stroke-linejoin="round" d="M12 8v4m0 4h.01M21 12a9 9 0 11-18 0 9 9 0 0118 0z"/>
+          </svg>
+        </div>
+        <div>
+          <div class="text-2xl font-bold text-gray-900">{{ stats.open_findings }}</div>
+          <div class="text-xs text-gray-500 font-semibold">Open Findings</div>
+        </div>
+      </div>
+    </div>
+
+    <!-- In Progress -->
+    <div class="bg-white rounded-xl p-5 border-2 border-gray-200">
+      <div class="flex items-center gap-4">
+        <div class="w-12 h-12 bg-purple-100 rounded-xl flex items-center justify-center border-2 border-purple-200">
+          <svg class="w-6 h-6 text-purple-600" fill="none" stroke="currentColor" viewBox="0 0 24 24" stroke-width="2">
+            <path stroke-linecap="round" stroke-linejoin="round" d="M13 10V3L4 14h7v7l9-11h-7z"/>
+          </svg>
+        </div>
+        <div>
+          <div class="text-2xl font-bold text-gray-900">{{ stats.in_progress }}</div>
+          <div class="text-xs text-gray-500 font-semibold">In Progress</div>
+        </div>
+      </div>
+    </div>
+
+    <!-- Overdue -->
+    <div class="bg-white rounded-xl p-5 border-2 border-gray-200">
+      <div class="flex items-center gap-4">
+        <div class="w-12 h-12 bg-red-100 rounded-xl flex items-center justify-center border-2 border-red-200">
+          <svg class="w-6 h-6 text-red-600" fill="none" stroke="currentColor" viewBox="0 0 24 24" stroke-width="2">
+            <path stroke-linecap="round" stroke-linejoin="round" d="M12 8v4l3 3m6-3a9 9 0 11-18 0 9 9 0 0118 0z"/>
+          </svg>
+        </div>
+        <div>
+          <div class="text-2xl font-bold text-gray-900">{{ stats.overdue }}</div>
+          <div class="text-xs text-gray-500 font-semibold">Overdue</div>
+        </div>
+      </div>
+    </div>
+  </div>
+
+  <!-- Search and Filters -->
+  <div class="bg-white rounded-xl border-2 border-gray-200 p-4 mb-6">
+    <form method="get" class="flex items-center gap-3">
+      <div class="flex-1">
+        <input type="text" name="q" value="{{ q or '' }}"
+               placeholder="Search by audit number, supplier, or finding..."
+               class="w-full px-4 py-2 border-2 border-gray-200 rounded-xl text-sm
+                      focus:outline-none focus:border-gray-900 transition-all">
+      </div>
+
+      <select name="status"
+              class="px-4 py-2 border-2 border-gray-200 rounded-xl text-sm font-semibold
+                     focus:outline-none focus:border-gray-900 cursor-pointer">
+        <option value="">All Status</option>
+        <option value="open" {% if request.args.get('status')=='open' %}selected{% endif %}>Open</option>
+        <option value="in_progress" {% if request.args.get('status')=='in_progress' %}selected{% endif %}>In Progress</option>
+        <option value="pending_verification" {% if request.args.get('status')=='pending_verification' %}selected{% endif %}>Pending Verification</option>
+        <option value="closed" {% if request.args.get('status')=='closed' %}selected{% endif %}>Closed</option>
+      </select>
+
+      <button type="submit"
+              class="px-5 py-2 rounded-xl bg-gray-900 text-white font-bold
+                     hover:bg-gray-800 transition-all">
+        Search
+      </button>
+    </form>
+  </div>
+
+  <!-- Reports List -->
+  <div class="space-y-4">
+    {% if reports %}
+      {% for report in reports %}
+      <div class="bg-white rounded-xl border-2 border-gray-200 overflow-hidden hover:border-gray-400 transition-all">
+
+        <!-- Report Header -->
+        <div class="px-6 py-4 border-b-2 border-gray-100 bg-gray-50">
+          <div class="flex items-start justify-between">
+            <div class="flex-1">
+              <div class="flex items-center gap-3 mb-2">
+                <span class="px-3 py-1 rounded-lg bg-blue-100 text-blue-700 text-xs font-bold border-2 border-blue-200">
+                  {{ report.audit_no }}
+                </span>
+                <span class="px-3 py-1 rounded-lg bg-gray-100 text-gray-700 text-xs font-bold">
+                  {{ report.audit_type }}
+                </span>
+                {% if report.status == 'open' %}
+                <span class="px-3 py-1 rounded-lg bg-amber-100 text-amber-700 text-xs font-bold">
+                  🟡 Open
+                </span>
+                {% elif report.status == 'in_progress' %}
+                <span class="px-3 py-1 rounded-lg bg-purple-100 text-purple-700 text-xs font-bold">
+                  🟣 In Progress
+                </span>
+                {% else %}
+                <span class="px-3 py-1 rounded-lg bg-green-100 text-green-700 text-xs font-bold">
+                  🟢 Closed
+                </span>
+                {% endif %}
+              </div>
+
+              <h3 class="text-lg font-bold text-gray-900">{{ report.supplier_name }}</h3>
+              <div class="flex items-center gap-4 text-xs text-gray-500 mt-1 font-semibold">
+                <span>📅 {{ report.audit_date.strftime('%b %d, %Y') }}</span>
+                <span>👤 {{ report.auditor }}</span>
+                <span>📋 {{ report.total_findings }} findings</span>
+              </div>
+            </div>
+
+            <div class="flex items-center gap-2">
+              <a href="{{ url_for('audit.report_detail', report_id=report.id) }}"
+                 class="px-4 py-2 rounded-lg bg-blue-50 text-blue-700 font-semibold text-sm
+                        hover:bg-blue-100 border-2 border-blue-200 transition-all">
+                View Details
+              </a>
+              <a href="{{ url_for('audit.download_report', report_id=report.id) }}"
+                 class="px-4 py-2 rounded-lg bg-green-50 text-green-700 font-semibold text-sm
+                        hover:bg-green-100 border-2 border-green-200 transition-all">
+                Download
+              </a>
+            </div>
+          </div>
+        </div>
+
+        <!-- Findings Summary -->
+        <div class="px-6 py-4">
+          <div class="flex items-center gap-6 text-sm font-semibold">
+            <div class="flex items-center gap-2">
+              <div class="w-3 h-3 bg-amber-500 rounded-full"></div>
+              <span class="text-gray-700">{{ report.open_findings }} Open</span>
+            </div>
+            <div class="flex items-center gap-2">
+              <div class="w-3 h-3 bg-green-500 rounded-full"></div>
+              <span class="text-gray-700">{{ report.closed_findings }} Closed</span>
+            </div>
+            <div class="flex-1"></div>
+            <span class="text-gray-500">
+              Progress: {{ ((report.closed_findings / report.total_findings * 100) if report.total_findings > 0 else 0)|round(0)|int }}%
+            </span>
+          </div>
+
+          <!-- Progress Bar -->
+          <div class="mt-3 h-2 bg-gray-100 rounded-full overflow-hidden">
+            <div class="h-full bg-green-500 transition-all"
+                 style="width: {{ ((report.closed_findings / report.total_findings * 100) if report.total_findings > 0 else 0)|round(1) }}%">
+            </div>
+          </div>
+        </div>
+
+      </div>
+      {% endfor %}
+
+      <!-- Pagination -->
+      {% if pagination.pages > 1 %}
+      <div class="flex items-center justify-center gap-2 mt-6">
+        {% if pagination.has_prev %}
+        <a href="{{ url_for('audit.index', page=pagination.prev_num, q=q) }}"
+           class="px-4 py-2 rounded-lg border-2 border-gray-300 text-gray-700 font-semibold
+                  hover:bg-gray-50 transition-all">
+          Previous
+        </a>
+        {% endif %}
+
+        <span class="px-4 py-2 text-sm font-semibold text-gray-600">
+          Page {{ pagination.page }} of {{ pagination.pages }}
+        </span>
+
+        {% if pagination.has_next %}
+        <a href="{{ url_for('audit.index', page=pagination.next_num, q=q) }}"
+           class="px-4 py-2 rounded-lg border-2 border-gray-300 text-gray-700 font-semibold
+                  hover:bg-gray-50 transition-all">
+          Next
+        </a>
+        {% endif %}
+      </div>
+      {% endif %}
+
+    {% else %}
+      <!-- Empty State -->
+      <div class="text-center py-16 bg-white rounded-xl border-2 border-dashed border-gray-300">
+        <div class="w-16 h-16 bg-gray-100 rounded-full flex items-center justify-center mx-auto mb-4">
+          <svg class="w-8 h-8 text-gray-400" fill="none" stroke="currentColor" viewBox="0 0 24 24" stroke-width="2">
+            <path stroke-linecap="round" stroke-linejoin="round" d="M9 12h6m-6 4h6m2 5H7a2 2 0 01-2-2V5a2 2 0 012-2h5.586a1 1 0 01.707.293l5.414 5.414a1 1 0 01.293.707V19a2 2 0 01-2 2z"/>
+          </svg>
+        </div>
+        <p class="text-sm font-semibold text-gray-500 mb-4">No audit reports found</p>
+        <a href="{{ url_for('audit.upload_report') }}"
+           class="inline-flex items-center gap-2 px-5 py-2 rounded-xl bg-gray-900 text-white font-bold
+                  hover:bg-gray-800 transition-all">
+          <svg class="w-5 h-5" fill="none" stroke="currentColor" viewBox="0 0 24 24" stroke-width="2">
+            <path stroke-linecap="round" stroke-linejoin="round" d="M12 4v16m8-8H4"/>
+          </svg>
+          Upload First Report
+        </a>
+      </div>
+    {% endif %}
+  </div>
+
+</div>
+
+{% endblock %}

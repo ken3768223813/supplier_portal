@@ -2,61 +2,134 @@
 {% set active = "docs" %}
 {% block supplier_content %}
 
-<div class="bg-white rounded-2xl border border-slate-100 shadow-sm p-5">
-  <div class="font-semibold text-slate-900 mb-4">上传资料</div>
+<div class="max-w-4xl mx-auto">
 
-  <form method="post" enctype="multipart/form-data" class="space-y-4">
-    <div class="grid grid-cols-12 gap-4">
-      <div class="col-span-12 md:col-span-4">
-        <label class="text-sm text-slate-600">类型</label>
-        <select name="doc_type" class="w-full mt-1 rounded-xl border px-3 py-2">
-          {% for v, label in doc_types %}
-            <option value="{{ v }}">{{ label }}</option>
-          {% endfor %}
-        </select>
+  <div class="bg-white rounded-2xl border border-slate-100 shadow-sm overflow-hidden">
+    <!-- Header -->
+    <div class="px-6 py-5 border-b border-slate-100 flex items-start justify-between gap-4">
+      <div>
+        <div class="text-xl font-semibold text-slate-900">Upload Document</div>
+        <div class="text-sm text-slate-500 mt-1">
+          Upload audit checklists, test reports, PPAP, drawings, and other supplier files.
+        </div>
       </div>
 
-      <div class="col-span-12 md:col-span-4">
-        <label class="text-sm text-slate-600">版本 Rev</label>
-        <input name="revision" class="w-full mt-1 rounded-xl border px-3 py-2" placeholder="A / B / 01 ...">
+      <a href="{{ url_for('docs.list_docs', supplier_code=supplier.code) }}"
+         class="px-3 py-2 rounded-xl bg-slate-100 text-slate-800 text-sm hover:bg-slate-200 transition">
+        ← Back
+      </a>
+    </div>
+
+    <!-- Form -->
+    <form method="post" enctype="multipart/form-data" class="p-6 space-y-5">
+      <div class="grid grid-cols-12 gap-4">
+
+        <!-- Type -->
+        <div class="col-span-12 md:col-span-4">
+          <label class="text-sm font-medium text-slate-700">Type</label>
+          <select name="doc_type"
+                  class="w-full mt-2 rounded-xl border border-slate-200 bg-white px-3 py-2.5 text-sm
+                         text-slate-800 focus:outline-none focus:ring-2 focus:ring-slate-300">
+            {# ✅ If your DOC_TYPES is (k,label,icon,color) #}
+            {% if doc_types and doc_types[0]|length == 4 %}
+              {% for k, label, icon, color in doc_types %}
+                <option value="{{ k }}">{{ icon }} {{ label }}</option>
+              {% endfor %}
+            {% else %}
+              {# ✅ fallback: old style (value,label) #}
+              {% for v, label in doc_types %}
+                <option value="{{ v }}">{{ label }}</option>
+              {% endfor %}
+            {% endif %}
+          </select>
+        </div>
+
+        <!-- Revision -->
+        <div class="col-span-12 md:col-span-4">
+          <label class="text-sm font-medium text-slate-700">Revision</label>
+          <input name="revision"
+                 class="w-full mt-2 rounded-xl border border-slate-200 bg-white px-4 py-2.5 text-sm
+                        text-slate-800 placeholder:text-slate-400
+                        focus:outline-none focus:ring-2 focus:ring-slate-300"
+                 placeholder="A / B / 01 ..." />
+        </div>
+
+        <!-- Status -->
+        <div class="col-span-12 md:col-span-4">
+          <label class="text-sm font-medium text-slate-700">Status</label>
+          <select name="status"
+                  class="w-full mt-2 rounded-xl border border-slate-200 bg-white px-3 py-2.5 text-sm
+                         text-slate-800 focus:outline-none focus:ring-2 focus:ring-slate-300">
+            <option value="valid">Valid</option>
+            <option value="draft">Draft</option>
+            <option value="obsolete">Obsolete</option>
+          </select>
+        </div>
+
+        <!-- Title -->
+        <div class="col-span-12">
+          <label class="text-sm font-medium text-slate-700">Title</label>
+          <input name="title"
+                 class="w-full mt-2 rounded-xl border border-slate-200 bg-white px-4 py-2.5 text-sm
+                        text-slate-800 placeholder:text-slate-400
+                        focus:outline-none focus:ring-2 focus:ring-slate-300"
+                 placeholder="e.g., WET500010116A0 Drawing / Salt Spray Test Report" />
+          <div class="text-xs text-slate-500 mt-2">
+            Use a clear name so you can search it later.
+          </div>
+        </div>
+
+        <!-- Part -->
+        <div class="col-span-12">
+          <label class="text-sm font-medium text-slate-700">Related Part (optional)</label>
+          <select name="part_id"
+                  class="w-full mt-2 rounded-xl border border-slate-200 bg-white px-3 py-2.5 text-sm
+                         text-slate-800 focus:outline-none focus:ring-2 focus:ring-slate-300">
+            <option value="">- None -</option>
+            {% for p in parts %}
+              <option value="{{ p.id }}">
+                {{ p.pn }}
+                {% if p.description %} — {{ p.description }}{% endif %}
+              </option>
+            {% endfor %}
+          </select>
+        </div>
+
+        <!-- File -->
+        <div class="col-span-12">
+          <label class="text-sm font-medium text-slate-700">File *</label>
+
+          <!-- nicer file input -->
+          <div class="mt-2">
+            <input type="file" name="file" required
+                   class="block w-full text-sm text-slate-700
+                          file:mr-4 file:py-2 file:px-4
+                          file:rounded-xl file:border-0
+                          file:text-sm file:font-medium
+                          file:bg-slate-900 file:text-white
+                          hover:file:bg-black
+                          cursor-pointer" />
+          </div>
+
+          <div class="text-xs text-slate-500 mt-2">
+            Recommended: PDF / XLSX / DOCX / PNG. Keep filenames meaningful.
+          </div>
+        </div>
       </div>
 
-      <div class="col-span-12 md:col-span-4">
-        <label class="text-sm text-slate-600">状态</label>
-        <select name="status" class="w-full mt-1 rounded-xl border px-3 py-2">
-          <option value="valid">valid</option>
-          <option value="draft">draft</option>
-          <option value="obsolete">obsolete</option>
-        </select>
+      <!-- Actions -->
+      <div class="pt-2 flex items-center justify-end gap-3">
+        <a class="px-4 py-2.5 rounded-xl bg-slate-100 text-slate-800 text-sm font-medium hover:bg-slate-200 transition"
+           href="{{ url_for('docs.list_docs', supplier_code=supplier.code) }}">
+          Cancel
+        </a>
+        <button class="px-4 py-2.5 rounded-xl bg-slate-900 text-white text-sm font-medium hover:bg-black transition">
+          Upload
+        </button>
       </div>
-    </div>
+    </form>
+  </div>
 
-    <div>
-      <label class="text-sm text-slate-600">标题</label>
-      <input name="title" class="w-full mt-1 rounded-xl border px-3 py-2" placeholder="如：WET500010116A0 Drawing">
-    </div>
-
-    <div>
-      <label class="text-sm text-slate-600">关联零部件（可选）</label>
-      <select name="part_id" class="w-full mt-1 rounded-xl border px-3 py-2">
-        <option value="">- 不关联 -</option>
-        {% for p in parts %}
-          <option value="{{ p.id }}">{{ p.pn }}{% if p.description %} - {{ p.description }}{% endif %}</option>
-        {% endfor %}
-      </select>
-    </div>
-
-    <div>
-      <label class="text-sm text-slate-600">文件 *</label>
-      <input type="file" name="file" class="w-full mt-1 rounded-xl border px-3 py-2" required>
-    </div>
-
-    <div class="flex gap-2">
-      <button class="px-4 py-2 rounded-xl bg-slate-900 text-white text-sm">上传</button>
-      <a class="px-4 py-2 rounded-xl border text-sm"
-         href="{{ url_for('docs.list_docs', supplier_code=supplier.code) }}">返回</a>
-    </div>
-  </form>
 </div>
 
 {% endblock %}

@@ -55,6 +55,20 @@
             <span>Home</span>
           </a>
 
+            <a href="{{ url_for('tasks.index') }}"
+               class="nav-link flex items-center gap-3 rounded-xl px-4 py-3 text-sm font-semibold
+                      {% if request.endpoint and request.endpoint.startswith('tasks') %}
+                      bg-gray-900 text-white shadow-lg
+                      {% else %}
+                      text-gray-700 hover:bg-gray-100
+                      {% endif %}">
+              <svg class="w-5 h-5" fill="none" stroke="currentColor" viewBox="0 0 24 24" stroke-width="2">
+                <path stroke-linecap="round" stroke-linejoin="round" d="M9 5H7a2 2 0 00-2 2v12a2 2 0 002 2h10a2 2 0 002-2V7a2 2 0 00-2-2h-2M9 5a2 2 0 002 2h2a2 2 0 002-2M9 5a2 2 0 012-2h2a2 2 0 012 2m-6 9l2 2 4-4"/>
+              </svg>
+              <span class="font-semibold">My Tasks</span>
+
+              <!-- 未完成任务数量徽章 (可选) -->
+
           <a href="{{ url_for('suppliers.index') }}"
              class="nav-link flex items-center gap-3 rounded-xl px-4 py-3 text-sm font-semibold
                     {% if request.path.startswith('/suppliers') %}
@@ -63,7 +77,7 @@
                       text-gray-700 hover:bg-gray-100
                     {% endif %}">
             <svg class="w-5 h-5" fill="none" stroke="currentColor" viewBox="0 0 24 24" stroke-width="2">
-              <path stroke-linecap="round" stroke-linejoin="round" d="M19 21V5a2 2 0 00-2-2H7a2 2 0 00-2 2v16m14 0h2m-2 0h-5m-9 0H3m2 0h5M9 7h1m-1 4h1m4-4h1m-1 4h1m-5 10v-5a1 1 0 011-1h2a1 1 0 011 1v5m-4 0h4"/>
+              <path stroke-linecap="round" stroke-linejoin="round" d="M9 5H7a2 2 0 00-2 2v12a2 2 0 002 2h10a2 2 0 002-2V7a2 2 0 00-2-2h-2M9 5a2 2 0 002 2h2a2 2 0 002-2M9 5a2 2 0 012-2h2a2 2 0 012 2m-6 9l2 2 4-4"/>
             </svg>
             <span>Suppliers</span>
           </a>
@@ -93,6 +107,26 @@
             </svg>
             <span>Trips</span>
           </a>
+
+            <a href="{{ url_for('audit.index') }}"
+               class="nav-link flex items-center gap-3 rounded-xl px-4 py-3 text-sm font-semibold
+                      {% if request.endpoint and request.endpoint.startswith('audit') %}
+                        bg-gray-900 text-white shadow-lg
+                      {% else %}
+                        text-gray-700 hover:bg-gray-100
+                      {% endif %}">
+              <svg class="w-5 h-5 {% if request.endpoint and request.endpoint.startswith('audit') %}text-white{% else %}text-gray-500{% endif %}"
+                   fill="none" stroke="currentColor" viewBox="0 0 24 24" stroke-width="2">
+                <path stroke-linecap="round" stroke-linejoin="round"
+                      d="M9 5H7a2 2 0 00-2 2v12a2 2 0 002 2h10a2 2 0 002-2V7a2 2 0 00-2-2h-2
+                         M9 5a2 2 0 002 2h2a2 2 0 002-2
+                         M9 5a2 2 0 012-2h2a2 2 0 012 2
+                         m-6 9l2 2 4-4"/>
+              </svg>
+
+              <span>Audit Findings</span>
+            </a>
+
 
           <a href="{{ url_for('knowledge.index') }}"
              class="nav-link flex items-center gap-3 rounded-xl px-4 py-3 text-sm font-semibold

@@ -5,25 +5,19 @@
   .stat-card {
     transition: all 0.3s cubic-bezier(0.4, 0, 0.2, 1);
   }
-
   .stat-card:hover {
     transform: translateY(-2px);
+    box-shadow: 0 8px 16px rgba(0, 0, 0, 0.1);
   }
-
   .table-row {
-    transition: all 0.2s ease;
+    transition: all 0.3s ease;
   }
-
   .table-row:hover {
-    background: #f9fafb;
+    background: linear-gradient(to right, #f8fafc, #ffffff);
+    box-shadow: 0 2px 8px rgba(0, 0, 0, 0.05);
   }
-
-  .action-btn {
-    transition: all 0.2s ease;
-  }
-
-  .action-btn:hover {
-    transform: scale(1.05);
+  .search-input:focus {
+    box-shadow: 0 0 0 4px rgba(59, 130, 246, 0.1);
   }
 </style>
 
@@ -32,14 +26,14 @@
   <!-- Header Section -->
   <div class="flex items-center justify-between mb-8">
     <div>
-      <h1 class="text-4xl font-bold text-gray-900 mb-1">Suppliers</h1>
-      <p class="text-lg text-gray-500">Manage your supplier network</p>
+      <h1 class="text-4xl font-bold text-gray-900 mb-2 tracking-tight">Suppliers</h1>
+      <p class="text-base text-gray-500">Manage your supplier network</p>
     </div>
 
     <a href="{{ url_for('suppliers.new_supplier') }}"
-       class="inline-flex items-center gap-2 px-5 py-3 rounded-xl
-              bg-gray-900 text-white font-semibold hover:bg-gray-800
-              transition-all hover:scale-105 active:scale-95">
+       class="inline-flex items-center gap-2 px-6 py-3 rounded-xl
+              bg-blue-500 text-white font-semibold hover:bg-blue-600
+              transition-all hover:scale-105 active:scale-95 shadow-lg shadow-blue-500/30">
       <svg class="w-5 h-5" fill="none" stroke="currentColor" viewBox="0 0 24 24" stroke-width="2">
         <path stroke-linecap="round" stroke-linejoin="round" d="M12 4v16m8-8H4"/>
       </svg>
@@ -48,70 +42,62 @@
   </div>
 
   <!-- Stats Grid -->
-  <div class="grid grid-cols-4 gap-5 mb-8">
+  <div class="grid grid-cols-4 gap-6 mb-8">
 
-    <div class="stat-card bg-white rounded-2xl p-5 border-2 border-gray-200">
-      <div class="flex items-center gap-4">
-        <div class="w-12 h-12 rounded-xl bg-blue-500 flex items-center justify-center shrink-0">
-          <svg class="w-6 h-6 text-white" fill="none" stroke="currentColor" viewBox="0 0 24 24" stroke-width="2">
+    <div class="stat-card bg-white rounded-2xl p-6 border border-gray-200 shadow-sm">
+      <div class="flex items-center justify-between mb-4">
+        <div class="w-12 h-12 rounded-xl bg-blue-50 flex items-center justify-center">
+          <svg class="w-6 h-6 text-blue-500" fill="none" stroke="currentColor" viewBox="0 0 24 24" stroke-width="2">
             <path stroke-linecap="round" stroke-linejoin="round" d="M19 21V5a2 2 0 00-2-2H7a2 2 0 00-2 2v16m14 0h2m-2 0h-5m-9 0H3m2 0h5M9 7h1m-1 4h1m4-4h1m-1 4h1m-5 10v-5a1 1 0 011-1h2a1 1 0 011 1v5m-4 0h4"/>
           </svg>
         </div>
-        <div>
-          <div class="text-3xl font-bold text-gray-900">{{ pagination.total }}</div>
-          <div class="text-sm font-semibold text-gray-500">Total</div>
-        </div>
       </div>
+      <div class="text-3xl font-bold text-gray-900 mb-1">{{ pagination.total }}</div>
+      <div class="text-sm text-gray-500 font-medium">Total Suppliers</div>
     </div>
 
-    <div class="stat-card bg-white rounded-2xl p-5 border-2 border-gray-200">
-      <div class="flex items-center gap-4">
-        <div class="w-12 h-12 rounded-xl bg-green-500 flex items-center justify-center shrink-0">
-          <svg class="w-6 h-6 text-white" fill="none" stroke="currentColor" viewBox="0 0 24 24" stroke-width="2">
+    <div class="stat-card bg-white rounded-2xl p-6 border border-gray-200 shadow-sm">
+      <div class="flex items-center justify-between mb-4">
+        <div class="w-12 h-12 rounded-xl bg-green-50 flex items-center justify-center">
+          <svg class="w-6 h-6 text-green-500" fill="none" stroke="currentColor" viewBox="0 0 24 24" stroke-width="2">
             <path stroke-linecap="round" stroke-linejoin="round" d="M9 12l2 2 4-4m6 2a9 9 0 11-18 0 9 9 0 0118 0z"/>
           </svg>
         </div>
-        <div>
-          <div class="text-3xl font-bold text-gray-900">--</div>
-          <div class="text-sm font-semibold text-gray-500">Active</div>
-        </div>
       </div>
+      <div class="text-3xl font-bold text-gray-900 mb-1">{{ pagination.total }}</div>
+      <div class="text-sm text-gray-500 font-medium">Active</div>
     </div>
 
-    <div class="stat-card bg-white rounded-2xl p-5 border-2 border-gray-200">
-      <div class="flex items-center gap-4">
-        <div class="w-12 h-12 rounded-xl bg-purple-500 flex items-center justify-center shrink-0">
-          <svg class="w-6 h-6 text-white" fill="none" stroke="currentColor" viewBox="0 0 24 24" stroke-width="2">
+    <div class="stat-card bg-white rounded-2xl p-6 border border-gray-200 shadow-sm">
+      <div class="flex items-center justify-between mb-4">
+        <div class="w-12 h-12 rounded-xl bg-purple-50 flex items-center justify-center">
+          <svg class="w-6 h-6 text-purple-500" fill="none" stroke="currentColor" viewBox="0 0 24 24" stroke-width="2">
             <path stroke-linecap="round" stroke-linejoin="round" d="M13 7h8m0 0v8m0-8l-8 8-4-4-6 6"/>
           </svg>
         </div>
-        <div>
-          <div class="text-3xl font-bold text-gray-900">--</div>
-          <div class="text-sm font-semibold text-gray-500">This Month</div>
-        </div>
       </div>
+      <div class="text-3xl font-bold text-gray-900 mb-1">—</div>
+      <div class="text-sm text-gray-500 font-medium">This Month</div>
     </div>
 
-    <div class="stat-card bg-white rounded-2xl p-5 border-2 border-gray-200">
-      <div class="flex items-center gap-4">
-        <div class="w-12 h-12 rounded-xl bg-amber-500 flex items-center justify-center shrink-0">
-          <svg class="w-6 h-6 text-white" fill="none" stroke="currentColor" viewBox="0 0 24 24" stroke-width="2">
+    <div class="stat-card bg-white rounded-2xl p-6 border border-gray-200 shadow-sm">
+      <div class="flex items-center justify-between mb-4">
+        <div class="w-12 h-12 rounded-xl bg-orange-50 flex items-center justify-center">
+          <svg class="w-6 h-6 text-orange-500" fill="none" stroke="currentColor" viewBox="0 0 24 24" stroke-width="2">
             <path stroke-linecap="round" stroke-linejoin="round" d="M12 8v4l3 3m6-3a9 9 0 11-18 0 9 9 0 0118 0z"/>
           </svg>
         </div>
-        <div>
-          <div class="text-3xl font-bold text-gray-900">--</div>
-          <div class="text-sm font-semibold text-gray-500">Pending</div>
-        </div>
       </div>
+      <div class="text-3xl font-bold text-gray-900 mb-1">—</div>
+      <div class="text-sm text-gray-500 font-medium">Pending Actions</div>
     </div>
   </div>
 
   <!-- Main Table Card -->
-  <div class="bg-white rounded-2xl border-2 border-gray-200 overflow-hidden">
+  <div class="bg-white rounded-2xl border border-gray-200 overflow-hidden shadow-sm">
 
     <!-- Search Bar -->
-    <div class="px-6 py-4 border-b-2 border-gray-100">
+    <div class="px-6 py-5 border-b border-gray-200 bg-gray-50">
       <div class="flex items-center gap-4">
         <form method="get" class="flex-1">
           <div class="relative">
@@ -120,19 +106,19 @@
               name="q"
               value="{{ q or '' }}"
               placeholder="Search by code, name, or Chinese name..."
-              class="w-full px-5 py-3 pl-12 rounded-xl bg-gray-50 border-2 border-transparent
-                     text-sm focus:outline-none focus:bg-white focus:border-gray-900 transition-all"
+              class="search-input w-full px-5 py-3 pl-12 rounded-xl bg-white border border-gray-300
+                     text-sm focus:outline-none focus:border-blue-500 transition-all"
             />
             <div class="absolute left-4 top-1/2 -translate-y-1/2">
-              <svg class="w-5 h-5 text-gray-400" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-                <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M21 21l-6-6m2-5a7 7 0 11-14 0 7 7 0 0114 0z"/>
+              <svg class="w-5 h-5 text-gray-400" fill="none" stroke="currentColor" viewBox="0 0 24 24" stroke-width="2">
+                <path stroke-linecap="round" stroke-linejoin="round" d="M21 21l-6-6m2-5a7 7 0 11-14 0 7 7 0 0114 0z"/>
               </svg>
             </div>
             {% if q %}
             <a href="{{ url_for('suppliers.index') }}"
-               class="absolute right-4 top-1/2 -translate-y-1/2 text-gray-400 hover:text-gray-600">
-              <svg class="w-5 h-5" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-                <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M6 18L18 6M6 6l12 12"/>
+               class="absolute right-4 top-1/2 -translate-y-1/2 text-gray-400 hover:text-gray-600 transition">
+              <svg class="w-5 h-5" fill="none" stroke="currentColor" viewBox="0 0 24 24" stroke-width="2">
+                <path stroke-linecap="round" stroke-linejoin="round" d="M6 18L18 6M6 6l12 12"/>
               </svg>
             </a>
             {% endif %}
@@ -148,41 +134,23 @@
     <!-- Table -->
     <div class="overflow-x-auto">
       <table class="w-full">
-        <thead class="bg-gray-50 border-b-2 border-gray-100">
-          <tr class="text-xs font-bold text-gray-500 uppercase tracking-wider">
-            <th class="px-6 py-4 text-left">
-              <span class="flex items-center gap-2">
-                <svg class="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-                  <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M7 7h.01M7 3h5c.512 0 1.024.195 1.414.586l7 7a2 2 0 010 2.828l-7 7a2 2 0 01-2.828 0l-7-7A1.994 1.994 0 013 12V7a4 4 0 014-4z"/>
-                </svg>
-                Code
-              </span>
+        <thead>
+          <tr class="bg-gray-50 border-b border-gray-200">
+            <th class="px-6 py-4 text-left text-xs font-semibold text-gray-600 uppercase tracking-wider">
+              Supplier Code
             </th>
-            <th class="px-6 py-4 text-left">
-              <span class="flex items-center gap-2">
-                <svg class="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-                  <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M3.055 11H5a2 2 0 012 2v1a2 2 0 002 2 2 2 0 012 2v2.945M8 3.935V5.5A2.5 2.5 0 0010.5 8h.5a2 2 0 012 2 2 2 0 104 0 2 2 0 012-2h1.064M15 20.488V18a2 2 0 012-2h3.064M21 12a9 9 0 11-18 0 9 9 0 0118 0z"/>
-                </svg>
-                Name
-              </span>
+            <th class="px-6 py-4 text-left text-xs font-semibold text-gray-600 uppercase tracking-wider">
+              Company Name
             </th>
-            <th class="px-6 py-4 text-left">
-              <span class="flex items-center gap-2">
-                <svg class="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-                  <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M7 8h10M7 12h4m1 8l-4-4H5a2 2 0 01-2-2V6a2 2 0 012-2h14a2 2 0 012 2v8a2 2 0 01-2 2h-3l-4 4z"/>
-                </svg>
-                Chinese Name
-              </span>
+            <th class="px-6 py-4 text-left text-xs font-semibold text-gray-600 uppercase tracking-wider">
+              Chinese Name
             </th>
-            <th class="px-6 py-4 text-left">
-              <span class="flex items-center gap-2">
-                <svg class="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-                  <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M8 7V3m8 4V3m-9 8h10M5 21h14a2 2 0 002-2V7a2 2 0 00-2-2H5a2 2 0 00-2 2v12a2 2 0 002 2z"/>
-                </svg>
-                Created
-              </span>
+            <th class="px-6 py-4 text-left text-xs font-semibold text-gray-600 uppercase tracking-wider">
+              Created
             </th>
-            <th class="px-6 py-4 text-center">Actions</th>
+            <th class="px-6 py-4 text-center text-xs font-semibold text-gray-600 uppercase tracking-wider">
+              Actions
+            </th>
           </tr>
         </thead>
 
@@ -195,49 +163,53 @@
               <a href="{{ url_for('supplier_ws.overview', supplier_code=s.code) }}"
                  class="group inline-flex items-center gap-2">
                 <span class="font-mono font-bold text-sm px-3 py-1.5 rounded-lg bg-blue-50 text-blue-600
-                             border-2 border-blue-200 group-hover:bg-blue-100 group-hover:border-blue-400 transition">
+                             border border-blue-200 group-hover:bg-blue-100 transition">
                   {{ s.code }}
                 </span>
                 <svg class="w-4 h-4 text-blue-400 opacity-0 group-hover:opacity-100 transition"
-                     fill="none" stroke="currentColor" viewBox="0 0 24 24">
-                  <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M13 7l5 5m0 0l-5 5m5-5H6"/>
+                     fill="none" stroke="currentColor" viewBox="0 0 24 24" stroke-width="2">
+                  <path stroke-linecap="round" stroke-linejoin="round" d="M13 7l5 5m0 0l-5 5m5-5H6"/>
                 </svg>
               </a>
             </td>
 
             <!-- Name -->
             <td class="px-6 py-4">
-              <div class="font-semibold text-gray-900">{{ s.name }}</div>
+              <div class="font-semibold text-gray-900 text-sm">{{ s.name }}</div>
             </td>
 
             <!-- Chinese Name -->
             <td class="px-6 py-4">
               {% if s.chinese_name %}
-                <span class="px-3 py-1 rounded-lg bg-gray-100 text-gray-700 text-sm font-medium">
+                <span class="px-3 py-1.5 rounded-lg bg-purple-50 text-purple-700 text-sm font-medium">
                   {{ s.chinese_name }}
                 </span>
               {% else %}
-                <span class="text-gray-300">—</span>
+                <span class="text-gray-400 text-sm">—</span>
               {% endif %}
             </td>
 
             <!-- Created -->
             <td class="px-6 py-4">
-              <span class="text-sm text-gray-500 font-medium">{{ s.created_at.strftime("%b %d, %Y") }}</span>
+              <div class="flex items-center gap-2 text-gray-600">
+                <svg class="w-4 h-4 text-gray-400" fill="none" stroke="currentColor" viewBox="0 0 24 24" stroke-width="2">
+                  <path stroke-linecap="round" stroke-linejoin="round" d="M8 7V3m8 4V3m-9 8h10M5 21h14a2 2 0 002-2V7a2 2 0 00-2-2H5a2 2 0 00-2 2v12a2 2 0 002 2z"/>
+                </svg>
+                <span class="text-sm">{{ s.created_at.strftime("%b %d, %Y") }}</span>
+              </div>
             </td>
 
             <!-- Actions -->
             <td class="px-6 py-4">
               <div class="flex items-center justify-center gap-2">
                 <a href="{{ url_for('suppliers.edit_supplier', supplier_id=s.id) }}"
-                   class="action-btn inline-flex items-center gap-1 px-3 py-1.5 rounded-lg
-                          bg-blue-50 text-blue-600 hover:bg-blue-100 border-2 border-blue-200 hover:border-blue-400
-                          text-xs font-bold transition"
+                   class="inline-flex items-center gap-1.5 px-3 py-1.5 rounded-lg
+                          bg-blue-50 text-blue-600 hover:bg-blue-100
+                          text-xs font-medium transition"
                    title="Edit">
                   <svg class="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24" stroke-width="2">
                     <path stroke-linecap="round" stroke-linejoin="round" d="M11 5H6a2 2 0 00-2 2v11a2 2 0 002 2h11a2 2 0 002-2v-5m-1.414-9.414a2 2 0 112.828 2.828L11.828 15H9v-2.828l8.586-8.586z"/>
                   </svg>
-                  Edit
                 </a>
 
                 <form method="post"
@@ -245,14 +217,13 @@
                       onsubmit="return confirm('Delete supplier {{ s.code }}?\n\nThis will also delete:\n• All related parts\n• All uploaded documents\n\nThis action cannot be undone!');"
                       class="inline-block">
                   <button type="submit"
-                          class="action-btn inline-flex items-center gap-1 px-3 py-1.5 rounded-lg
-                                 bg-red-50 text-red-600 hover:bg-red-100 border-2 border-red-200 hover:border-red-400
-                                 text-xs font-bold transition"
+                          class="inline-flex items-center gap-1.5 px-3 py-1.5 rounded-lg
+                                 bg-red-50 text-red-600 hover:bg-red-100
+                                 text-xs font-medium transition"
                           title="Delete">
                     <svg class="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24" stroke-width="2">
                       <path stroke-linecap="round" stroke-linejoin="round" d="M19 7l-.867 12.142A2 2 0 0116.138 21H7.862a2 2 0 01-1.995-1.858L5 7m5 4v6m4-6v6m1-10V4a1 1 0 00-1-1h-4a1 1 0 00-1 1v3M4 7h16"/>
                     </svg>
-                    Delete
                   </button>
                 </form>
               </div>
@@ -262,16 +233,16 @@
 
           {% if suppliers|length == 0 %}
           <tr>
-            <td colspan="5" class="px-6 py-16 text-center">
+            <td colspan="5" class="px-6 py-20 text-center">
               <div class="flex flex-col items-center gap-4">
                 <div class="w-20 h-20 bg-gray-100 rounded-full flex items-center justify-center">
-                  <svg class="w-10 h-10 text-gray-300" fill="none" stroke="currentColor" viewBox="0 0 24 24" stroke-width="2">
+                  <svg class="w-10 h-10 text-gray-300" fill="none" stroke="currentColor" viewBox="0 0 24 24" stroke-width="1.5">
                     <path stroke-linecap="round" stroke-linejoin="round" d="M19 21V5a2 2 0 00-2-2H7a2 2 0 00-2 2v16m14 0h2m-2 0h-5m-9 0H3m2 0h5M9 7h1m-1 4h1m4-4h1m-1 4h1m-5 10v-5a1 1 0 011-1h2a1 1 0 011 1v5m-4 0h4"/>
                   </svg>
                 </div>
                 <div>
-                  <p class="text-xl font-bold text-gray-900 mb-1">No suppliers found</p>
-                  <p class="text-sm text-gray-500">Click "Add Supplier" to get started</p>
+                  <p class="text-gray-600 font-semibold text-lg mb-1">No suppliers found</p>
+                  <p class="text-gray-400 text-sm">Click "Add Supplier" to get started</p>
                 </div>
               </div>
             </td>
@@ -283,12 +254,12 @@
 
     <!-- Pagination -->
     {% if pagination.pages > 1 %}
-    <div class="px-6 py-4 border-t-2 border-gray-100 flex items-center justify-between">
+    <div class="px-6 py-4 border-t border-gray-200 bg-gray-50 flex items-center justify-between">
       <div class="text-sm text-gray-600">
         {% if pagination.total > 0 %}
-          Showing <span class="font-bold text-gray-900">{{ (pagination.page - 1) * pagination.per_page + 1 }}</span>
-          to <span class="font-bold text-gray-900">{{ (pagination.page - 1) * pagination.per_page + suppliers|length }}</span>
-          of <span class="font-bold text-gray-900">{{ pagination.total }}</span> results
+          Showing <span class="font-semibold text-gray-900">{{ (pagination.page - 1) * pagination.per_page + 1 }}</span>
+          to <span class="font-semibold text-gray-900">{{ (pagination.page - 1) * pagination.per_page + suppliers|length }}</span>
+          of <span class="font-semibold text-gray-900">{{ pagination.total }}</span> suppliers
         {% else %}
           No results
         {% endif %}
@@ -296,21 +267,21 @@
 
       <nav class="flex items-center gap-2">
         {% if pagination.has_prev %}
-          <a class="px-4 py-2 rounded-lg border-2 border-gray-300 text-sm font-bold text-gray-700
-                    hover:bg-gray-100 hover:border-gray-900 transition"
+          <a class="px-4 py-2 rounded-lg border border-gray-300 text-sm font-medium text-gray-700
+                    hover:bg-gray-100 hover:border-gray-400 transition bg-white"
              href="{{ url_for('suppliers.index', page=pagination.prev_num, q=q, per_page=per_page) }}">
-            <span class="flex items-center gap-1">
-              <svg class="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-                <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M15 19l-7-7 7-7"/>
+            <span class="flex items-center gap-1.5">
+              <svg class="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24" stroke-width="2">
+                <path stroke-linecap="round" stroke-linejoin="round" d="M15 19l-7-7 7-7"/>
               </svg>
               Previous
             </span>
           </a>
         {% else %}
-          <span class="px-4 py-2 rounded-lg border-2 border-gray-200 text-sm font-bold text-gray-300 bg-gray-50">
-            <span class="flex items-center gap-1">
-              <svg class="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-                <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M15 19l-7-7 7-7"/>
+          <span class="px-4 py-2 rounded-lg border border-gray-200 text-sm font-medium text-gray-400 bg-gray-100 cursor-not-allowed">
+            <span class="flex items-center gap-1.5">
+              <svg class="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24" stroke-width="2">
+                <path stroke-linecap="round" stroke-linejoin="round" d="M15 19l-7-7 7-7"/>
               </svg>
               Previous
             </span>
@@ -320,12 +291,12 @@
         <div class="flex items-center gap-1">
           {% for p in range(1, pagination.pages + 1) %}
             {% if p == pagination.page %}
-              <span class="px-4 py-2 rounded-lg bg-gray-900 text-white text-sm font-bold">
+              <span class="px-4 py-2 rounded-lg bg-blue-500 text-white text-sm font-semibold shadow-sm">
                 {{ p }}
               </span>
             {% else %}
-              <a class="px-4 py-2 rounded-lg border-2 border-gray-200 text-sm font-bold text-gray-700
-                        hover:bg-gray-100 hover:border-gray-900 transition"
+              <a class="px-4 py-2 rounded-lg border border-gray-200 text-sm font-medium text-gray-700
+                        hover:bg-gray-100 hover:border-gray-400 transition bg-white"
                  href="{{ url_for('suppliers.index', page=p, q=q, per_page=per_page) }}">
                 {{ p }}
               </a>
@@ -334,22 +305,22 @@
         </div>
 
         {% if pagination.has_next %}
-          <a class="px-4 py-2 rounded-lg border-2 border-gray-300 text-sm font-bold text-gray-700
-                    hover:bg-gray-100 hover:border-gray-900 transition"
+          <a class="px-4 py-2 rounded-lg border border-gray-300 text-sm font-medium text-gray-700
+                    hover:bg-gray-100 hover:border-gray-400 transition bg-white"
              href="{{ url_for('suppliers.index', page=pagination.next_num, q=q, per_page=per_page) }}">
-            <span class="flex items-center gap-1">
+            <span class="flex items-center gap-1.5">
               Next
-              <svg class="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-                <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M9 5l7 7-7 7"/>
+              <svg class="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24" stroke-width="2">
+                <path stroke-linecap="round" stroke-linejoin="round" d="M9 5l7 7-7 7"/>
               </svg>
             </span>
           </a>
         {% else %}
-          <span class="px-4 py-2 rounded-lg border-2 border-gray-200 text-sm font-bold text-gray-300 bg-gray-50">
-            <span class="flex items-center gap-1">
+          <span class="px-4 py-2 rounded-lg border border-gray-200 text-sm font-medium text-gray-400 bg-gray-100 cursor-not-allowed">
+            <span class="flex items-center gap-1.5">
               Next
-              <svg class="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-                <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M9 5l7 7-7 7"/>
+              <svg class="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24" stroke-width="2">
+                <path stroke-linecap="round" stroke-linejoin="round" d="M9 5l7 7-7 7"/>
               </svg>
             </span>
           </span>

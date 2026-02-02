@@ -2,45 +2,183 @@
 {% set active = "docs" %}
 {% block supplier_content %}
 
-<div class="bg-white rounded-2xl border border-slate-100 shadow-sm overflow-hidden">
-  <div class="px-5 py-4 border-b border-slate-100 flex items-center justify-between">
-    <div class="font-semibold text-slate-900">资料 / 图纸 / Control Plan</div>
-    <a href="{{ url_for('docs.upload_doc', supplier_code=supplier.code) }}"
-       class="px-3 py-2 rounded-xl bg-slate-900 text-white text-sm">上传</a>
-  </div>
+<style>
+  .soft-card { box-shadow: 0 8px 30px rgba(0,0,0,.06); }
+</style>
 
-  <div class="overflow-x-auto">
-    <table class="min-w-full text-sm">
-      <thead class="bg-slate-50 text-slate-600">
-        <tr>
-          <th class="text-left px-5 py-3">Type</th>
-          <th class="text-left px-5 py-3">Title</th>
-          <th class="text-left px-5 py-3">Rev</th>
-          <th class="text-left px-5 py-3">Part</th>
-          <th class="text-left px-5 py-3">Uploaded</th>
-          <th class="text-left px-5 py-3">Action</th>
-        </tr>
-      </thead>
-      <tbody class="divide-y">
-        {% for d in docs %}
-        <tr class="hover:bg-slate-50">
-          <td class="px-5 py-3">{{ d.doc_type }}</td>
-          <td class="px-5 py-3 font-medium">{{ d.title }}</td>
-          <td class="px-5 py-3">{{ d.revision or "" }}</td>
-          <td class="px-5 py-3">{{ d.part.pn if d.part else "-" }}</td>
-          <td class="px-5 py-3 text-slate-500">{{ d.uploaded_at.date() }}</td>
-          <td class="px-5 py-3">
-            <form method="post" action="{{ url_for('docs.delete_doc', supplier_code=supplier.code, doc_id=d.id) }}"
-                  onsubmit="return confirm('Delete this document?');" class="inline">
-              <button class="text-red-600 hover:underline">del.</button>
-            </form>
-          </td>
-        </tr>
-        {% else %}
-        <tr><td class="px-5 py-8 text-slate-500" colspan="6">暂无资料</td></tr>
-        {% endfor %}
-      </tbody>
-    </table>
+<div class="max-w-[1400px] mx-auto">
+
+  <div class="bg-white rounded-2xl border border-slate-100 soft-card overflow-hidden">
+    <!-- Header -->
+    <div class="px-6 py-5 border-b border-slate-100">
+      <div class="flex items-start justify-between gap-4">
+        <div>
+          <div class="text-xl font-semibold text-slate-900">Documents Center</div>
+          <div class="text-sm text-slate-500 mt-1">
+            Store audit checklists, test reports, PPAP, drawings and other supplier documents.
+          </div>
+
+          {# optional stats (if you pass total/by_type from backend) #}
+          {% if total is defined %}
+          <div class="mt-3 flex flex-wrap items-center gap-2 text-xs">
+            <span class="px-2.5 py-1 rounded-full bg-slate-100 text-slate-700">
+              Total: <span class="font-semibold">{{ total }}</span>
+            </span>
+            {% if by_type is defined and doc_types is defined %}
+              {% for k, label, icon, color in doc_types %}
+                <span class="px-2.5 py-1 rounded-full bg-slate-50 text-slate-600 border border-slate-100">
+                  {{ icon }} {{ label }}: <span class="font-semibold">{{ by_type.get(k, 0) }}</span>
+                </span>
+              {% endfor %}
+            {% endif %}
+          </div>
+          {% endif %}
+        </div>
+
+        <a href="{{ url_for('docs.upload_doc', supplier_code=supplier.code) }}"
+           class="px-4 py-2.5 rounded-xl bg-slate-900 text-white text-sm font-medium hover:bg-black transition">
+          + Upload
+        </a>
+      </div>
+
+      <!-- Search / Filter -->
+      <form method="get" class="mt-5 flex flex-col md:flex-row gap-3">
+        <div class="flex-1 relative">
+          <input
+            type="text"
+            name="q"
+            value="{{ q or '' }}"
+            placeholder="Search title / revision / part number…"
+            class="w-full rounded-xl border border-slate-200 bg-white px-4 py-2.5 text-sm
+                   text-slate-800 placeholder:text-slate-400
+                   focus:outline-none focus:ring-2 focus:ring-slate-300"
+          />
+          {% if q %}
+          <a href="{{ url_for('docs.list_docs', supplier_code=supplier.code, type=t) }}"
+             class="absolute right-3 top-1/2 -translate-y-1/2 text-slate-400 hover:text-slate-700 text-sm">
+            Clear
+          </a>
+          {% endif %}
+        </div>
+
+        <div class="w-full md:w-[260px]">
+          <select name="type"
+                  class="w-full rounded-xl border border-slate-200 bg-white px-3 py-2.5 text-sm
+                         text-slate-800 focus:outline-none focus:ring-2 focus:ring-slate-300">
+            <option value="">All Types</option>
+            {% if doc_types is defined %}
+              {% for k, label, icon, color in doc_types %}
+                <option value="{{ k }}" {% if t == k %}selected{% endif %}>{{ icon }} {{ label }}</option>
+              {% endfor %}
+            {% endif %}
+          </select>
+        </div>
+
+        <button class="px-4 py-2.5 rounded-xl bg-slate-100 text-slate-800 text-sm font-medium hover:bg-slate-200 transition">
+          Apply
+        </button>
+      </form>
+    </div>
+
+    <!-- Table -->
+    <div class="overflow-x-auto">
+      <table class="min-w-full text-sm">
+        <thead class="bg-slate-50 text-slate-600">
+          <tr>
+            <th class="text-left px-6 py-3">Type</th>
+            <th class="text-left px-6 py-3">Title</th>
+            <th class="text-left px-6 py-3">Revision</th>
+            <th class="text-left px-6 py-3">Part</th>
+            <th class="text-left px-6 py-3">Uploaded</th>
+            <th class="text-left px-6 py-3">Size</th>
+            <th class="text-right px-6 py-3">Actions</th>
+          </tr>
+        </thead>
+
+        <tbody class="divide-y divide-slate-100">
+          {# ✅ Compatible with both:
+             A) enriched rows: row.doc, row.type_label, row.size ...
+             B) plain Document list: d.doc_type, d.title ...
+          #}
+
+          {% for item in docs %}
+            {% if item.doc is defined %}
+              {% set d = item.doc %}
+              {% set type_label = item.type_label %}
+              {% set type_icon  = item.type_icon %}
+              {% set type_color = item.type_color %}
+              {% set size_text  = item.size %}
+            {% else %}
+              {% set d = item %}
+              {% set type_label = d.doc_type %}
+              {% set type_icon  = "📎" %}
+              {% set type_color = "slate" %}
+              {% set size_text  = "-" %}
+            {% endif %}
+
+            <tr class="hover:bg-slate-50">
+              <td class="px-6 py-3">
+                <span class="inline-flex items-center gap-2 px-2.5 py-1.5 rounded-full text-xs font-medium
+                             {% if type_color == 'slate' %} bg-slate-100 text-slate-700
+                             {% elif type_color == 'indigo' %} bg-indigo-50 text-indigo-700
+                             {% elif type_color == 'purple' %} bg-purple-50 text-purple-700
+                             {% elif type_color == 'amber' %} bg-amber-50 text-amber-800
+                             {% elif type_color == 'emerald' %} bg-emerald-50 text-emerald-700
+                             {% elif type_color == 'cyan' %} bg-cyan-50 text-cyan-700
+                             {% elif type_color == 'rose' %} bg-rose-50 text-rose-700
+                             {% else %} bg-slate-100 text-slate-700 {% endif %}">
+                  <span>{{ type_icon }}</span>
+                  <span>{{ type_label }}</span>
+                </span>
+              </td>
+
+              <td class="px-6 py-3">
+                <div class="font-medium text-slate-900">{{ d.title }}</div>
+                {% if d.file_path is defined %}
+                <div class="text-xs text-slate-500 mt-0.5 break-all">{{ d.file_path }}</div>
+                {% endif %}
+              </td>
+
+              <td class="px-6 py-3 text-slate-700">{{ d.revision or "-" }}</td>
+              <td class="px-6 py-3 text-slate-700">{{ d.part.pn if d.part else "-" }}</td>
+              <td class="px-6 py-3 text-slate-500">
+                {{ d.uploaded_at.strftime("%Y-%m-%d") if d.uploaded_at else "-" }}
+              </td>
+              <td class="px-6 py-3 text-slate-500">{{ size_text }}</td>
+
+              <td class="px-6 py-3">
+                <div class="flex items-center justify-end gap-3">
+                  {# if you have open/download routes, enable these #}
+                  <a class="text-slate-700 hover:text-slate-900 hover:underline"
+                     href="{{ url_for('docs.open_doc', supplier_code=supplier.code, doc_id=d.id) }}"
+                     target="_blank">
+                    Open
+                  </a>
+                  <a class="text-slate-700 hover:text-slate-900 hover:underline"
+                     href="{{ url_for('docs.download_doc', supplier_code=supplier.code, doc_id=d.id) }}">
+                    Download
+                  </a>
+
+                  <form method="post"
+                        action="{{ url_for('docs.delete_doc', supplier_code=supplier.code, doc_id=d.id) }}"
+                        onsubmit="return confirm('Delete this document? This cannot be undone.');">
+                    <button class="text-rose-600 hover:underline">Delete</button>
+                  </form>
+                </div>
+              </td>
+            </tr>
+
+          {% else %}
+            <tr>
+              <td class="px-6 py-10 text-slate-500" colspan="7">
+                No documents found. Click <span class="font-medium text-slate-700">Upload</span> to add files.
+              </td>
+            </tr>
+          {% endfor %}
+        </tbody>
+      </table>
+    </div>
+
   </div>
 </div>
 

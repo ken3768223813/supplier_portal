@@ -8,30 +8,29 @@
     -webkit-box-orient: vertical;
     overflow: hidden;
   }
-
+  .stat-card {
+    transition: all 0.3s cubic-bezier(0.4, 0, 0.2, 1);
+  }
+  .stat-card:hover {
+    transform: translateY(-2px);
+    box-shadow: 0 8px 16px rgba(0, 0, 0, 0.1);
+  }
   .table-row {
-    transition: all 0.2s ease;
+    transition: all 0.3s ease;
   }
-
   .table-row:hover {
-    background: #f9fafb;
+    background: linear-gradient(to right, #f8fafc, #ffffff);
+    box-shadow: 0 2px 8px rgba(0, 0, 0, 0.05);
   }
-
   @keyframes pulse-glow {
     0%, 100% { opacity: 1; }
     50% { opacity: 0.7; }
   }
-
   .status-dot-warning {
     animation: pulse-glow 2s ease-in-out infinite;
   }
-
-  .doc-badge {
-    transition: all 0.2s ease;
-  }
-
-  .doc-badge:hover {
-    transform: scale(1.1);
+  .search-input:focus {
+    box-shadow: 0 0 0 4px rgba(59, 130, 246, 0.1);
   }
 </style>
 
@@ -40,14 +39,14 @@
   <!-- Header -->
   <div class="flex items-center justify-between mb-8">
     <div>
-      <h1 class="text-4xl font-bold text-gray-900 mb-1">Trouble Reports</h1>
-      <p class="text-lg text-gray-500">Track quality issues and corrective actions</p>
+      <h1 class="text-4xl font-bold text-gray-900 mb-2 tracking-tight">Trouble Reports</h1>
+      <p class="text-base text-gray-500">Track quality issues and corrective actions</p>
     </div>
 
     <a href="{{ url_for('tr.new_tr') }}"
-       class="inline-flex items-center gap-2 px-5 py-3 rounded-xl
-              bg-gray-900 text-white font-semibold hover:bg-gray-800
-              transition-all hover:scale-105 active:scale-95">
+       class="inline-flex items-center gap-2 px-6 py-3 rounded-xl
+              bg-blue-500 text-white font-semibold hover:bg-blue-600
+              transition-all hover:scale-105 active:scale-95 shadow-lg shadow-blue-500/30">
       <svg class="w-5 h-5" fill="none" stroke="currentColor" viewBox="0 0 24 24" stroke-width="2">
         <path stroke-linecap="round" stroke-linejoin="round" d="M12 4v16m8-8H4"/>
       </svg>
@@ -56,70 +55,62 @@
   </div>
 
   <!-- Stats Grid -->
-  <div class="grid grid-cols-4 gap-5 mb-8">
+  <div class="grid grid-cols-4 gap-6 mb-8">
 
-    <div class="bg-white rounded-2xl p-5 border-2 border-gray-200">
-      <div class="flex items-center gap-4">
-        <div class="w-12 h-12 rounded-xl bg-gray-700 flex items-center justify-center shrink-0">
-          <svg class="w-6 h-6 text-white" fill="none" stroke="currentColor" viewBox="0 0 24 24" stroke-width="2">
+    <div class="stat-card bg-white rounded-2xl p-6 border border-gray-200 shadow-sm">
+      <div class="flex items-center justify-between mb-4">
+        <div class="w-12 h-12 rounded-xl bg-gray-100 flex items-center justify-center">
+          <svg class="w-6 h-6 text-gray-700" fill="none" stroke="currentColor" viewBox="0 0 24 24" stroke-width="2">
             <path stroke-linecap="round" stroke-linejoin="round" d="M9 12h6m-6 4h6m2 5H7a2 2 0 01-2-2V5a2 2 0 012-2h5.586a1 1 0 01.707.293l5.414 5.414a1 1 0 01.293.707V19a2 2 0 01-2 2z"/>
           </svg>
         </div>
-        <div>
-          <div class="text-3xl font-bold text-gray-900">{{ pagination.total }}</div>
-          <div class="text-sm font-semibold text-gray-500">Total Reports</div>
-        </div>
       </div>
+      <div class="text-3xl font-bold text-gray-900 mb-1">{{ pagination.total }}</div>
+      <div class="text-sm text-gray-500 font-medium">Total Reports</div>
     </div>
 
-    <div class="bg-white rounded-2xl p-5 border-2 border-gray-200">
-      <div class="flex items-center gap-4">
-        <div class="w-12 h-12 rounded-xl bg-amber-500 flex items-center justify-center shrink-0">
-          <svg class="w-6 h-6 text-white" fill="none" stroke="currentColor" viewBox="0 0 24 24" stroke-width="2">
+    <div class="stat-card bg-white rounded-2xl p-6 border border-gray-200 shadow-sm">
+      <div class="flex items-center justify-between mb-4">
+        <div class="w-12 h-12 rounded-xl bg-orange-50 flex items-center justify-center">
+          <svg class="w-6 h-6 text-orange-500" fill="none" stroke="currentColor" viewBox="0 0 24 24" stroke-width="2">
             <path stroke-linecap="round" stroke-linejoin="round" d="M12 8v4l3 3m6-3a9 9 0 11-18 0 9 9 0 0118 0z"/>
           </svg>
         </div>
-        <div>
-          <div class="text-3xl font-bold text-gray-900">--</div>
-          <div class="text-sm font-semibold text-gray-500">In Progress</div>
-        </div>
       </div>
+      <div class="text-3xl font-bold text-gray-900 mb-1">—</div>
+      <div class="text-sm text-gray-500 font-medium">In Progress</div>
     </div>
 
-    <div class="bg-white rounded-2xl p-5 border-2 border-gray-200">
-      <div class="flex items-center gap-4">
-        <div class="w-12 h-12 rounded-xl bg-red-500 flex items-center justify-center shrink-0">
-          <svg class="w-6 h-6 text-white" fill="none" stroke="currentColor" viewBox="0 0 24 24" stroke-width="2">
+    <div class="stat-card bg-white rounded-2xl p-6 border border-gray-200 shadow-sm">
+      <div class="flex items-center justify-between mb-4">
+        <div class="w-12 h-12 rounded-xl bg-red-50 flex items-center justify-center">
+          <svg class="w-6 h-6 text-red-500" fill="none" stroke="currentColor" viewBox="0 0 24 24" stroke-width="2">
             <path stroke-linecap="round" stroke-linejoin="round" d="M12 9v2m0 4h.01m-6.938 4h13.856c1.54 0 2.502-1.667 1.732-3L13.732 4c-.77-1.333-2.694-1.333-3.464 0L3.34 16c-.77 1.333.192 3 1.732 3z"/>
           </svg>
         </div>
-        <div>
-          <div class="text-3xl font-bold text-gray-900">--</div>
-          <div class="text-sm font-semibold text-gray-500">Overdue</div>
-        </div>
       </div>
+      <div class="text-3xl font-bold text-gray-900 mb-1">—</div>
+      <div class="text-sm text-gray-500 font-medium">Overdue</div>
     </div>
 
-    <div class="bg-white rounded-2xl p-5 border-2 border-gray-200">
-      <div class="flex items-center gap-4">
-        <div class="w-12 h-12 rounded-xl bg-green-500 flex items-center justify-center shrink-0">
-          <svg class="w-6 h-6 text-white" fill="none" stroke="currentColor" viewBox="0 0 24 24" stroke-width="2">
+    <div class="stat-card bg-white rounded-2xl p-6 border border-gray-200 shadow-sm">
+      <div class="flex items-center justify-between mb-4">
+        <div class="w-12 h-12 rounded-xl bg-green-50 flex items-center justify-center">
+          <svg class="w-6 h-6 text-green-500" fill="none" stroke="currentColor" viewBox="0 0 24 24" stroke-width="2">
             <path stroke-linecap="round" stroke-linejoin="round" d="M9 12l2 2 4-4m6 2a9 9 0 11-18 0 9 9 0 0118 0z"/>
           </svg>
         </div>
-        <div>
-          <div class="text-3xl font-bold text-gray-900">--</div>
-          <div class="text-sm font-semibold text-gray-500">Closed</div>
-        </div>
       </div>
+      <div class="text-3xl font-bold text-gray-900 mb-1">—</div>
+      <div class="text-sm text-gray-500 font-medium">Closed</div>
     </div>
   </div>
 
   <!-- Main Table Card -->
-  <div class="bg-white rounded-2xl border-2 border-gray-200 overflow-hidden">
+  <div class="bg-white rounded-2xl border border-gray-200 overflow-hidden shadow-sm">
 
     <!-- Search Bar -->
-    <div class="px-6 py-4 border-b-2 border-gray-100">
+    <div class="px-6 py-5 border-b border-gray-200 bg-gray-50">
       <div class="flex items-center gap-4">
         <form method="get" class="flex-1">
           <div class="relative">
@@ -128,19 +119,19 @@
               name="q"
               value="{{ q or '' }}"
               placeholder="Search by TR No., Supplier, Part Number, or Issue..."
-              class="w-full px-5 py-3 pl-12 rounded-xl bg-gray-50 border-2 border-transparent
-                     text-sm focus:outline-none focus:bg-white focus:border-gray-900 transition-all"
+              class="search-input w-full px-5 py-3 pl-12 rounded-xl bg-white border border-gray-300
+                     text-sm focus:outline-none focus:border-blue-500 transition-all"
             />
             <div class="absolute left-4 top-1/2 -translate-y-1/2">
-              <svg class="w-5 h-5 text-gray-400" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-                <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M21 21l-6-6m2-5a7 7 0 11-14 0 7 7 0 0114 0z"/>
+              <svg class="w-5 h-5 text-gray-400" fill="none" stroke="currentColor" viewBox="0 0 24 24" stroke-width="2">
+                <path stroke-linecap="round" stroke-linejoin="round" d="M21 21l-6-6m2-5a7 7 0 11-14 0 7 7 0 0114 0z"/>
               </svg>
             </div>
             {% if q %}
             <a href="{{ url_for('tr.index', per_page=per_page) }}"
-               class="absolute right-4 top-1/2 -translate-y-1/2 text-gray-400 hover:text-gray-600">
-              <svg class="w-5 h-5" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-                <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M6 18L18 6M6 6l12 12"/>
+               class="absolute right-4 top-1/2 -translate-y-1/2 text-gray-400 hover:text-gray-600 transition">
+              <svg class="w-5 h-5" fill="none" stroke="currentColor" viewBox="0 0 24 24" stroke-width="2">
+                <path stroke-linecap="round" stroke-linejoin="round" d="M6 18L18 6M6 6l12 12"/>
               </svg>
             </a>
             {% endif %}
@@ -156,19 +147,19 @@
     <!-- Table -->
     <div class="overflow-x-auto">
       <table class="w-full table-fixed text-sm">
-        <thead class="bg-gray-50 border-b-2 border-gray-100">
-          <tr class="text-xs font-bold text-gray-500 uppercase tracking-wider">
-            <th class="w-[110px] px-4 py-4 text-left">TR No.</th>
-            <th class="w-[13%] px-4 py-4 text-left">Supplier</th>
-            <th class="w-[16%] px-4 py-4 text-left">Part No.</th>
-            <th class="w-[13%] px-4 py-4 text-left">Part Name</th>
-            <th class="w-[28%] px-4 py-4 text-left">Issue</th>
-            <th class="w-[54px] px-2 py-4 text-center">Sev</th>
-            <th class="w-[46px] px-2 py-4 text-center">8D</th>
-            <th class="w-[46px] px-2 py-4 text-center">ST</th>
-            <th class="w-[14%] px-4 py-4 text-center">Note</th>
-            <th class="w-[50px] px-2 py-4 text-center">📎</th>
-            <th class="w-[90px] px-4 py-4 text-center">Action</th>
+        <thead>
+          <tr class="bg-gray-50 border-b border-gray-200">
+            <th class="w-[110px] px-4 py-4 text-left text-xs font-semibold text-gray-600 uppercase tracking-wider">TR No.</th>
+            <th class="w-[13%] px-4 py-4 text-left text-xs font-semibold text-gray-600 uppercase tracking-wider">Supplier</th>
+            <th class="w-[16%] px-4 py-4 text-left text-xs font-semibold text-gray-600 uppercase tracking-wider">Part No.</th>
+            <th class="w-[13%] px-4 py-4 text-left text-xs font-semibold text-gray-600 uppercase tracking-wider">Part Name</th>
+            <th class="w-[28%] px-4 py-4 text-left text-xs font-semibold text-gray-600 uppercase tracking-wider">Issue</th>
+            <th class="w-[54px] px-2 py-4 text-center text-xs font-semibold text-gray-600 uppercase tracking-wider">Sev</th>
+            <th class="w-[46px] px-2 py-4 text-center text-xs font-semibold text-gray-600 uppercase tracking-wider">8D</th>
+            <th class="w-[46px] px-2 py-4 text-center text-xs font-semibold text-gray-600 uppercase tracking-wider">ST</th>
+            <th class="w-[14%] px-4 py-4 text-center text-xs font-semibold text-gray-600 uppercase tracking-wider">Note</th>
+            <th class="w-[50px] px-2 py-4 text-center text-xs font-semibold text-gray-600 uppercase tracking-wider">📎</th>
+            <th class="w-[90px] px-4 py-4 text-center text-xs font-semibold text-gray-600 uppercase tracking-wider">Action</th>
           </tr>
         </thead>
 
@@ -183,33 +174,33 @@
             <tr class="{{ row_cls }}">
               <!-- TR NO. -->
               <td class="px-4 py-4">
-                <div class="font-mono font-bold text-sm px-3 py-1.5 rounded-lg bg-gray-100 border-2 border-gray-200 inline-block text-gray-900"
+                <div class="font-mono font-bold text-xs px-3 py-1.5 rounded-lg bg-gray-100 border border-gray-200 inline-block text-gray-900"
                      title="{{ tr.tr_no }}">
                   {{ tr.tr_no }}
                 </div>
               </td>
 
               <!-- Supplier -->
-              <td class="px-4 py-4 text-gray-700 font-semibold">
+              <td class="px-4 py-4 text-gray-700 font-semibold text-sm">
                 <div class="truncate" title="{{ tr.supplier_name }}">{{ tr.supplier_name }}</div>
               </td>
 
               <!-- Part No. -->
               <td class="px-4 py-4">
-                <div class="font-mono text-xs px-2 py-1 rounded bg-blue-50 border border-blue-100 inline-block text-gray-900"
+                <div class="font-mono text-xs px-2 py-1 rounded-lg bg-blue-50 text-blue-700 inline-block"
                      title="{{ tr.part_number or '' }}">
                   {{ tr.part_number or "—" }}
                 </div>
               </td>
 
               <!-- Part Name -->
-              <td class="px-4 py-4 text-gray-700 font-medium">
+              <td class="px-4 py-4 text-gray-700 font-medium text-sm">
                 <div class="truncate" title="{{ tr.part_name or '' }}">{{ tr.part_name or "—" }}</div>
               </td>
 
               <!-- Issue -->
               <td class="px-4 py-4">
-                <div class="text-[13px] leading-5 text-gray-600 clamp-3" title="{{ tr.issue_description or '' }}">
+                <div class="text-xs leading-5 text-gray-600 clamp-3" title="{{ tr.issue_description or '' }}">
                   {{ tr.issue_description }}
                 </div>
               </td>
@@ -218,7 +209,7 @@
               <td class="px-2 py-4 text-center">
                 {% if tr.severity %}
                   <span class="inline-flex items-center justify-center w-8 h-8 rounded-lg
-                               bg-gray-700 text-white text-xs font-bold shadow-sm">
+                               bg-gray-800 text-white text-xs font-bold shadow-sm">
                     {{ tr.severity }}
                   </span>
                 {% else %}
@@ -231,23 +222,23 @@
                 {% set d8 = (tr.eight_d_status or 'NOT_REQUIRED')|trim|upper %}
 
                 {% if d8 == 'NOT_REQUIRED' %}
-                  <span class="inline-block w-4 h-4 rounded-full bg-gray-300 border-2 border-gray-400"
+                  <span class="inline-block w-4 h-4 rounded-full bg-gray-300"
                         title="8D: Not required"></span>
 
                 {% elif d8 == 'NOT_RECEIVED' %}
-                  <span class="status-dot-warning inline-block w-4 h-4 rounded-full bg-yellow-400 border-2 border-yellow-500 shadow-lg"
+                  <span class="status-dot-warning inline-block w-4 h-4 rounded-full bg-yellow-400 shadow-sm"
                         title="8D: Required but not received"></span>
 
                 {% elif d8 == 'RECEIVED_REJECT' %}
-                  <span class="inline-block w-4 h-4 rounded-full bg-red-500 border-2 border-red-600 shadow-lg"
+                  <span class="inline-block w-4 h-4 rounded-full bg-red-500 shadow-sm"
                         title="8D: Received (Reject)"></span>
 
                 {% elif d8 == 'RECEIVED_PASS' %}
-                  <span class="inline-block w-4 h-4 rounded-full bg-green-500 border-2 border-green-600 shadow-lg"
+                  <span class="inline-block w-4 h-4 rounded-full bg-green-500 shadow-sm"
                         title="8D: Received (Pass)"></span>
 
                 {% else %}
-                  <span class="inline-block w-4 h-4 rounded-full bg-gray-300 border-2 border-gray-400"
+                  <span class="inline-block w-4 h-4 rounded-full bg-gray-300"
                         title="8D: Unknown"></span>
                 {% endif %}
               </td>
@@ -257,15 +248,15 @@
                 {% set st = (tr.status or '')|lower %}
                 {% if st in ['overdue','late'] %}
                   <span class="inline-flex items-center justify-center h-6 px-2.5 rounded-full text-[10px] font-bold uppercase
-                               bg-red-500 text-white shadow-sm"
+                               bg-red-500 text-white"
                         title="Overdue">LATE</span>
                 {% elif st in ['closed','done','complete','completed'] %}
                   <span class="inline-flex items-center justify-center h-6 px-2.5 rounded-full text-[10px] font-bold uppercase
-                               bg-green-500 text-white shadow-sm"
+                               bg-green-500 text-white"
                         title="Closed">OK</span>
                 {% else %}
                   <span class="inline-flex items-center justify-center h-6 px-2.5 rounded-full text-[10px] font-bold uppercase
-                               bg-amber-500 text-white shadow-sm"
+                               bg-orange-500 text-white"
                         title="Ongoing">ON</span>
                 {% endif %}
               </td>
@@ -281,16 +272,16 @@
                 {% if doc_count > 0 %}
                   <button type="button"
                           onclick="openTRDocumentsModal({{ tr.id }})"
-                          class="doc-badge inline-flex items-center justify-center w-7 h-7 rounded-lg
-                                 bg-gray-700 text-white font-bold text-xs
-                                 border-2 border-gray-700 hover:bg-gray-800
+                          class="inline-flex items-center justify-center w-7 h-7 rounded-lg
+                                 bg-purple-50 text-purple-700 font-bold text-xs
+                                 hover:bg-purple-100
                                  transition-all cursor-pointer"
                           title="View {{ doc_count }} documents">
                     {{ doc_count }}
                   </button>
                 {% else %}
                   <span class="inline-flex items-center justify-center w-7 h-7 rounded-lg
-                               bg-gray-50 text-gray-300 text-xs border border-gray-100"
+                               bg-gray-50 text-gray-300 text-xs"
                         title="No documents">—</span>
                 {% endif %}
               </td>
@@ -300,8 +291,8 @@
                 <div class="flex items-center justify-center gap-2">
                   <a href="{{ url_for('tr.edit_tr', tr_id=tr.id) }}"
                      class="inline-flex items-center justify-center w-8 h-8 rounded-lg
-                            bg-blue-50 text-blue-600 hover:bg-blue-100 border-2 border-blue-200 hover:border-blue-400
-                            transition-all hover:scale-105"
+                            bg-blue-50 text-blue-600 hover:bg-blue-100
+                            transition-all"
                      title="Edit">
                     <svg class="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24" stroke-width="2">
                       <path stroke-linecap="round" stroke-linejoin="round" d="M11 5H6a2 2 0 00-2 2v11a2 2 0 002 2h11a2 2 0 002-2v-5m-1.414-9.414a2 2 0 112.828 2.828L11.828 15H9v-2.828l8.586-8.586z"/>
@@ -313,8 +304,8 @@
                         onsubmit="return confirm('Delete TR {{ tr.tr_no }}? This action cannot be undone.');">
                     <button type="submit"
                             class="inline-flex items-center justify-center w-8 h-8 rounded-lg
-                                   bg-red-50 text-red-600 hover:bg-red-100 border-2 border-red-200 hover:border-red-400
-                                   transition-all hover:scale-105"
+                                   bg-red-50 text-red-600 hover:bg-red-100
+                                   transition-all"
                             title="Delete">
                       <svg class="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24" stroke-width="2">
                         <path stroke-linecap="round" stroke-linejoin="round" d="M19 7l-.867 12.142A2 2 0 0116.138 21H7.862a2 2 0 01-1.995-1.858L5 7m5 4v6m4-6v6m1-10V4a1 1 0 00-1-1h-4a1 1 0 00-1 1v3M4 7h16"/>
@@ -328,16 +319,16 @@
 
           {% if trs|length == 0 %}
           <tr>
-            <td colspan="11" class="px-6 py-16 text-center">
+            <td colspan="11" class="px-6 py-20 text-center">
               <div class="flex flex-col items-center gap-4">
                 <div class="w-20 h-20 bg-gray-100 rounded-full flex items-center justify-center">
-                  <svg class="w-10 h-10 text-gray-300" fill="none" stroke="currentColor" viewBox="0 0 24 24" stroke-width="2">
+                  <svg class="w-10 h-10 text-gray-300" fill="none" stroke="currentColor" viewBox="0 0 24 24" stroke-width="1.5">
                     <path stroke-linecap="round" stroke-linejoin="round" d="M20 13V6a2 2 0 00-2-2H6a2 2 0 00-2 2v7m16 0v5a2 2 0 01-2 2H6a2 2 0 01-2-2v-5m16 0h-2.586a1 1 0 00-.707.293l-2.414 2.414a1 1 0 01-.707.293h-3.172a1 1 0 01-.707-.293l-2.414-2.414A1 1 0 006.586 13H4"/>
                   </svg>
                 </div>
                 <div>
-                  <p class="text-xl font-bold text-gray-900 mb-1">No reports found</p>
-                  <p class="text-sm text-gray-500">Click "New Report" to get started</p>
+                  <p class="text-gray-600 font-semibold text-lg mb-1">No reports found</p>
+                  <p class="text-gray-400 text-sm">Click "New Report" to get started</p>
                 </div>
               </div>
             </td>
@@ -349,12 +340,12 @@
 
     <!-- Pagination -->
     {% if pagination.pages > 1 %}
-    <div class="px-6 py-4 border-t-2 border-gray-100 flex items-center justify-between">
+    <div class="px-6 py-4 border-t border-gray-200 bg-gray-50 flex items-center justify-between">
       <div class="text-sm text-gray-600">
         {% if pagination.total > 0 %}
-          Showing <span class="font-bold text-gray-900">{{ (pagination.page - 1) * pagination.per_page + 1 }}</span>
-          to <span class="font-bold text-gray-900">{{ (pagination.page - 1) * pagination.per_page + trs|length }}</span>
-          of <span class="font-bold text-gray-900">{{ pagination.total }}</span> results
+          Showing <span class="font-semibold text-gray-900">{{ (pagination.page - 1) * pagination.per_page + 1 }}</span>
+          to <span class="font-semibold text-gray-900">{{ (pagination.page - 1) * pagination.per_page + trs|length }}</span>
+          of <span class="font-semibold text-gray-900">{{ pagination.total }}</span> reports
         {% else %}
           No results
         {% endif %}
@@ -362,13 +353,13 @@
 
       <nav class="flex items-center gap-2">
         {% if pagination.has_prev %}
-          <a class="px-4 py-2 rounded-lg border-2 border-gray-300 text-sm font-bold text-gray-700
-                    hover:bg-gray-100 hover:border-gray-900 transition"
+          <a class="px-4 py-2 rounded-lg border border-gray-300 text-sm font-medium text-gray-700
+                    hover:bg-gray-100 hover:border-gray-400 transition bg-white"
              href="{{ url_for('tr.index', page=pagination.prev_num, q=q, per_page=per_page) }}">
             Previous
           </a>
         {% else %}
-          <span class="px-4 py-2 rounded-lg border-2 border-gray-200 text-sm font-bold text-gray-300 bg-gray-50">
+          <span class="px-4 py-2 rounded-lg border border-gray-200 text-sm font-medium text-gray-400 bg-gray-100 cursor-not-allowed">
             Previous
           </span>
         {% endif %}
@@ -376,12 +367,12 @@
         <div class="flex items-center gap-1">
           {% for p in range(1, pagination.pages + 1) %}
             {% if p == pagination.page %}
-              <span class="px-4 py-2 rounded-lg bg-gray-900 text-white text-sm font-bold">
+              <span class="px-4 py-2 rounded-lg bg-blue-500 text-white text-sm font-semibold shadow-sm">
                 {{ p }}
               </span>
             {% else %}
-              <a class="px-4 py-2 rounded-lg border-2 border-gray-200 text-sm font-bold text-gray-700
-                        hover:bg-gray-100 hover:border-gray-900 transition"
+              <a class="px-4 py-2 rounded-lg border border-gray-200 text-sm font-medium text-gray-700
+                        hover:bg-gray-100 hover:border-gray-400 transition bg-white"
                  href="{{ url_for('tr.index', page=p, q=q, per_page=per_page) }}">
                 {{ p }}
               </a>
@@ -390,13 +381,13 @@
         </div>
 
         {% if pagination.has_next %}
-          <a class="px-4 py-2 rounded-lg border-2 border-gray-300 text-sm font-bold text-gray-700
-                    hover:bg-gray-100 hover:border-gray-900 transition"
+          <a class="px-4 py-2 rounded-lg border border-gray-300 text-sm font-medium text-gray-700
+                    hover:bg-gray-100 hover:border-gray-400 transition bg-white"
              href="{{ url_for('tr.index', page=pagination.next_num, q=q, per_page=per_page) }}">
             Next
           </a>
         {% else %}
-          <span class="px-4 py-2 rounded-lg border-2 border-gray-200 text-sm font-bold text-gray-300 bg-gray-50">
+          <span class="px-4 py-2 rounded-lg border border-gray-200 text-sm font-medium text-gray-400 bg-gray-100 cursor-not-allowed">
             Next
           </span>
         {% endif %}

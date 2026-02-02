@@ -31,10 +31,10 @@ TRIP_DOC_TYPES = {
 }
 
 AUDIT_TYPES = {
-    "initial": "初次审核",
-    "periodic": "定期审核",
-    "special": "特殊审核",
-    "follow_up": "跟踪审核",
+    "initial": "Inital Audit",
+    "periodic": "ANFIA Audit",
+    "special": "SQA Audit",
+    "follow_up": "Product Inspection",
 }
 
 # ✅ 简化状态（无需审批）
