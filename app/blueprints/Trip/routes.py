@@ -151,10 +151,11 @@ def new_trip():
     suppliers = _get_suppliers_for_select()
 
     if request.method == "POST":
-        # 生成出差编号 - 修复版本（避免重复）
+        # ✅ 修改：生成新格式出差编号 TRIP-YYMMDD-NNN（如 TRIP-260205-001）
         today = datetime.now()
-        date_prefix = today.strftime("%Y%m%d")
+        date_prefix = today.strftime("%y%m%d")  # ✅ 改为 %y（两位年份）
 
+        # 查询当天最后一个编号
         existing = BusinessTrip.query.filter(
             BusinessTrip.trip_no.like(f"TRIP-{date_prefix}-%")
         ).order_by(BusinessTrip.trip_no.desc()).first()
@@ -165,7 +166,7 @@ def new_trip():
         else:
             new_no = 1
 
-        trip_no = f"TRIP-{date_prefix}-{new_no:04d}"
+        trip_no = f"TRIP-{date_prefix}-{new_no:03d}"  # ✅ 改为 3 位数字（001）
 
         # 获取表单数据
         engineer = request.form.get("engineer", "").strip()
@@ -176,6 +177,7 @@ def new_trip():
         start_date_str = request.form.get("start_date", "").strip()
         end_date_str = request.form.get("end_date", "").strip()
         notes = request.form.get("notes", "").strip() or None
+        local_folder_path = request.form.get("local_folder_path", "").strip() or None  # ✅ 新增
 
         # 表单验证
         if not engineer:
@@ -276,6 +278,7 @@ def new_trip():
             days=days,
             status="planning",  # ✅ 默认计划中
             notes=notes,
+            local_folder_path=local_folder_path,  # ✅ 新增
         )
 
         db.session.add(trip)
@@ -311,6 +314,7 @@ def edit_trip(trip_id):
         audit_type = request.form.get("audit_type", "").strip() or None
         status = request.form.get("status", "planning").strip()
         notes = request.form.get("notes", "").strip() or None
+        local_folder_path = request.form.get("local_folder_path", "").strip() or None  # ✅ 新增
 
         # 验证必填字段
         if not engineer or not supplier_name or not purpose:
@@ -339,6 +343,7 @@ def edit_trip(trip_id):
         trip.audit_type = audit_type
         trip.status = status
         trip.notes = notes
+        trip.local_folder_path = local_folder_path  # ✅ 新增
 
         # 更新日期
         start_date_str = request.form.get("start_date", "").strip()
@@ -527,7 +532,6 @@ def documents_panel(trip_id):
     )
 
 
-
 def _open_in_server_default_app(abs_path: str) -> None:
     """Open file on server machine with default application."""
     if sys.platform.startswith("win"):
@@ -566,3 +570,37 @@ def open_local_document(trip_id, doc_id):
 
     # 返回到你当前习惯的页面：编辑页 或 index 都可以
     return redirect(url_for("trip.index"))
+
+
+from flask import request
+
+@trip_bp.route("/<int:trip_id>/open_folder", methods=["GET"])
+def open_trip_folder(trip_id):
+    """✅ 点击数字直接打开用户关联的本地文件夹（自用）"""
+    trip = BusinessTrip.query.get_or_404(trip_id)
+
+    # 没设置：直接引导去编辑页
+    if not trip.local_folder_path:
+        flash("❌ 未设置本地文件夹路径，请先在编辑页面设置", "warning")
+        return redirect(url_for("trip.edit_trip", trip_id=trip.id))
+
+    folder_path = trip.local_folder_path.strip()
+
+    # 校验路径
+    if not os.path.exists(folder_path):
+        flash(f"❌ 文件夹不存在：{folder_path}", "error")
+        return redirect(url_for("trip.index"))
+
+    if not os.path.isdir(folder_path):
+        flash(f"❌ 路径不是文件夹：{folder_path}", "error")
+        return redirect(url_for("trip.index"))
+
+    try:
+        _open_in_server_default_app(folder_path)  # Windows: Explorer 打开
+        # 不一定要 flash，太吵的话可注释掉
+        # flash(f"✅ 已打开文件夹: {os.path.basename(folder_path)}", "success")
+    except Exception as e:
+        flash(f"❌ 无法打开文件夹: {e}", "error")
+
+    # 返回来源页面（优雅一点）
+    return redirect(request.referrer or url_for("trip.index"))

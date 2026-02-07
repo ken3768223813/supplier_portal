@@ -173,7 +173,7 @@ class BusinessTrip(db.Model):
     audit_type = db.Column(db.String(50))  # initial/periodic/special/follow_up
 
     # 状态管理
-    status = db.Column(db.String(20), default='pending')  # pending/approved/completed/cancelled
+    status = db.Column(db.String(20), default='planning')  # pending/approved/completed/cancelled
 
     # 费用信息（可选）
     estimated_cost = db.Column(db.Float)  # 预估费用
@@ -181,6 +181,8 @@ class BusinessTrip(db.Model):
 
     # 备注
     notes = db.Column(db.Text)  # 备注说明
+
+    local_folder_path = db.Column(db.Text, nullable=True)
 
     # 时间戳
     created_at = db.Column(db.DateTime, default=datetime.utcnow)

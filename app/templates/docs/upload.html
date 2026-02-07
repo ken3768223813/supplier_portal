@@ -2,90 +2,116 @@
 {% set active = "docs" %}
 {% block supplier_content %}
 
-<div class="max-w-4xl mx-auto">
+<div class="max-w-3xl mx-auto px-4 py-8">
 
-  <div class="bg-white rounded-2xl border border-slate-100 shadow-sm overflow-hidden">
-    <!-- Header -->
-    <div class="px-6 py-5 border-b border-slate-100 flex items-start justify-between gap-4">
-      <div>
-        <div class="text-xl font-semibold text-slate-900">Upload Document</div>
-        <div class="text-sm text-slate-500 mt-1">
-          Upload audit checklists, test reports, PPAP, drawings, and other supplier files.
-        </div>
-      </div>
+  <!-- Header Section -->
+  <div class="mb-6">
+    <a href="{{ url_for('docs.list_docs', supplier_code=supplier.code) }}"
+       class="inline-flex items-center gap-2 text-sm font-medium text-blue-600 hover:text-blue-700 transition-colors mb-4">
+      <svg class="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+        <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M15 19l-7-7 7-7"/>
+      </svg>
+      Documents
+    </a>
+    <h1 class="text-3xl font-semibold text-gray-900 tracking-tight mb-2">Upload Document</h1>
+    <p class="text-base text-gray-600">
+      Upload audit checklists, test reports, PPAP, drawings, and other supplier files.
+    </p>
+  </div>
 
-      <a href="{{ url_for('docs.list_docs', supplier_code=supplier.code) }}"
-         class="px-3 py-2 rounded-xl bg-slate-100 text-slate-800 text-sm hover:bg-slate-200 transition">
-        ← Back
-      </a>
-    </div>
+  <!-- Form Card -->
+  <div class="bg-white rounded-2xl shadow-sm border border-gray-200/60 overflow-hidden">
+    <form method="post" enctype="multipart/form-data" class="divide-y divide-gray-100">
 
-    <!-- Form -->
-    <form method="post" enctype="multipart/form-data" class="p-6 space-y-5">
-      <div class="grid grid-cols-12 gap-4">
+      <!-- Document Information Section -->
+      <div class="p-6 space-y-5">
+        <h2 class="text-lg font-semibold text-gray-900 mb-4">Document Information</h2>
 
-        <!-- Type -->
-        <div class="col-span-12 md:col-span-4">
-          <label class="text-sm font-medium text-slate-700">Type</label>
-          <select name="doc_type"
-                  class="w-full mt-2 rounded-xl border border-slate-200 bg-white px-3 py-2.5 text-sm
-                         text-slate-800 focus:outline-none focus:ring-2 focus:ring-slate-300">
-            {# ✅ If your DOC_TYPES is (k,label,icon,color) #}
-            {% if doc_types and doc_types[0]|length == 4 %}
-              {% for k, label, icon, color in doc_types %}
-                <option value="{{ k }}">{{ icon }} {{ label }}</option>
-              {% endfor %}
-            {% else %}
-              {# ✅ fallback: old style (value,label) #}
-              {% for v, label in doc_types %}
-                <option value="{{ v }}">{{ label }}</option>
-              {% endfor %}
-            {% endif %}
-          </select>
-        </div>
+        <!-- Type, Revision, Status Row -->
+        <div class="grid grid-cols-1 md:grid-cols-3 gap-4">
 
-        <!-- Revision -->
-        <div class="col-span-12 md:col-span-4">
-          <label class="text-sm font-medium text-slate-700">Revision</label>
-          <input name="revision"
-                 class="w-full mt-2 rounded-xl border border-slate-200 bg-white px-4 py-2.5 text-sm
-                        text-slate-800 placeholder:text-slate-400
-                        focus:outline-none focus:ring-2 focus:ring-slate-300"
-                 placeholder="A / B / 01 ..." />
-        </div>
+          <!-- Type -->
+          <div>
+            <label class="block text-sm font-medium text-gray-700 mb-2">Type</label>
+            <select name="doc_type"
+                    class="w-full px-3.5 py-2.5 bg-white border border-gray-300 rounded-lg
+                           text-sm text-gray-900 font-normal
+                           focus:outline-none focus:ring-2 focus:ring-blue-500 focus:border-transparent
+                           transition-all appearance-none cursor-pointer
+                           bg-[url('data:image/svg+xml;charset=UTF-8,%3csvg%20width%3d%2714%27%20height%3d%278%27%20viewBox%3d%270%200%2014%208%27%20fill%3d%27none%27%20xmlns%3d%27http%3a%2f%2fwww.w3.org%2f2000%2fsvg%27%3e%3cpath%20d%3d%27M1%201l6%206%206-6%27%20stroke%3d%27%23666%27%20stroke-width%3d%271.5%27%20stroke-linecap%3d%27round%27%20stroke-linejoin%3d%27round%27%2f%3e%3c%2fsvg%3e')]
+                           bg-[length:14px] bg-[right_12px_center] bg-no-repeat pr-10">
+              {# ✅ If your DOC_TYPES is (k,label,icon,color) #}
+              {% if doc_types and doc_types[0]|length == 4 %}
+                {% for k, label, icon, color in doc_types %}
+                  <option value="{{ k }}">{{ icon }} {{ label }}</option>
+                {% endfor %}
+              {% else %}
+                {# ✅ fallback: old style (value,label) #}
+                {% for v, label in doc_types %}
+                  <option value="{{ v }}">{{ label }}</option>
+                {% endfor %}
+              {% endif %}
+            </select>
+          </div>
 
-        <!-- Status -->
-        <div class="col-span-12 md:col-span-4">
-          <label class="text-sm font-medium text-slate-700">Status</label>
-          <select name="status"
-                  class="w-full mt-2 rounded-xl border border-slate-200 bg-white px-3 py-2.5 text-sm
-                         text-slate-800 focus:outline-none focus:ring-2 focus:ring-slate-300">
-            <option value="valid">Valid</option>
-            <option value="draft">Draft</option>
-            <option value="obsolete">Obsolete</option>
-          </select>
-        </div>
+          <!-- Revision -->
+          <div>
+            <label class="block text-sm font-medium text-gray-700 mb-2">Revision</label>
+            <input name="revision"
+                   type="text"
+                   class="w-full px-3.5 py-2.5 bg-white border border-gray-300 rounded-lg
+                          text-sm text-gray-900 placeholder:text-gray-400
+                          focus:outline-none focus:ring-2 focus:ring-blue-500 focus:border-transparent
+                          transition-all"
+                   placeholder="A, B, 01..." />
+          </div>
 
-        <!-- Title -->
-        <div class="col-span-12">
-          <label class="text-sm font-medium text-slate-700">Title</label>
-          <input name="title"
-                 class="w-full mt-2 rounded-xl border border-slate-200 bg-white px-4 py-2.5 text-sm
-                        text-slate-800 placeholder:text-slate-400
-                        focus:outline-none focus:ring-2 focus:ring-slate-300"
-                 placeholder="e.g., WET500010116A0 Drawing / Salt Spray Test Report" />
-          <div class="text-xs text-slate-500 mt-2">
-            Use a clear name so you can search it later.
+          <!-- Status -->
+          <div>
+            <label class="block text-sm font-medium text-gray-700 mb-2">Status</label>
+            <select name="status"
+                    class="w-full px-3.5 py-2.5 bg-white border border-gray-300 rounded-lg
+                           text-sm text-gray-900 font-normal
+                           focus:outline-none focus:ring-2 focus:ring-blue-500 focus:border-transparent
+                           transition-all appearance-none cursor-pointer
+                           bg-[url('data:image/svg+xml;charset=UTF-8,%3csvg%20width%3d%2714%27%20height%3d%278%27%20viewBox%3d%270%200%2014%208%27%20fill%3d%27none%27%20xmlns%3d%27http%3a%2f%2fwww.w3.org%2f2000%2fsvg%27%3e%3cpath%20d%3d%27M1%201l6%206%206-6%27%20stroke%3d%27%23666%27%20stroke-width%3d%271.5%27%20stroke-linecap%3d%27round%27%20stroke-linejoin%3d%27round%27%2f%3e%3c%2fsvg%3e')]
+                           bg-[length:14px] bg-[right_12px_center] bg-no-repeat pr-10">
+              <option value="valid">Valid</option>
+              <option value="draft">Draft</option>
+              <option value="obsolete">Obsolete</option>
+            </select>
           </div>
         </div>
 
-        <!-- Part -->
-        <div class="col-span-12">
-          <label class="text-sm font-medium text-slate-700">Related Part (optional)</label>
+        <!-- Title -->
+        <div>
+          <label class="block text-sm font-medium text-gray-700 mb-2">Title</label>
+          <input name="title"
+                 type="text"
+                 class="w-full px-3.5 py-2.5 bg-white border border-gray-300 rounded-lg
+                        text-sm text-gray-900 placeholder:text-gray-400
+                        focus:outline-none focus:ring-2 focus:ring-blue-500 focus:border-transparent
+                        transition-all"
+                 placeholder="e.g., WET500010116A0 Drawing / Salt Spray Test Report" />
+          <p class="mt-2 text-xs text-gray-500">
+            Use a clear name so you can search it later.
+          </p>
+        </div>
+
+        <!-- Related Part -->
+        <div>
+          <label class="block text-sm font-medium text-gray-700 mb-2">
+            Related Part
+            <span class="text-gray-400 font-normal">(optional)</span>
+          </label>
           <select name="part_id"
-                  class="w-full mt-2 rounded-xl border border-slate-200 bg-white px-3 py-2.5 text-sm
-                         text-slate-800 focus:outline-none focus:ring-2 focus:ring-slate-300">
-            <option value="">- None -</option>
+                  class="w-full px-3.5 py-2.5 bg-white border border-gray-300 rounded-lg
+                         text-sm text-gray-900 font-normal
+                         focus:outline-none focus:ring-2 focus:ring-blue-500 focus:border-transparent
+                         transition-all appearance-none cursor-pointer
+                         bg-[url('data:image/svg+xml;charset=UTF-8,%3csvg%20width%3d%2714%27%20height%3d%278%27%20viewBox%3d%270%200%2014%208%27%20fill%3d%27none%27%20xmlns%3d%27http%3a%2f%2fwww.w3.org%2f2000%2fsvg%27%3e%3cpath%20d%3d%27M1%201l6%206%206-6%27%20stroke%3d%27%23666%27%20stroke-width%3d%271.5%27%20stroke-linecap%3d%27round%27%20stroke-linejoin%3d%27round%27%2f%3e%3c%2fsvg%3e')]
+                         bg-[length:14px] bg-[right_12px_center] bg-no-repeat pr-10">
+            <option value="">None</option>
             {% for p in parts %}
               <option value="{{ p.id }}">
                 {{ p.pn }}
@@ -94,42 +120,127 @@
             {% endfor %}
           </select>
         </div>
+      </div>
 
-        <!-- File -->
-        <div class="col-span-12">
-          <label class="text-sm font-medium text-slate-700">File *</label>
+      <!-- File Upload Section -->
+      <div class="p-6">
+        <h2 class="text-lg font-semibold text-gray-900 mb-4">File Upload</h2>
 
-          <!-- nicer file input -->
-          <div class="mt-2">
-            <input type="file" name="file" required
-                   class="block w-full text-sm text-slate-700
-                          file:mr-4 file:py-2 file:px-4
-                          file:rounded-xl file:border-0
-                          file:text-sm file:font-medium
-                          file:bg-slate-900 file:text-white
-                          hover:file:bg-black
-                          cursor-pointer" />
+        <div>
+          <label class="block text-sm font-medium text-gray-700 mb-3">
+            Select File
+            <span class="text-red-500">*</span>
+          </label>
+
+          <!-- Custom File Upload Area -->
+          <div class="relative">
+            <input type="file"
+                   name="file"
+                   required
+                   id="file-upload"
+                   class="absolute inset-0 w-full h-full opacity-0 cursor-pointer z-10" />
+
+            <div class="flex items-center justify-center w-full px-6 py-10 border-2 border-gray-300 border-dashed rounded-xl
+                        bg-gray-50/50 hover:bg-gray-50 transition-colors cursor-pointer">
+              <div class="text-center">
+                <svg class="mx-auto h-12 w-12 text-gray-400 mb-3" stroke="currentColor" fill="none" viewBox="0 0 48 48">
+                  <path d="M28 8H12a4 4 0 00-4 4v20m32-12v8m0 0v8a4 4 0 01-4 4H12a4 4 0 01-4-4v-4m32-4l-3.172-3.172a4 4 0 00-5.656 0L28 28M8 32l9.172-9.172a4 4 0 015.656 0L28 28m0 0l4 4m4-24h8m-4-4v8m-12 4h.02"
+                        stroke-width="2"
+                        stroke-linecap="round"
+                        stroke-linejoin="round" />
+                </svg>
+                <p class="text-sm text-gray-700 font-medium mb-1">
+                  Click to upload or drag and drop
+                </p>
+                <p class="text-xs text-gray-500">
+                  PDF, XLSX, DOCX, PNG up to 50MB
+                </p>
+              </div>
+            </div>
           </div>
 
-          <div class="text-xs text-slate-500 mt-2">
-            Recommended: PDF / XLSX / DOCX / PNG. Keep filenames meaningful.
-          </div>
+          <p class="mt-3 text-xs text-gray-500 flex items-start gap-1.5">
+            <svg class="w-3.5 h-3.5 text-gray-400 mt-0.5 flex-shrink-0" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+              <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M13 16h-1v-4h-1m1-4h.01M21 12a9 9 0 11-18 0 9 9 0 0118 0z"/>
+            </svg>
+            <span>Keep filenames meaningful for easier searching and organization.</span>
+          </p>
         </div>
       </div>
 
       <!-- Actions -->
-      <div class="pt-2 flex items-center justify-end gap-3">
-        <a class="px-4 py-2.5 rounded-xl bg-slate-100 text-slate-800 text-sm font-medium hover:bg-slate-200 transition"
-           href="{{ url_for('docs.list_docs', supplier_code=supplier.code) }}">
+      <div class="px-6 py-4 bg-gray-50/50 flex items-center justify-between gap-3">
+        <a href="{{ url_for('docs.list_docs', supplier_code=supplier.code) }}"
+           class="px-5 py-2.5 rounded-lg text-sm font-medium text-gray-700
+                  hover:bg-gray-100 active:bg-gray-200 transition-colors">
           Cancel
         </a>
-        <button class="px-4 py-2.5 rounded-xl bg-slate-900 text-white text-sm font-medium hover:bg-black transition">
-          Upload
+        <button type="submit"
+                class="px-6 py-2.5 rounded-lg text-sm font-semibold text-white bg-blue-600
+                       hover:bg-blue-700 active:bg-blue-800
+                       focus:outline-none focus:ring-2 focus:ring-blue-500 focus:ring-offset-2
+                       shadow-sm transition-all">
+          Upload Document
         </button>
       </div>
+
     </form>
   </div>
 
+  <!-- Help Text -->
+  <div class="mt-6 px-4">
+    <div class="flex items-start gap-3 p-4 bg-blue-50 rounded-xl border border-blue-100">
+      <svg class="w-5 h-5 text-blue-600 flex-shrink-0 mt-0.5" fill="currentColor" viewBox="0 0 20 20">
+        <path fill-rule="evenodd" d="M18 10a8 8 0 11-16 0 8 8 0 0116 0zm-7-4a1 1 0 11-2 0 1 1 0 012 0zM9 9a1 1 0 000 2v3a1 1 0 001 1h1a1 1 0 100-2v-3a1 1 0 00-1-1H9z" clip-rule="evenodd"/>
+      </svg>
+      <div class="text-sm text-blue-900">
+        <p class="font-medium mb-1">Document Best Practices</p>
+        <p class="text-blue-800">Use descriptive titles and proper revisions to maintain version control. Link documents to parts for better traceability.</p>
+      </div>
+    </div>
+  </div>
+
 </div>
+
+<style>
+/* Apple-style focus states */
+input:focus,
+select:focus {
+  box-shadow: 0 0 0 4px rgba(59, 130, 246, 0.1);
+}
+
+/* File input enhancement */
+#file-upload:focus + div {
+  border-color: #3b82f6;
+  background-color: #eff6ff;
+}
+
+/* Smooth transitions */
+* {
+  transition-property: background-color, border-color, color, fill, stroke;
+  transition-timing-function: cubic-bezier(0.4, 0, 0.2, 1);
+  transition-duration: 150ms;
+}
+</style>
+
+<script>
+// Show selected filename
+document.getElementById('file-upload').addEventListener('change', function(e) {
+  const fileName = e.target.files[0]?.name;
+  if (fileName) {
+    const container = e.target.nextElementSibling;
+    const textContainer = container.querySelector('.text-center');
+    textContainer.innerHTML = `
+      <svg class="mx-auto h-12 w-12 text-blue-600 mb-3" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+        <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M9 12h6m-6 4h6m2 5H7a2 2 0 01-2-2V5a2 2 0 012-2h5.586a1 1 0 01.707.293l5.414 5.414a1 1 0 01.293.707V19a2 2 0 01-2 2z"/>
+      </svg>
+      <p class="text-sm text-gray-900 font-semibold mb-1">${fileName}</p>
+      <p class="text-xs text-gray-500">Click to change file</p>
+    `;
+    container.classList.remove('border-gray-300', 'bg-gray-50/50');
+    container.classList.add('border-blue-300', 'bg-blue-50');
+  }
+});
+</script>
 
 {% endblock %}
