@@ -21,3 +21,8 @@ class Config:
 
     # 最大上传文件大小：50MB
     MAX_CONTENT_LENGTH = 50 * 1024 * 1024
+
+    # ── EDC Sync 配置 ──────────────────────────────────────
+    EDC_ONEDRIVE_PATH = r"D:\OneDrive - Piaggio & C. SPA\File di Chen De Feng - EDC reports"
+    EDC_OUTLOOK_FOLDER = "FPVT-EDC Ass."
+    EDC_SCAN_LIMIT = 500

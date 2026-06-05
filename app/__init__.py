@@ -40,6 +40,9 @@ def create_app(test_config=None):
     from .blueprints.docs import docs_bp
     app.register_blueprint(docs_bp)
 
+    from .blueprints.edc import edc_bp
+    app.register_blueprint(edc_bp, url_prefix="/edc")
+
     from .blueprints.tr import tr_bp
     app.register_blueprint(tr_bp, url_prefix="/tr")
 
@@ -60,6 +63,9 @@ def create_app(test_config=None):
     from app.blueprints.audit import audit_bp
     app.register_blueprint(audit_bp)
 
+    from app.blueprints.cp import cp_bp
+    app.register_blueprint(cp_bp)
+
     # CLI：初始化数据库 + 导入种子数据
     from .seed import seed_suppliers
 
@@ -79,3 +85,4 @@ def create_app(test_config=None):
     print("=" * 60)
 
     return app
+

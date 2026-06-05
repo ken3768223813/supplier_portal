@@ -1,0 +1,161 @@
+{% extends "supplier_ws/base.html" %}
+{% set active = "docs" %}
+{% block supplier_content %}
+
+<div class="max-w-4xl mx-auto">
+  <!-- Header -->
+  <div class="mb-6">
+    <div class="flex items-center gap-3 text-sm text-gray-600 mb-3">
+      <a href="{{ url_for('docs.list_docs', supplier_code=supplier.code) }}" 
+         class="hover:text-blue-600 transition">
+        Documents
+      </a>
+      <svg class="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24" stroke-width="2">
+        <path stroke-linecap="round" stroke-linejoin="round" d="M9 5l7 7-7 7"/>
+      </svg>
+      <span class="text-gray-900 font-medium">Edit Document</span>
+    </div>
+    
+    <h1 class="text-3xl font-bold text-gray-900">Edit Document</h1>
+    <p class="text-gray-600 mt-2">Update document information and metadata</p>
+  </div>
+
+  <!-- Form Card -->
+  <div class="bg-white rounded-2xl border border-gray-200 shadow-sm overflow-hidden">
+    <form method="post" class="p-8">
+      
+      <!-- Current File Info -->
+      <div class="mb-6 p-4 bg-blue-50 border border-blue-200 rounded-xl">
+        <div class="flex items-start gap-3">
+          <div class="w-10 h-10 bg-blue-200 rounded-lg flex items-center justify-center flex-shrink-0">
+            <svg class="w-5 h-5 text-blue-600" fill="none" stroke="currentColor" viewBox="0 0 24 24" stroke-width="2">
+              <path stroke-linecap="round" stroke-linejoin="round" d="M7 21h10a2 2 0 002-2V9.414a1 1 0 00-.293-.707l-5.414-5.414A1 1 0 0012.586 3H7a2 2 0 00-2 2v14a2 2 0 002 2z"/>
+            </svg>
+          </div>
+          <div class="flex-1">
+            <p class="text-sm font-semibold text-blue-900">Current File</p>
+            <p class="text-xs text-blue-700 mt-1 font-mono">{{ doc.file_path.split('/')[-1] }}</p>
+            <p class="text-xs text-blue-600 mt-1">Uploaded: {{ doc.uploaded_at.strftime("%b %d, %Y at %H:%M") if doc.uploaded_at else "Unknown" }}</p>
+          </div>
+        </div>
+      </div>
+
+      <!-- Document Type -->
+      <div class="mb-6">
+        <label class="block text-sm font-semibold text-gray-700 mb-2">
+          Document Type <span class="text-red-500">*</span>
+        </label>
+        <select name="doc_type" required
+                class="w-full px-4 py-3 rounded-xl border border-gray-300 bg-white
+                       focus:outline-none focus:border-blue-500 focus:ring-4 focus:ring-blue-500/10
+                       transition-all">
+          {% for k, label, icon, color in doc_types %}
+            <option value="{{ k }}" {% if doc.doc_type == k %}selected{% endif %}>
+              {{ icon }} {{ label }}
+            </option>
+          {% endfor %}
+        </select>
+      </div>
+
+      <!-- Title -->
+      <div class="mb-6">
+        <label class="block text-sm font-semibold text-gray-700 mb-2">
+          Title <span class="text-red-500">*</span>
+        </label>
+        <input type="text" name="title" value="{{ doc.title }}" required
+               placeholder="e.g., Drawing Rev A, Quality Control Plan"
+               class="w-full px-4 py-3 rounded-xl border border-gray-300
+                      focus:outline-none focus:border-blue-500 focus:ring-4 focus:ring-blue-500/10
+                      transition-all">
+      </div>
+
+      <!-- Revision -->
+      <div class="mb-6">
+        <label class="block text-sm font-semibold text-gray-700 mb-2">
+          Revision
+        </label>
+        <input type="text" name="revision" value="{{ doc.revision or '' }}"
+               placeholder="e.g., A, B, Rev01, v1.0"
+               class="w-full px-4 py-3 rounded-xl border border-gray-300
+                      focus:outline-none focus:border-blue-500 focus:ring-4 focus:ring-blue-500/10
+                      transition-all">
+        <p class="mt-2 text-xs text-gray-500">Optional: Document revision or version number</p>
+      </div>
+
+      <!-- Status -->
+      <div class="mb-6">
+        <label class="block text-sm font-semibold text-gray-700 mb-2">
+          Status
+        </label>
+        <select name="status"
+                class="w-full px-4 py-3 rounded-xl border border-gray-300 bg-white
+                       focus:outline-none focus:border-blue-500 focus:ring-4 focus:ring-blue-500/10
+                       transition-all">
+          <option value="valid" {% if doc.status == 'valid' %}selected{% endif %}>✅ Valid</option>
+          <option value="obsolete" {% if doc.status == 'obsolete' %}selected{% endif %}>❌ Obsolete</option>
+          <option value="draft" {% if doc.status == 'draft' %}selected{% endif %}>📝 Draft</option>
+          <option value="pending" {% if doc.status == 'pending' %}selected{% endif %}>⏳ Pending Review</option>
+        </select>
+      </div>
+
+      <!-- Part Number -->
+      <div class="mb-8">
+        <label class="block text-sm font-semibold text-gray-700 mb-2">
+          Associated Part Number
+        </label>
+        <select name="part_id"
+                class="w-full px-4 py-3 rounded-xl border border-gray-300 bg-white
+                       focus:outline-none focus:border-blue-500 focus:ring-4 focus:ring-blue-500/10
+                       transition-all">
+          <option value="">— No specific part —</option>
+          {% for p in parts %}
+            <option value="{{ p.id }}" {% if doc.part_id == p.id %}selected{% endif %}>
+              {{ p.pn }} - {{ p.name }}
+            </option>
+          {% endfor %}
+        </select>
+        <p class="mt-2 text-xs text-gray-500">Optional: Link this document to a specific part</p>
+      </div>
+
+      <!-- Action Buttons -->
+      <div class="flex items-center gap-4 pt-6 border-t border-gray-200">
+        <button type="submit"
+                class="flex-1 px-6 py-3 rounded-xl bg-blue-500 text-white font-semibold
+                       hover:bg-blue-600 transition-all hover:scale-105 active:scale-95
+                       shadow-lg shadow-blue-500/30">
+          <div class="flex items-center justify-center gap-2">
+            <svg class="w-5 h-5" fill="none" stroke="currentColor" viewBox="0 0 24 24" stroke-width="2">
+              <path stroke-linecap="round" stroke-linejoin="round" d="M5 13l4 4L19 7"/>
+            </svg>
+            Save Changes
+          </div>
+        </button>
+        
+        <a href="{{ url_for('docs.list_docs', supplier_code=supplier.code) }}"
+           class="px-6 py-3 rounded-xl border-2 border-gray-300 text-gray-700 font-semibold
+                  hover:bg-gray-50 transition-all">
+          Cancel
+        </a>
+      </div>
+
+    </form>
+  </div>
+
+  <!-- Info Box -->
+  <div class="mt-6 p-4 bg-yellow-50 border border-yellow-200 rounded-xl">
+    <div class="flex items-start gap-3">
+      <svg class="w-5 h-5 text-yellow-600 flex-shrink-0 mt-0.5" fill="none" stroke="currentColor" viewBox="0 0 24 24" stroke-width="2">
+        <path stroke-linecap="round" stroke-linejoin="round" d="M13 16h-1v-4h-1m1-4h.01M21 12a9 9 0 11-18 0 9 9 0 0118 0z"/>
+      </svg>
+      <div>
+        <p class="text-sm font-semibold text-yellow-900">Note</p>
+        <p class="text-xs text-yellow-700 mt-1">
+          You can only update document metadata (title, revision, type, etc.). 
+          To replace the file itself, please delete this document and upload a new one.
+        </p>
+      </div>
+    </div>
+  </div>
+</div>
+
+{% endblock %}

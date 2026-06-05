@@ -1,0 +1,212 @@
+{% extends "layout/base.html" %}
+{% block title %}控制计划对比{% endblock %}
+
+{% block content %}
+<div class="space-y-6">
+
+  <!-- ── Header ── -->
+  <div class="flex items-center justify-between">
+    <div>
+      <h1 class="text-2xl font-bold text-gray-900">控制计划对比</h1>
+      <p class="text-sm text-gray-400 mt-1">同一零件号 · 跨供应商工艺参数比较</p>
+    </div>
+    <a href="{{ url_for('cp.index') }}"
+       class="px-4 py-2 text-sm font-medium text-gray-600 bg-white border border-gray-200 rounded-xl hover:bg-gray-50">
+      ← 返回列表
+    </a>
+  </div>
+
+  <!-- ── Step 1: 输入零件号搜索 ── -->
+  <div class="bg-white rounded-2xl border border-gray-200 p-5">
+    <h2 class="text-sm font-semibold text-gray-500 uppercase tracking-wider mb-3">Step 1 — 输入零件号</h2>
+    <form method="GET" class="flex gap-3">
+      <!-- 保留已选 CP IDs -->
+      {% for cid in selected_ids %}
+      <input type="hidden" name="cp_ids" value="{{ cid }}">
+      {% endfor %}
+      <input type="text" name="pn" value="{{ pn }}" placeholder="输入零件号（支持模糊搜索）"
+             class="flex-1 rounded-xl border border-gray-200 px-4 py-2.5 text-sm focus:outline-none focus:ring-2 focus:ring-gray-900">
+      <button type="submit"
+              class="px-5 py-2.5 text-sm font-semibold text-white bg-gray-900 rounded-xl hover:bg-gray-700 transition-colors">
+        搜索
+      </button>
+    </form>
+  </div>
+
+  <!-- ── Step 2: 选择要对比的 CP ── -->
+  {% if pn and matching_cps %}
+  <div class="bg-white rounded-2xl border border-gray-200 p-5">
+    <h2 class="text-sm font-semibold text-gray-500 uppercase tracking-wider mb-3">
+      Step 2 — 选择要对比的控制计划（最多 4 份）
+    </h2>
+    <p class="text-xs text-gray-400 mb-3">找到 {{ matching_cps|length }} 份含「{{ pn }}」的控制计划</p>
+    <form method="GET" id="selectForm">
+      <input type="hidden" name="pn" value="{{ pn }}">
+      <div class="grid grid-cols-1 md:grid-cols-2 gap-3 mb-4">
+        {% for item_cp in matching_cps %}
+        <label class="flex items-start gap-3 p-3 rounded-xl border cursor-pointer transition-colors
+                      {{ 'border-gray-900 bg-gray-50' if item_cp.id in selected_ids else 'border-gray-200 hover:border-gray-400' }}">
+          <input type="checkbox" name="cp_ids" value="{{ item_cp.id }}"
+                 {{ 'checked' if item_cp.id in selected_ids }}
+                 class="mt-0.5 accent-gray-900"
+                 onchange="document.getElementById('selectForm').submit()">
+          <div class="flex-1 min-w-0">
+            <p class="text-sm font-semibold text-gray-800">{{ item_cp.supplier.name }}</p>
+            <p class="text-xs text-gray-500">{{ item_cp.supplier.code }} · {{ item_cp.part.pn }}</p>
+            <div class="flex gap-2 mt-1">
+              <span class="text-[11px] px-1.5 py-0.5 bg-blue-50 text-blue-600 rounded-md">{{ item_cp.process_type or '—' }}</span>
+              <span class="text-[11px] text-gray-400">{{ item_cp.total_steps() }} 道工序</span>
+              {% if item_cp.audit_date %}
+              <span class="text-[11px] text-gray-400">{{ item_cp.audit_date.strftime('%Y-%m-%d') }}</span>
+              {% endif %}
+            </div>
+          </div>
+          {% if item_cp.id in selected_ids %}
+          <span class="flex-shrink-0 w-5 h-5 bg-gray-900 rounded-full flex items-center justify-center">
+            <svg class="w-3 h-3 text-white" fill="none" stroke="currentColor" viewBox="0 0 24 24" stroke-width="3">
+              <path stroke-linecap="round" stroke-linejoin="round" d="M5 13l4 4L19 7"/>
+            </svg>
+          </span>
+          {% endif %}
+        </label>
+        {% endfor %}
+      </div>
+    </form>
+  </div>
+  {% elif pn %}
+  <div class="bg-white rounded-2xl border border-gray-100 p-8 text-center text-gray-400">
+    <p class="text-sm">未找到含「{{ pn }}」的控制计划，请检查零件号或先录入对应 CP。</p>
+  </div>
+  {% endif %}
+
+  <!-- ── Step 3: 对比结果 ── -->
+  {% if comparison and compare_cps|length >= 2 %}
+  <div class="bg-white rounded-2xl border border-gray-200 overflow-hidden">
+
+    <!-- 对比表头 -->
+    <div class="bg-gray-900 text-white px-5 py-4">
+      <div class="flex items-center justify-between">
+        <h2 class="text-sm font-semibold">Step 3 — 对比结果</h2>
+        <div class="flex items-center gap-4 text-xs">
+          <span class="flex items-center gap-1.5">
+            <span class="inline-block w-3 h-3 rounded bg-red-400 opacity-80"></span> 参数有差异
+          </span>
+          <span class="flex items-center gap-1.5">
+            <span class="inline-block w-3 h-3 rounded bg-orange-300 opacity-80"></span> 关键工序/特性
+          </span>
+          <span class="text-gray-400">— 表示该供应商无此工序/特性</span>
+        </div>
+      </div>
+    </div>
+
+    <!-- 供应商列头 -->
+    <div class="overflow-x-auto">
+      <table class="w-full text-xs border-collapse" id="compareTable">
+        <thead>
+          <tr class="bg-gray-50 border-b border-gray-200">
+            <th class="text-left px-4 py-3 font-semibold text-gray-500 w-36 border-r border-gray-100 sticky left-0 bg-gray-50">
+              工序 / 特性
+            </th>
+            {% for hcp in comparison.headers %}
+            <th class="px-4 py-3 text-left border-r border-gray-100 min-w-52">
+              <p class="font-bold text-gray-800">{{ hcp.supplier.name }}</p>
+              <p class="font-normal text-gray-400 text-[11px] mt-0.5">
+                {{ hcp.supplier.code }}
+                {% if hcp.audit_date %}· {{ hcp.audit_date.strftime('%Y-%m-%d') }}{% endif %}
+              </p>
+            </th>
+            {% endfor %}
+          </tr>
+        </thead>
+        <tbody>
+
+          {% for row in comparison.rows %}
+
+          <!-- 工序行 -->
+          <tr class="border-b border-gray-100 {{ 'bg-orange-50' if row.is_key else '' }}">
+            <td class="px-4 py-2.5 font-bold text-gray-700 border-r border-gray-100 sticky left-0 {{ 'bg-orange-50' if row.is_key else 'bg-white' }}" colspan="{{ comparison.headers|length + 1 }}">
+              <div class="flex items-center gap-2">
+                {% if row.is_key %}
+                <span class="w-2 h-2 rounded-full bg-orange-400 flex-shrink-0"></span>
+                {% else %}
+                <span class="w-2 h-2 rounded-full bg-gray-300 flex-shrink-0"></span>
+                {% endif %}
+                {{ row.process_name }}
+                {% if row.is_key %}
+                <span class="text-[10px] font-bold text-orange-500 bg-orange-100 px-1.5 py-0.5 rounded-md">关键工序</span>
+                {% endif %}
+              </div>
+            </td>
+          </tr>
+
+          <!-- 该工序下的特性行 -->
+          {% for char_name, cells in row.chars.items() %}
+          {% set has_diff = cells | selectattr('diff', 'defined') | selectattr('diff') | list | length > 0 %}
+          <tr class="border-b border-gray-50 hover:bg-gray-50/50 transition-colors">
+            <td class="pl-8 pr-4 py-2 text-gray-600 border-r border-gray-100 sticky left-0 bg-white
+                       {{ 'font-semibold' if has_diff else '' }}">
+              {{ char_name }}
+            </td>
+            {% for cell in cells %}
+            <td class="px-4 py-2 border-r border-gray-50
+                       {{ 'bg-red-50' if cell and cell.diff else '' }}">
+              {% if cell %}
+                <div class="flex flex-col gap-0.5">
+                  <span class="font-mono font-semibold {{ 'text-red-700' if cell.diff else 'text-gray-800' }}">
+                    {{ cell.spec }}
+                    {% if cell.diff %}
+                    <svg class="inline w-3 h-3 text-red-400 ml-0.5" fill="none" stroke="currentColor" viewBox="0 0 24 24" stroke-width="2.5">
+                      <path stroke-linecap="round" stroke-linejoin="round" d="M12 9v2m0 4h.01M10.29 3.86L1.82 18a2 2 0 001.71 3h16.94a2 2 0 001.71-3L13.71 3.86a2 2 0 00-3.42 0z"/>
+                    </svg>
+                    {% endif %}
+                  </span>
+                  <span class="text-gray-400 text-[11px]">{{ cell.method }}</span>
+                  <span class="text-gray-400 text-[11px]">{{ cell.freq }}</span>
+                </div>
+              {% else %}
+                <span class="text-gray-200">—</span>
+              {% endif %}
+            </td>
+            {% endfor %}
+          </tr>
+          {% endfor %}
+
+          {% endfor %}
+
+        </tbody>
+      </table>
+    </div>
+
+    <!-- 差异摘要 -->
+    {% set diff_count = namespace(n=0) %}
+    {% for row in comparison.rows %}
+      {% for char_name, cells in row.chars.items() %}
+        {% if cells | selectattr('diff', 'defined') | selectattr('diff') | list | length > 0 %}
+          {% set diff_count.n = diff_count.n + 1 %}
+        {% endif %}
+      {% endfor %}
+    {% endfor %}
+
+    <div class="px-5 py-4 bg-gray-50 border-t border-gray-100 flex items-center justify-between">
+      <p class="text-xs text-gray-500">
+        共对比 <strong>{{ comparison.rows|length }}</strong> 道工序，
+        发现 <strong class="{{ 'text-red-600' if diff_count.n > 0 else 'text-green-600' }}">{{ diff_count.n }}</strong> 个参数差异项
+      </p>
+      <button onclick="window.print()"
+              class="flex items-center gap-1.5 text-xs font-medium text-gray-500 hover:text-gray-900 transition-colors">
+        <svg class="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24" stroke-width="2">
+          <path stroke-linecap="round" stroke-linejoin="round" d="M17 17h2a2 2 0 002-2v-4a2 2 0 00-2-2H5a2 2 0 00-2 2v4a2 2 0 002 2h2m2 4h6a2 2 0 002-2v-4a2 2 0 00-2-2H9a2 2 0 00-2 2v4a2 2 0 002 2zm8-12V5a2 2 0 00-2-2H9a2 2 0 00-2 2v4h10z"/>
+        </svg>
+        打印 / 导出 PDF
+      </button>
+    </div>
+
+  </div>
+  {% elif compare_cps|length == 1 %}
+  <div class="bg-amber-50 border border-amber-200 rounded-2xl p-5 text-sm text-amber-700">
+    已选 1 份，请再勾选至少 1 份控制计划以进行对比。
+  </div>
+  {% endif %}
+
+</div>
+{% endblock %}

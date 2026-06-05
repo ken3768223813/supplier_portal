@@ -1,0 +1,49 @@
+{% extends "supplier_ws/_supplier_layout.html" %}
+
+{% block supplier_content %}
+<div class="bg-white rounded-2xl border border-gray-100 shadow-sm overflow-hidden">
+  <div class="px-6 py-4 border-b border-gray-100">
+    <h2 class="text-lg font-bold text-gray-900">审核记录 ({{ audits|length }})</h2>
+  </div>
+
+  {% if audits %}
+  <div class="divide-y divide-gray-50">
+    {% for audit in audits %}
+    <div class="px-6 py-4 hover:bg-gray-50 transition">
+      <div class="flex items-start justify-between gap-4">
+        <div class="flex items-start gap-4">
+          <div class="w-12 h-12 rounded-xl flex items-center justify-center flex-shrink-0
+                      {% if audit.status == 'closed' %}bg-green-50 border-green-200{% elif audit.status == 'in_progress' %}bg-yellow-50 border-yellow-200{% else %}bg-blue-50 border-blue-200{% endif %} border-2">
+            <svg class="w-6 h-6 {% if audit.status == 'closed' %}text-green-500{% elif audit.status == 'in_progress' %}text-yellow-500{% else %}text-blue-500{% endif %}" fill="none" stroke="currentColor" viewBox="0 0 24 24" stroke-width="2"><path stroke-linecap="round" stroke-linejoin="round" d="M9 5H7a2 2 0 00-2 2v12a2 2 0 002 2h10a2 2 0 002-2V7a2 2 0 00-2-2h-2M9 5a2 2 0 002 2h2a2 2 0 002-2M9 5a2 2 0 012-2h2a2 2 0 012 2"/></svg>
+          </div>
+          <div>
+            <div class="flex items-center gap-2 mb-1">
+              <span class="font-mono font-bold text-sm text-gray-900">{{ audit.audit_no }}</span>
+              <span class="text-[10px] font-bold px-2 py-0.5 rounded
+                           {% if audit.status == 'closed' %}bg-green-100 text-green-700
+                           {% elif audit.status == 'in_progress' %}bg-yellow-100 text-yellow-700
+                           {% else %}bg-blue-100 text-blue-700{% endif %}">
+                {{ audit.status or 'open' }}
+              </span>
+              {% if audit.audit_type %}<span class="text-[10px] font-medium px-2 py-0.5 rounded bg-gray-100 text-gray-600">{{ audit.audit_type }}</span>{% endif %}
+            </div>
+            <div class="text-sm text-gray-600">{{ audit.auditor or '—' }} · {{ audit.audit_date.strftime('%Y-%m-%d') if audit.audit_date else '—' }}</div>
+            <div class="flex items-center gap-4 mt-1 text-xs text-gray-400">
+              <span>发现 {{ audit.total_findings or 0 }} 项</span>
+              {% if audit.open_findings %}<span class="text-red-500 font-bold">{{ audit.open_findings }} 未关闭</span>{% endif %}
+              {% if audit.closed_findings %}<span class="text-green-500">{{ audit.closed_findings }} 已关闭</span>{% endif %}
+            </div>
+          </div>
+        </div>
+        {% if audit.notes %}
+        <div class="text-xs text-gray-400 max-w-[200px] truncate" title="{{ audit.notes }}">{{ audit.notes }}</div>
+        {% endif %}
+      </div>
+    </div>
+    {% endfor %}
+  </div>
+  {% else %}
+  <div class="py-16 text-center"><p class="text-gray-400 text-sm">该供应商暂无审核记录</p></div>
+  {% endif %}
+</div>
+{% endblock %}

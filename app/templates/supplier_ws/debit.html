@@ -1,0 +1,71 @@
+{% extends "supplier_ws/_supplier_layout.html" %}
+
+{% block supplier_content %}
+<div class="bg-white rounded-2xl border border-gray-100 shadow-sm overflow-hidden">
+
+  <!-- Header with Total -->
+  <div class="px-6 py-4 border-b border-gray-100 flex items-center justify-between">
+    <h2 class="text-lg font-bold text-gray-900">扣款记录 ({{ debit_trs|length }})</h2>
+    <div class="flex items-center gap-3">
+      <div class="bg-emerald-50 rounded-xl px-4 py-2 border border-emerald-200">
+        <div class="text-[10px] text-emerald-600 font-bold uppercase">累计扣款</div>
+        <div class="text-lg font-bold text-emerald-700">€{{ '{:,.2f}'.format(total_debit) }}</div>
+      </div>
+    </div>
+  </div>
+
+  {% if debit_trs %}
+  <div class="overflow-x-auto">
+    <table class="w-full">
+      <thead>
+        <tr class="border-b border-gray-100">
+          <th class="px-5 py-3 text-left text-[11px] font-bold text-gray-400 uppercase">扣款单号</th>
+          <th class="px-4 py-3 text-left text-[11px] font-bold text-gray-400 uppercase">关联 TR</th>
+          <th class="px-4 py-3 text-left text-[11px] font-bold text-gray-400 uppercase">Part No.</th>
+          <th class="px-4 py-3 text-left text-[11px] font-bold text-gray-400 uppercase">Issue</th>
+          <th class="px-4 py-3 text-right text-[11px] font-bold text-gray-400 uppercase">金额</th>
+          <th class="px-4 py-3 text-center text-[11px] font-bold text-gray-400 uppercase">日期</th>
+          <th class="px-3 py-3 text-center text-[11px] font-bold text-gray-400 uppercase"></th>
+        </tr>
+      </thead>
+      <tbody class="divide-y divide-gray-50">
+        {% for tr in debit_trs %}
+        <tr class="hover:bg-gray-50 transition">
+          <td class="px-5 py-3">
+            {% if tr.debit_ref %}
+            <span class="font-mono text-sm font-bold text-gray-900">{{ tr.debit_ref }}</span>
+            {% else %}
+            <span class="text-gray-300 text-sm">—</span>
+            {% endif %}
+          </td>
+          <td class="px-4 py-3"><span class="font-mono font-bold text-xs px-2 py-1 rounded-lg bg-gray-900 text-white">{{ tr.tr_no }}</span></td>
+          <td class="px-4 py-3">
+            {% if tr.part_number %}<span class="font-mono text-xs px-2 py-1 rounded bg-blue-50 text-blue-700">{{ tr.part_number }}</span>{% else %}<span class="text-gray-300">—</span>{% endif %}
+          </td>
+          <td class="px-4 py-3"><div class="text-xs text-gray-500 truncate max-w-[200px]">{{ tr.issue_description or '—' }}</div></td>
+          <td class="px-4 py-3 text-right">
+            <span class="text-sm font-bold text-emerald-700">
+              {{ {'EUR':'€','USD':'$','CNY':'¥','VND':'₫'}.get(tr.debit_currency or 'EUR', '') }}{{ '{:,.2f}'.format(tr.debit_amount) }}
+            </span>
+          </td>
+          <td class="px-4 py-3 text-center text-xs text-gray-500">{{ tr.debit_date or '—' }}</td>
+          <td class="px-3 py-3 text-center">
+            <a href="{{ url_for('tr.edit_tr', tr_id=tr.id) }}" class="text-blue-500 hover:text-blue-700 text-xs font-semibold">详情 →</a>
+          </td>
+        </tr>
+        {% endfor %}
+      </tbody>
+      <tfoot>
+        <tr class="border-t-2 border-gray-200 bg-gray-50">
+          <td colspan="4" class="px-5 py-3 text-right text-sm font-bold text-gray-700">合计</td>
+          <td class="px-4 py-3 text-right text-lg font-bold text-emerald-700">€{{ '{:,.2f}'.format(total_debit) }}</td>
+          <td colspan="2"></td>
+        </tr>
+      </tfoot>
+    </table>
+  </div>
+  {% else %}
+  <div class="py-16 text-center"><p class="text-gray-400 text-sm">该供应商暂无扣款记录</p></div>
+  {% endif %}
+</div>
+{% endblock %}

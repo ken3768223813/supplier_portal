@@ -2,233 +2,1666 @@
 {% block content %}
 
 <style>
-  .process-tab {
-    transition: all 0.3s cubic-bezier(0.4, 0, 0.2, 1);
-  }
-  .process-tab:hover {
-    transform: translateY(-2px);
-  }
-  .process-tab.active {
-    background: #3b82f6;
-    color: white;
-    box-shadow: 0 4px 12px rgba(59, 130, 246, 0.3);
-  }
-  .knowledge-card {
-    transition: all 0.3s cubic-bezier(0.4, 0, 0.2, 1);
-  }
-  .knowledge-card:hover {
-    transform: translateY(-4px);
-    box-shadow: 0 12px 24px rgba(0, 0, 0, 0.12);
-  }
-  .search-input:focus {
-    box-shadow: 0 0 0 4px rgba(59, 130, 246, 0.1);
-  }
+/* ══════════════════════════════════════════════
+   CSS VARIABLES & RESET
+══════════════════════════════════════════════ */
+:root {
+  --c-bg:       #f4f5f7;
+  --c-surface:  #ffffff;
+  --c-border:   #e3e5ea;
+  --c-border2:  #d0d3db;
+  --c-text:     #111827;
+  --c-muted:    #6b7280;
+  --c-hint:     #9ca3af;
+  --c-blue:     #2563eb;
+  --c-blue-bg:  #eff6ff;
+  --c-blue-bd:  #bfdbfe;
+  --c-green:    #059669;
+  --c-green-bg: #ecfdf5;
+  --c-red:      #dc2626;
+  --c-red-bg:   #fef2f2;
+  --c-amber:    #d97706;
+  --c-amber-bg: #fffbeb;
+  --radius-sm:  6px;
+  --radius-md:  10px;
+  --radius-lg:  14px;
+  --shadow-sm:  0 1px 3px rgba(0,0,0,.07), 0 1px 2px rgba(0,0,0,.05);
+  --shadow-md:  0 4px 16px rgba(0,0,0,.08), 0 2px 6px rgba(0,0,0,.05);
+  --panel-w:    380px;
+  --sidebar-w:  220px;
+  --font:       'PingFang SC','Microsoft YaHei',system-ui,sans-serif;
+}
+
+* { box-sizing: border-box; margin: 0; padding: 0; }
+body { font-family: var(--font); }
+
+/* ══════════════════════════════════════════════
+   SHELL LAYOUT
+══════════════════════════════════════════════ */
+.kb-shell {
+  display: flex;
+  height: calc(100vh - 64px);   /* adjust if your navbar height differs */
+  background: var(--c-bg);
+  overflow: hidden;
+}
+
+/* ══════════════════════════════════════════════
+   LEFT SIDEBAR
+══════════════════════════════════════════════ */
+.kb-sidebar {
+  width: var(--sidebar-w);
+  flex-shrink: 0;
+  background: var(--c-surface);
+  border-right: 1px solid var(--c-border);
+  display: flex;
+  flex-direction: column;
+  overflow: hidden;
+}
+
+.sb-top {
+  padding: 18px 14px 10px;
+  border-bottom: 1px solid var(--c-border);
+}
+.sb-app-name {
+  font-size: 13px;
+  font-weight: 700;
+  color: var(--c-text);
+  display: flex;
+  align-items: center;
+  gap: 8px;
+  margin-bottom: 2px;
+}
+.sb-app-icon {
+  width: 28px; height: 28px;
+  border-radius: 8px;
+  background: linear-gradient(135deg,#10b981,#3b82f6);
+  display: flex; align-items: center; justify-content: center;
+  font-size: 14px;
+}
+.sb-subtitle { font-size: 11px; color: var(--c-hint); padding-left: 36px; }
+
+.sb-section-label {
+  font-size: 10px;
+  font-weight: 700;
+  text-transform: uppercase;
+  letter-spacing: .08em;
+  color: var(--c-hint);
+  padding: 12px 14px 5px;
+}
+
+.sb-scroll { flex: 1; overflow-y: auto; padding: 0 8px 12px; }
+
+.sb-btn {
+  display: flex;
+  align-items: center;
+  gap: 9px;
+  width: 100%;
+  padding: 8px 10px;
+  border-radius: var(--radius-sm);
+  border: none;
+  background: transparent;
+  font-size: 13px;
+  font-weight: 500;
+  color: var(--c-muted);
+  text-align: left;
+  cursor: pointer;
+  font-family: var(--font);
+  transition: background .14s, color .14s;
+}
+.sb-btn:hover { background: var(--c-bg); color: var(--c-text); }
+.sb-btn.active {
+  background: var(--c-blue);
+  color: #fff;
+}
+.sb-btn.active .sb-cnt { background: rgba(255,255,255,.2); color: #fff; }
+
+.sb-dot {
+  width: 8px; height: 8px;
+  border-radius: 50%;
+  flex-shrink: 0;
+}
+.sb-cnt {
+  margin-left: auto;
+  font-size: 10px;
+  font-weight: 700;
+  background: var(--c-border);
+  color: var(--c-muted);
+  padding: 1px 6px;
+  border-radius: 10px;
+}
+
+.sb-divider { height: 1px; background: var(--c-border); margin: 8px 6px; }
+
+.sb-foot {
+  padding: 10px 14px 14px;
+  border-top: 1px solid var(--c-border);
+  font-size: 11px;
+  color: var(--c-hint);
+}
+.sb-stat { display: flex; justify-content: space-between; margin-bottom: 2px; }
+.sb-stat b { color: var(--c-text); }
+
+/* ══════════════════════════════════════════════
+   MAIN COLUMN
+══════════════════════════════════════════════ */
+.kb-main {
+  flex: 1;
+  display: flex;
+  flex-direction: column;
+  overflow: hidden;
+  min-width: 0;
+}
+
+/* Toolbar */
+.kb-toolbar {
+  background: var(--c-surface);
+  border-bottom: 1px solid var(--c-border);
+  padding: 10px 18px;
+  display: flex;
+  align-items: center;
+  gap: 10px;
+  flex-shrink: 0;
+  box-shadow: var(--shadow-sm);
+  z-index: 5;
+}
+
+.tb-search {
+  flex: 1;
+  max-width: 400px;
+  position: relative;
+}
+.tb-search svg {
+  position: absolute;
+  left: 11px;
+  top: 50%;
+  transform: translateY(-50%);
+  color: var(--c-hint);
+  pointer-events: none;
+}
+.tb-search input {
+  width: 100%;
+  padding: 7px 12px 7px 34px;
+  border: 1.5px solid var(--c-border);
+  border-radius: var(--radius-md);
+  font-size: 13px;
+  background: var(--c-bg);
+  font-family: var(--font);
+  color: var(--c-text);
+  outline: none;
+  transition: border .18s, background .18s;
+}
+.tb-search input:focus {
+  border-color: var(--c-blue);
+  background: #fff;
+  box-shadow: 0 0 0 3px rgba(37,99,235,.1);
+}
+.tb-search input::placeholder { color: var(--c-hint); }
+
+.tb-right { margin-left: auto; display: flex; align-items: center; gap: 8px; }
+
+.tb-btn {
+  display: flex; align-items: center; gap: 5px;
+  padding: 7px 14px;
+  border: 1.5px solid var(--c-border);
+  border-radius: var(--radius-md);
+  background: var(--c-surface);
+  font-size: 12px;
+  font-weight: 600;
+  color: var(--c-muted);
+  cursor: pointer;
+  font-family: var(--font);
+  transition: all .14s;
+}
+.tb-btn:hover { border-color: var(--c-border2); color: var(--c-text); background: var(--c-bg); }
+.tb-btn.primary {
+  background: var(--c-blue);
+  border-color: var(--c-blue);
+  color: #fff;
+  box-shadow: 0 2px 8px rgba(37,99,235,.3);
+}
+.tb-btn.primary:hover { background: #1d4ed8; }
+.tb-btn.note-active {
+  background: var(--c-amber-bg);
+  border-color: var(--c-amber);
+  color: var(--c-amber);
+}
+
+.tb-process-name {
+  font-size: 13px;
+  font-weight: 600;
+  color: var(--c-text);
+  padding: 4px 10px;
+  background: var(--c-bg);
+  border-radius: var(--radius-sm);
+  border: 1px solid var(--c-border);
+}
+
+/* Content scroll area */
+.kb-content {
+  flex: 1;
+  overflow-y: auto;
+  padding: 16px 18px;
+}
+
+/* ══════════════════════════════════════════════
+   ACCORDION BRANCHES
+══════════════════════════════════════════════ */
+.branches { display: flex; flex-direction: column; gap: 8px; }
+
+.branch {
+  background: var(--c-surface);
+  border: 1.5px solid var(--c-border);
+  border-radius: var(--radius-lg);
+  overflow: hidden;
+  box-shadow: var(--shadow-sm);
+  transition: box-shadow .18s;
+}
+.branch:hover { box-shadow: var(--shadow-md); }
+
+.branch-hd {
+  display: flex;
+  align-items: center;
+  gap: 11px;
+  padding: 13px 16px;
+  cursor: pointer;
+  user-select: none;
+  border-bottom: 1.5px solid transparent;
+  transition: background .14s;
+}
+.branch-hd:hover { background: #fafbfc; }
+.branch-hd.open { border-bottom-color: var(--c-border); }
+
+.branch-stripe {
+  width: 4px;
+  height: 32px;
+  border-radius: 3px;
+  flex-shrink: 0;
+}
+.branch-icon {
+  width: 32px; height: 32px;
+  border-radius: 9px;
+  display: flex; align-items: center; justify-content: center;
+  font-size: 15px;
+  flex-shrink: 0;
+}
+.branch-info { flex: 1; min-width: 0; }
+.branch-title {
+  font-size: 14px;
+  font-weight: 700;
+  color: var(--c-text);
+  margin-bottom: 1px;
+}
+.branch-meta {
+  font-size: 11px;
+  color: var(--c-hint);
+}
+.branch-cnt {
+  font-size: 11px;
+  font-weight: 700;
+  padding: 2px 8px;
+  border-radius: 10px;
+  background: var(--c-bg);
+  color: var(--c-muted);
+}
+.branch-arrow {
+  font-size: 13px;
+  color: var(--c-hint);
+  transition: transform .22s;
+  margin-left: 4px;
+}
+.branch-arrow.open { transform: rotate(90deg); }
+
+.branch-body {
+  display: none;
+  padding: 10px 14px 14px;
+}
+.branch-body.open { display: block; }
+
+/* Sub-node grid */
+.sub-grid {
+  display: grid;
+  grid-template-columns: repeat(auto-fill, minmax(220px, 1fr));
+  gap: 7px;
+}
+
+.sub-node {
+  background: var(--c-bg);
+  border: 1.5px solid var(--c-border);
+  border-radius: var(--radius-md);
+  padding: 10px 12px;
+  cursor: pointer;
+  transition: all .16s;
+  position: relative;
+}
+.sub-node:hover {
+  border-color: var(--c-blue-bd);
+  background: var(--c-blue-bg);
+  transform: translateY(-1px);
+  box-shadow: var(--shadow-sm);
+}
+.sub-node.active {
+  border-color: var(--c-blue);
+  background: var(--c-blue-bg);
+  box-shadow: 0 0 0 3px rgba(37,99,235,.12);
+}
+
+.sub-title {
+  font-size: 13px;
+  font-weight: 600;
+  margin-bottom: 5px;
+}
+.sub-desc {
+  font-size: 11.5px;
+  color: var(--c-muted);
+  line-height: 1.5;
+  display: -webkit-box;
+  -webkit-line-clamp: 2;
+  -webkit-box-orient: vertical;
+  overflow: hidden;
+  margin-bottom: 6px;
+}
+.sub-tags { display: flex; flex-wrap: wrap; gap: 3px; }
+.sub-tag {
+  font-size: 10px;
+  font-weight: 600;
+  padding: 1px 6px;
+  border-radius: 8px;
+}
+.sub-params {
+  margin-top: 6px;
+  display: flex;
+  flex-wrap: wrap;
+  gap: 4px;
+}
+.sub-param {
+  font-size: 10px;
+  padding: 2px 7px;
+  background: rgba(255,255,255,.8);
+  border: 1px solid var(--c-border);
+  border-radius: 6px;
+  color: var(--c-muted);
+}
+
+/* Empty state */
+.empty-state {
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  justify-content: center;
+  padding: 60px 20px;
+  text-align: center;
+  color: var(--c-hint);
+  gap: 8px;
+}
+.empty-state svg { opacity: .25; }
+.empty-state p { font-size: 14px; font-weight: 500; }
+.empty-state small { font-size: 12px; }
+
+/* Spinner */
+.spinner-wrap {
+  display: flex; align-items: center; justify-content: center;
+  padding: 60px;
+}
+.spinner {
+  width: 28px; height: 28px;
+  border: 2.5px solid var(--c-border);
+  border-top-color: var(--c-blue);
+  border-radius: 50%;
+  animation: spin .7s linear infinite;
+}
+@keyframes spin { to { transform: rotate(360deg); } }
+
+/* ══════════════════════════════════════════════
+   RIGHT DETAIL PANEL
+══════════════════════════════════════════════ */
+.kb-panel {
+  width: var(--panel-w);
+  flex-shrink: 0;
+  background: var(--c-surface);
+  border-left: 1.5px solid var(--c-border);
+  display: flex;
+  flex-direction: column;
+  overflow: hidden;
+  transform: translateX(var(--panel-w));
+  transition: transform .28s cubic-bezier(.4,0,.2,1);
+}
+.kb-panel.open { transform: translateX(0); }
+
+.panel-hd {
+  padding: 16px 16px 12px;
+  border-bottom: 1.5px solid var(--c-border);
+  display: flex;
+  align-items: flex-start;
+  gap: 8px;
+  flex-shrink: 0;
+}
+.panel-color-bar {
+  width: 4px;
+  min-height: 40px;
+  border-radius: 3px;
+  flex-shrink: 0;
+  margin-top: 2px;
+}
+.panel-hd-info { flex: 1; min-width: 0; }
+.panel-title {
+  font-size: 15px;
+  font-weight: 700;
+  color: var(--c-text);
+  line-height: 1.35;
+  margin-bottom: 2px;
+}
+.panel-badge {
+  font-size: 10px;
+  font-weight: 700;
+  padding: 2px 7px;
+  border-radius: 8px;
+  display: inline-flex;
+}
+.panel-close {
+  width: 28px; height: 28px;
+  border-radius: var(--radius-sm);
+  border: 1px solid var(--c-border);
+  background: var(--c-bg);
+  cursor: pointer;
+  display: flex; align-items: center; justify-content: center;
+  color: var(--c-muted);
+  font-size: 14px;
+  flex-shrink: 0;
+  transition: all .14s;
+}
+.panel-close:hover { background: var(--c-red-bg); border-color: #fca5a5; color: var(--c-red); }
+
+.panel-body {
+  flex: 1;
+  overflow-y: auto;
+  padding: 14px 16px;
+}
+
+/* Panel sections */
+.p-section { margin-bottom: 18px; }
+.p-section:last-child { margin-bottom: 0; }
+
+.p-label {
+  font-size: 10px;
+  font-weight: 700;
+  text-transform: uppercase;
+  letter-spacing: .08em;
+  color: var(--c-hint);
+  margin-bottom: 7px;
+  display: flex;
+  align-items: center;
+  gap: 5px;
+}
+
+.p-desc {
+  font-size: 12.5px;
+  color: var(--c-muted);
+  line-height: 1.7;
+  background: var(--c-bg);
+  border-radius: var(--radius-md);
+  padding: 10px 12px;
+  white-space: pre-wrap;
+  word-break: break-word;
+}
+
+/* Param cards */
+.param-grid {
+  display: grid;
+  grid-template-columns: 1fr 1fr;
+  gap: 5px;
+}
+.param-card {
+  background: var(--c-bg);
+  border: 1px solid var(--c-border);
+  border-radius: var(--radius-sm);
+  padding: 8px 10px;
+}
+.param-lbl {
+  font-size: 9px;
+  font-weight: 700;
+  text-transform: uppercase;
+  letter-spacing: .05em;
+  color: var(--c-hint);
+  margin-bottom: 2px;
+}
+.param-val {
+  font-size: 15px;
+  font-weight: 700;
+  color: var(--c-text);
+}
+.param-unit { font-size: 10px; color: var(--c-muted); font-weight: 400; }
+
+/* Tags */
+.tag-wrap { display: flex; flex-wrap: wrap; gap: 4px; }
+.tag-chip {
+  font-size: 11px;
+  font-weight: 600;
+  padding: 3px 9px;
+  border-radius: 12px;
+}
+
+/* Standard / KI rows */
+.std-row, .ki-row {
+  display: flex;
+  align-items: center;
+  gap: 9px;
+  padding: 8px 10px;
+  border: 1.5px solid var(--c-border);
+  border-radius: var(--radius-md);
+  margin-bottom: 5px;
+  cursor: pointer;
+  transition: all .14s;
+}
+.std-row:hover, .ki-row:hover {
+  border-color: var(--c-blue-bd);
+  background: var(--c-blue-bg);
+}
+.std-icon, .ki-icon {
+  width: 28px; height: 28px;
+  border-radius: 7px;
+  background: var(--c-bg);
+  display: flex; align-items: center; justify-content: center;
+  font-size: 13px;
+  flex-shrink: 0;
+}
+.std-text strong {
+  display: block;
+  font-size: 12px;
+  font-weight: 600;
+  color: var(--c-text);
+}
+.std-text span {
+  font-size: 10.5px;
+  color: var(--c-hint);
+}
+.std-ext {
+  margin-left: auto;
+  font-size: 10px;
+  color: var(--c-blue);
+  text-decoration: none;
+  padding: 2px 6px;
+  border-radius: 5px;
+  border: 1px solid var(--c-blue-bd);
+  background: var(--c-blue-bg);
+  white-space: nowrap;
+  flex-shrink: 0;
+}
+.std-ext:hover { background: var(--c-blue); color: #fff; }
+
+.del-btn {
+  width: 22px; height: 22px;
+  border-radius: 5px;
+  border: none;
+  background: transparent;
+  color: var(--c-hint);
+  cursor: pointer;
+  display: flex; align-items: center; justify-content: center;
+  font-size: 12px;
+  flex-shrink: 0;
+  margin-left: auto;
+  transition: all .14s;
+}
+.del-btn:hover { background: var(--c-red-bg); color: var(--c-red); }
+
+/* Dashed add button */
+.add-row {
+  width: 100%;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  gap: 5px;
+  padding: 8px;
+  border: 1.5px dashed var(--c-border);
+  border-radius: var(--radius-md);
+  background: transparent;
+  font-size: 12px;
+  font-weight: 600;
+  color: var(--c-muted);
+  cursor: pointer;
+  font-family: var(--font);
+  transition: all .14s;
+  margin-top: 4px;
+}
+.add-row:hover { border-color: var(--c-blue); color: var(--c-blue); background: var(--c-blue-bg); }
+
+/* ── Experience notes ── */
+.note-section { margin-top: 4px; }
+.note-input-area {
+  display: none;
+}
+.note-input-area.show { display: block; }
+
+.note-textarea {
+  width: 100%;
+  padding: 8px 10px;
+  border: 1.5px solid var(--c-border);
+  border-radius: var(--radius-md);
+  font-size: 12.5px;
+  font-family: var(--font);
+  color: var(--c-text);
+  resize: vertical;
+  min-height: 72px;
+  outline: none;
+  transition: border .16s;
+  background: var(--c-bg);
+}
+.note-textarea:focus { border-color: var(--c-blue); background: #fff; }
+.note-textarea::placeholder { color: var(--c-hint); }
+
+.note-actions {
+  display: flex;
+  justify-content: flex-end;
+  gap: 6px;
+  margin-top: 6px;
+}
+.note-actions button {
+  padding: 6px 14px;
+  border-radius: var(--radius-sm);
+  border: 1px solid var(--c-border);
+  font-size: 12px;
+  font-weight: 600;
+  cursor: pointer;
+  font-family: var(--font);
+  transition: all .14s;
+}
+.note-save {
+  background: var(--c-blue);
+  border-color: var(--c-blue) !important;
+  color: #fff;
+}
+.note-save:hover { background: #1d4ed8; }
+.note-cancel { background: var(--c-bg); color: var(--c-muted); }
+.note-cancel:hover { background: var(--c-border); color: var(--c-text); }
+
+.saved-note {
+  background: var(--c-bg);
+  border-radius: var(--radius-md);
+  padding: 9px 11px;
+  margin-bottom: 5px;
+  border-left: 3px solid var(--c-blue);
+  position: relative;
+}
+.note-time {
+  font-size: 10px;
+  color: var(--c-hint);
+  margin-bottom: 3px;
+  display: block;
+}
+.note-text { font-size: 12.5px; color: var(--c-muted); line-height: 1.6; white-space: pre-wrap; }
+.note-del {
+  position: absolute;
+  top: 6px; right: 8px;
+  width: 20px; height: 20px;
+  border-radius: 4px;
+  border: none;
+  background: transparent;
+  color: var(--c-hint);
+  cursor: pointer;
+  display: flex; align-items: center; justify-content: center;
+  font-size: 11px;
+  transition: all .14s;
+}
+.note-del:hover { background: var(--c-red-bg); color: var(--c-red); }
+
+/* ══════════════════════════════════════════════
+   MODAL
+══════════════════════════════════════════════ */
+.modal-backdrop {
+  position: fixed;
+  inset: 0;
+  background: rgba(0,0,0,.4);
+  z-index: 300;
+  display: none;
+  align-items: center;
+  justify-content: center;
+  backdrop-filter: blur(2px);
+}
+.modal-backdrop.show { display: flex; }
+
+.modal-box {
+  background: var(--c-surface);
+  border-radius: var(--radius-lg);
+  width: 500px;
+  max-width: 95vw;
+  max-height: 85vh;
+  display: flex;
+  flex-direction: column;
+  overflow: hidden;
+  box-shadow: 0 24px 60px rgba(0,0,0,.18), 0 8px 24px rgba(0,0,0,.1);
+  border: 1px solid var(--c-border);
+}
+
+.modal-hd {
+  padding: 18px 20px 14px;
+  border-bottom: 1px solid var(--c-border);
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  flex-shrink: 0;
+}
+.modal-hd h3 { font-size: 15px; font-weight: 700; color: var(--c-text); }
+
+.modal-close {
+  width: 28px; height: 28px;
+  border-radius: var(--radius-sm);
+  border: 1px solid var(--c-border);
+  background: var(--c-bg);
+  cursor: pointer;
+  font-size: 15px;
+  transition: all .14s;
+}
+.modal-close:hover { background: var(--c-red-bg); }
+
+.modal-body {
+  flex: 1;
+  overflow-y: auto;
+  padding: 18px 20px;
+}
+
+.modal-ft {
+  padding: 12px 20px;
+  border-top: 1px solid var(--c-border);
+  display: flex;
+  gap: 8px;
+  justify-content: flex-end;
+  flex-shrink: 0;
+}
+
+/* Tabs inside modal */
+.m-tabs {
+  display: flex;
+  gap: 2px;
+  background: var(--c-bg);
+  border: 1px solid var(--c-border);
+  border-radius: var(--radius-md);
+  padding: 3px;
+  margin-bottom: 16px;
+}
+.m-tab {
+  flex: 1;
+  padding: 6px;
+  border: none;
+  border-radius: 7px;
+  font-size: 12px;
+  font-weight: 600;
+  cursor: pointer;
+  font-family: var(--font);
+  color: var(--c-muted);
+  background: transparent;
+  transition: all .14s;
+}
+.m-tab.active {
+  background: var(--c-surface);
+  color: var(--c-blue);
+  box-shadow: var(--shadow-sm);
+}
+
+/* Form elements */
+.f-group { margin-bottom: 13px; }
+.f-label {
+  display: block;
+  font-size: 11.5px;
+  font-weight: 600;
+  color: var(--c-text);
+  margin-bottom: 5px;
+}
+.f-input {
+  width: 100%;
+  padding: 8px 11px;
+  border: 1.5px solid var(--c-border);
+  border-radius: var(--radius-md);
+  font-size: 13px;
+  font-family: var(--font);
+  color: var(--c-text);
+  background: var(--c-bg);
+  outline: none;
+  transition: border .16s, background .16s;
+}
+.f-input:focus { border-color: var(--c-blue); background: #fff; box-shadow: 0 0 0 3px rgba(37,99,235,.1); }
+
+.file-item {
+  display: flex;
+  align-items: center;
+  gap: 9px;
+  padding: 8px 10px;
+  border-radius: var(--radius-md);
+  cursor: pointer;
+  transition: all .12s;
+  border: 1.5px solid transparent;
+}
+.file-item:hover { background: var(--c-bg); }
+.file-item.selected { background: var(--c-blue-bg); border-color: var(--c-blue); }
+
+.btn-primary, .btn-secondary {
+  padding: 8px 18px;
+  border-radius: var(--radius-md);
+  font-size: 13px;
+  font-weight: 600;
+  cursor: pointer;
+  font-family: var(--font);
+  border: 1.5px solid;
+  transition: all .14s;
+}
+.btn-primary { background: var(--c-blue); border-color: var(--c-blue); color: #fff; }
+.btn-primary:hover { background: #1d4ed8; }
+.btn-secondary { background: var(--c-bg); border-color: var(--c-border); color: var(--c-text); }
+.btn-secondary:hover { background: var(--c-border); }
+
+/* Hidden */
+.hidden { display: none !important; }
 </style>
 
-<div class="max-w-[1400px] mx-auto px-6 py-6">
+{# ─── SHELL ─── #}
+<div class="kb-shell">
 
-  <!-- Header -->
-  <div class="mb-8">
-    <div class="flex items-center justify-between">
-      <div>
-        <h1 class="text-4xl font-bold text-gray-900 mb-2 tracking-tight flex items-center gap-3">
-          <div class="w-12 h-12 bg-purple-100 rounded-xl flex items-center justify-center">
-            <svg class="w-7 h-7 text-purple-500" fill="none" stroke="currentColor" viewBox="0 0 24 24" stroke-width="2">
-              <path stroke-linecap="round" stroke-linejoin="round" d="M12 6.253v13m0-13C10.832 5.477 9.246 5 7.5 5S4.168 5.477 3 6.253v13C4.168 18.477 5.754 18 7.5 18s3.332.477 4.5 1.253m0-13C13.168 5.477 14.754 5 16.5 5c1.747 0 3.332.477 4.5 1.253v13C19.832 18.477 18.247 18 16.5 18c-1.746 0-3.332.477-4.5 1.253"/>
-            </svg>
-          </div>
-          Knowledge Base
-        </h1>
-        <p class="text-base text-gray-500">Quality engineering knowledge repository</p>
-      </div>
+  {# ──────── LEFT SIDEBAR ──────── #}
+  <nav class="kb-sidebar">
 
-      <!-- Stats -->
-      <div class="bg-white rounded-xl px-6 py-3 border border-gray-200 shadow-sm">
-        <div class="text-xs text-gray-500 mb-1 font-medium">Total Items</div>
-        <div class="text-3xl font-bold text-purple-600">{{ total_count }}</div>
+    <div class="sb-top">
+      <div class="sb-app-name">
+        <span class="sb-app-icon">📚</span>
+        Knowledge Base
       </div>
+      <div class="sb-subtitle">工艺知识管理</div>
     </div>
-  </div>
 
-  <!-- Search Bar -->
-  <div class="bg-white rounded-2xl border border-gray-200 p-6 mb-6 shadow-sm">
-    <form method="get" class="flex items-center gap-4">
-      <div class="flex-1 relative">
-        <input type="text" name="q" value="{{ search_query or '' }}"
-               placeholder="Search by keyword, process, or description..."
-               class="search-input w-full px-5 py-3.5 pl-12 rounded-xl bg-gray-50 border border-gray-300
-                      text-sm focus:outline-none focus:bg-white focus:border-blue-500 transition-all">
-        <div class="absolute left-4 top-1/2 -translate-y-1/2">
-          <svg class="w-5 h-5 text-gray-400" fill="none" stroke="currentColor" viewBox="0 0 24 24" stroke-width="2">
-            <path stroke-linecap="round" stroke-linejoin="round" d="M21 21l-6-6m2-5a7 7 0 11-14 0 7 7 0 0114 0z"/>
-          </svg>
-        </div>
-      </div>
-      <button type="submit"
-              class="px-6 py-3.5 rounded-xl bg-blue-500 text-white font-semibold
-                     hover:bg-blue-600 transition-all hover:scale-105 active:scale-95 shadow-lg shadow-blue-500/30">
-        Search
+    <div class="sb-scroll">
+      <p class="sb-section-label">工艺分类</p>
+
+      {% for p in processes %}
+      <button class="sb-btn {% if p.slug == selected_process %}active{% endif %}"
+              onclick="switchProcess('{{ p.slug }}', this)"
+              data-slug="{{ p.slug }}">
+        <span class="sb-dot" style="background:{{ p.color }}"></span>
+        {{ p.name }}
+        <span class="sb-cnt">{{ p.count }}</span>
       </button>
-    </form>
-  </div>
-
-  <!-- Process Tabs -->
-  <div class="bg-white rounded-2xl border border-gray-200 p-5 mb-8 shadow-sm">
-    <div class="flex items-center gap-3 flex-wrap">
-      <a href="{{ url_for('knowledge.index') }}"
-         class="process-tab px-5 py-2.5 rounded-xl font-semibold transition-all
-                {% if not selected_process %}active{% else %}bg-gray-50 text-gray-700 hover:bg-gray-100{% endif %}">
-        All
-      </a>
-
-      {% for process in processes %}
-      <a href="{{ url_for('knowledge.index', process=process.slug) }}"
-         class="process-tab px-5 py-2.5 rounded-xl font-semibold transition-all
-                {% if selected_process == process.slug %}active{% else %}bg-gray-50 text-gray-700 hover:bg-gray-100{% endif %}">
-        <span class="flex items-center gap-2">
-          {{ process.name }}
-          <span class="ml-1 px-2 py-0.5 rounded-full text-xs font-bold
-                       {% if selected_process == process.slug %}bg-white/30{% else %}bg-gray-200 text-gray-600{% endif %}">
-            {{ process.count }}
-          </span>
-        </span>
-      </a>
       {% endfor %}
+
+      <div class="sb-divider"></div>
+
+      <p class="sb-section-label">快捷操作</p>
+      <button class="sb-btn" onclick="window.location='/knowledge/quick-add'">
+        <span style="font-size:14px;">＋</span>
+        添加知识条目
+      </button>
+      <button class="sb-btn" onclick="toggleAll(true)">
+        <span style="font-size:14px;">↓</span>
+        全部展开
+      </button>
+      <button class="sb-btn" onclick="toggleAll(false)">
+        <span style="font-size:14px;">↑</span>
+        全部折叠
+      </button>
+    </div>
+
+    <div class="sb-foot">
+      <div class="sb-stat">
+        <span>知识条目总数</span>
+        <b>{{ total_count }}</b>
+      </div>
+      <div class="sb-stat">
+        <span>当前工艺</span>
+        <b id="sbProcessName">{{ selected_process_name }}</b>
+      </div>
+    </div>
+  </nav>
+
+  {# ──────── MAIN COLUMN ──────── #}
+  <div class="kb-main">
+
+    {# Toolbar #}
+    <div class="kb-toolbar">
+      <div class="tb-search">
+        <svg width="14" height="14" fill="none" stroke="currentColor" viewBox="0 0 24 24" stroke-width="2">
+          <path stroke-linecap="round" stroke-linejoin="round" d="M21 21l-6-6m2-5a7 7 0 11-14 0 7 7 0 0114 0z"/>
+        </svg>
+        <input type="text" id="searchInput" placeholder="搜索知识点、参数、标准…"
+               oninput="doSearch(this.value)">
+      </div>
+
+      <span class="tb-process-name" id="toolbarProcess">{{ selected_process_name }}</span>
+
+      <div class="tb-right">
+        <button class="tb-btn" id="noteToggleBtn" onclick="toggleNoteMode()">
+          ✏️ 记录经验
+        </button>
+        <a href="{{ url_for('knowledge.quick_add') }}">
+          <button class="tb-btn primary">
+            <svg width="13" height="13" fill="none" stroke="currentColor" viewBox="0 0 24 24" stroke-width="2.5">
+              <path stroke-linecap="round" stroke-linejoin="round" d="M12 4v16m8-8H4"/>
+            </svg>
+            添加知识
+          </button>
+        </a>
+      </div>
+    </div>
+
+    {# Knowledge Accordion #}
+    <div class="kb-content">
+      <div id="branchesWrap">
+        <div class="spinner-wrap"><div class="spinner"></div></div>
+      </div>
+    </div>
+
+  </div>{# /kb-main #}
+
+  {# ──────── RIGHT DETAIL PANEL ──────── #}
+  <div class="kb-panel" id="kbPanel">
+
+    <div class="panel-hd">
+      <div class="panel-color-bar" id="panelBar"></div>
+      <div class="panel-hd-info">
+        <div class="panel-title" id="panelTitle">–</div>
+        <span class="panel-badge" id="panelBadge"></span>
+      </div>
+      <button class="panel-close" onclick="closePanel()">✕</button>
+    </div>
+
+    <div class="panel-body" id="panelBody">
+      <div class="empty-state">
+        <svg width="40" height="40" fill="none" stroke="currentColor" viewBox="0 0 24 24" stroke-width="1.2">
+          <path stroke-linecap="round" stroke-linejoin="round" d="M15 15l-2 5L9 9l11 4-5 2zm0 0l5 5M7.188 2.239l.777 2.897M5.136 7.965l-2.898-.777M13.95 4.05l-2.122 2.122m-5.657 5.656l-2.12 2.122"/>
+        </svg>
+        <p>点击左侧知识节点</p>
+        <small>查看详情、关联标准和记录经验</small>
+      </div>
     </div>
   </div>
 
-  <!-- Knowledge Cards Grid -->
-  <div class="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-6">
-    {% for item in knowledge_items %}
-    <div class="knowledge-card rounded-2xl border border-gray-200 overflow-hidden bg-white shadow-sm">
+</div>{# /kb-shell #}
 
-      <!-- Card Header Strip -->
-      <div class="h-1.5
-                  {% if item.process == 'welding' %}bg-orange-500
-                  {% elif item.process == 'coating' %}bg-blue-500
-                  {% elif item.process == 'smt' %}bg-green-500
-                  {% elif item.process == 'molding' %}bg-purple-500
-                  {% elif item.process == 'stamping' %}bg-yellow-500
-                  {% else %}bg-gray-400{% endif %}">
+{# ══════════════════════════════════════════════
+   MODAL: 关联标准
+══════════════════════════════════════════════ #}
+<div class="modal-backdrop" id="modalStd">
+  <div class="modal-box">
+    <div class="modal-hd">
+      <h3>📋 关联标准 / 文件</h3>
+      <button class="modal-close" onclick="closeModal('modalStd')">✕</button>
+    </div>
+    <div class="modal-body">
+      <div class="m-tabs">
+        <button class="m-tab active" id="tabCustom" onclick="switchStdTab('custom')">手动填写标准</button>
+        <button class="m-tab" id="tabFile" onclick="switchStdTab('file')">从文件库选择</button>
       </div>
-
-      <!-- Card Content -->
-      <div class="p-6">
-
-        <!-- Process Tag -->
-        <div class="flex items-center gap-2 mb-4">
-          <span class="px-3 py-1 rounded-lg text-xs font-semibold
-                       {% if item.process == 'welding' %}bg-orange-50 text-orange-700
-                       {% elif item.process == 'coating' %}bg-blue-50 text-blue-700
-                       {% elif item.process == 'smt' %}bg-green-50 text-green-700
-                       {% elif item.process == 'molding' %}bg-purple-50 text-purple-700
-                       {% elif item.process == 'stamping' %}bg-yellow-50 text-yellow-700
-                       {% else %}bg-gray-50 text-gray-700{% endif %}">
-            {{ item.process_name }}
-          </span>
-
-          {% if item.priority == 'high' %}
-          <span class="px-2 py-1 rounded-lg text-xs font-semibold bg-red-50 text-red-700 flex items-center gap-1">
-            <svg class="w-3 h-3" fill="currentColor" viewBox="0 0 20 20">
-              <path d="M10 2a6 6 0 00-6 6v3.586l-.707.707A1 1 0 004 14h12a1 1 0 00.707-1.707L16 11.586V8a6 6 0 00-6-6zM10 18a3 3 0 01-3-3h6a3 3 0 01-3 3z"/>
-            </svg>
-            High
-          </span>
-          {% endif %}
+      <div id="panelCustom">
+        <div class="f-group">
+          <label class="f-label">标准编号 *</label>
+          <input class="f-input" id="stdCode" placeholder="如 GB/T 9286、ISO 12944-7">
         </div>
-
-        <!-- Title -->
-        <h3 class="text-lg font-bold text-gray-900 mb-3 line-clamp-2 leading-snug">
-          {{ item.title }}
-        </h3>
-
-        <!-- Content Preview -->
-        <p class="text-sm text-gray-600 mb-4 line-clamp-3 leading-relaxed">
-          {{ item.content }}
-        </p>
-
-        <!-- Tags -->
-        {% if item.tags %}
-        <div class="flex items-center gap-2 flex-wrap mb-4">
-          {% for tag in item.get_tags_list()[:3] %}
-          <span class="px-2 py-1 rounded-md text-xs font-medium bg-gray-100 text-gray-600">
-            #{{ tag }}
-          </span>
-          {% endfor %}
-          {% if item.get_tags_list()|length > 3 %}
-          <span class="text-xs text-gray-400 font-semibold">+{{ item.get_tags_list()|length - 3 }}</span>
-          {% endif %}
+        <div class="f-group">
+          <label class="f-label">标准名称</label>
+          <input class="f-input" id="stdName" placeholder="如 色漆和清漆 划格试验">
         </div>
-        {% endif %}
-
-        <!-- Footer -->
-        <div class="flex items-center justify-between pt-4 border-t border-gray-200">
-          <div class="flex items-center gap-2 text-xs text-gray-500 font-medium">
-            <svg class="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24" stroke-width="2">
-              <path stroke-linecap="round" stroke-linejoin="round" d="M8 7V3m8 4V3m-9 8h10M5 21h14a2 2 0 002-2V7a2 2 0 00-2-2H5a2 2 0 00-2 2v12a2 2 0 002 2z"/>
-            </svg>
-            {{ item.created_at.strftime('%b %d, %Y') }}
-          </div>
-
-          <a href="{{ url_for('knowledge.view_item', item_id=item.id) }}"
-             class="inline-flex items-center gap-1.5 px-3 py-1.5 rounded-lg
-                    bg-blue-50 text-blue-600 hover:bg-blue-100
-                    text-xs font-semibold transition-all">
-            View
-            <svg class="w-3.5 h-3.5" fill="none" stroke="currentColor" viewBox="0 0 24 24" stroke-width="2">
-              <path stroke-linecap="round" stroke-linejoin="round" d="M9 5l7 7-7 7"/>
-            </svg>
-          </a>
+        <div class="f-group">
+          <label class="f-label">类型</label>
+          <select class="f-input" id="stdType">
+            <option value="">请选择…</option>
+            <option>国家标准</option><option>行业标准</option>
+            <option>国际标准</option><option>企业标准</option>
+            <option>客户标准</option><option>VDA</option>
+            <option>IATF</option><option>AIAG</option>
+          </select>
+        </div>
+        <div class="f-group">
+          <label class="f-label">外部链接（可选）</label>
+          <input class="f-input" id="stdLink" placeholder="https://…">
+        </div>
+        <div class="f-group">
+          <label class="f-label">备注</label>
+          <textarea class="f-input" id="stdRemark" rows="2" placeholder="备注说明"></textarea>
+        </div>
+      </div>
+      <div id="panelFile" class="hidden">
+        <div class="f-group" style="margin-bottom:10px">
+          <input class="f-input" id="fileSearch" placeholder="🔍 搜索文件库…" oninput="searchFiles(this.value)">
+        </div>
+        <div id="fileList" style="max-height:280px;overflow-y:auto;">
+          <p style="font-size:12px;color:var(--c-hint);text-align:center;padding:20px;">输入关键字搜索文件</p>
         </div>
       </div>
     </div>
-    {% else %}
-
-    <!-- Empty State -->
-    <div class="col-span-full">
-      <div class="bg-gray-50 rounded-2xl p-20 text-center border-2 border-dashed border-gray-200">
-        <div class="flex flex-col items-center gap-4">
-          <div class="w-20 h-20 bg-gray-100 rounded-full flex items-center justify-center">
-            <svg class="w-10 h-10 text-gray-300" fill="none" stroke="currentColor" viewBox="0 0 24 24" stroke-width="1.5">
-              <path stroke-linecap="round" stroke-linejoin="round" d="M12 6.253v13m0-13C10.832 5.477 9.246 5 7.5 5S4.168 5.477 3 6.253v13C4.168 18.477 5.754 18 7.5 18s3.332.477 4.5 1.253m0-13C13.168 5.477 14.754 5 16.5 5c1.747 0 3.332.477 4.5 1.253v13C19.832 18.477 18.247 18 16.5 18c-1.746 0-3.332.477-4.5 1.253"/>
-            </svg>
-          </div>
-          <div>
-            <p class="text-gray-600 font-semibold text-lg mb-1">
-              {% if search_query %}
-                No results found
-              {% else %}
-                No {{ selected_process_name or 'knowledge' }} items yet
-              {% endif %}
-            </p>
-            <p class="text-sm text-gray-400">
-              {% if search_query %}
-                Try searching with different keywords
-              {% else %}
-                Start documenting your engineering knowledge
-              {% endif %}
-            </p>
-          </div>
-        </div>
-      </div>
+    <div class="modal-ft">
+      <button class="btn-secondary" onclick="closeModal('modalStd')">取消</button>
+      <button class="btn-primary" id="btnSubmitStd" onclick="submitStd()">确认关联</button>
     </div>
-    {% endfor %}
   </div>
-
-  <!-- Floating Add Button -->
-  <a href="{{ url_for('knowledge.quick_add') }}"
-     class="fixed bottom-8 right-8 w-16 h-16 bg-blue-500
-            rounded-full shadow-2xl flex items-center justify-center text-white
-            hover:scale-110 hover:bg-blue-600 transition-all group shadow-blue-500/40">
-    <svg class="w-8 h-8" fill="none" stroke="currentColor" viewBox="0 0 24 24" stroke-width="2.5">
-      <path stroke-linecap="round" stroke-linejoin="round" d="M12 4v16m8-8H4"/>
-    </svg>
-    <span class="absolute right-20 px-3 py-2 bg-gray-900 text-white text-sm font-semibold rounded-lg
-                 opacity-0 group-hover:opacity-100 transition-opacity whitespace-nowrap shadow-lg">
-      Add Knowledge
-    </span>
-  </a>
-
 </div>
+
+{# ══════════════════════════════════════════════
+   MODAL: 关联知识条目
+══════════════════════════════════════════════ #}
+<div class="modal-backdrop" id="modalKi">
+  <div class="modal-box">
+    <div class="modal-hd">
+      <h3>📝 关联知识条目</h3>
+      <button class="modal-close" onclick="closeModal('modalKi')">✕</button>
+    </div>
+    <div class="modal-body">
+      <div class="f-group" style="margin-bottom:10px">
+        <input class="f-input" id="kiSearch" placeholder="🔍 搜索知识条目…" oninput="searchKi(this.value)">
+      </div>
+      <div id="kiList" style="max-height:320px;overflow-y:auto;">
+        <p style="font-size:12px;color:var(--c-hint);text-align:center;padding:20px;">输入关键字搜索</p>
+      </div>
+    </div>
+    <div class="modal-ft">
+      <button class="btn-secondary" onclick="closeModal('modalKi')">取消</button>
+      <button class="btn-primary" id="btnSubmitKi" onclick="submitKi()">确认关联</button>
+    </div>
+  </div>
+</div>
+
+<script>
+/* ══════════════════════════════════════════════
+   STATE
+══════════════════════════════════════════════ */
+const S = {
+  process:   '{{ selected_process }}',
+  noteMode:  false,
+  activeNode: null,       // { id, color, label }
+  stdTab:    'custom',
+  selectedFileId: null,
+  selectedKiId:   null,
+  _pendingStdProcess: '', _pendingStdNode: '',
+  _pendingKiProcess:  '', _pendingKiNode:  '',
+};
+
+/* localStorage notes key */
+function noteKey(proc, nodeId) { return `kb_note_${proc}_${nodeId}`; }
+function loadNotes(proc, nodeId) {
+  try { return JSON.parse(localStorage.getItem(noteKey(proc, nodeId)) || '[]'); }
+  catch { return []; }
+}
+function saveNotes(proc, nodeId, arr) {
+  localStorage.setItem(noteKey(proc, nodeId), JSON.stringify(arr));
+}
+
+/* ══════════════════════════════════════════════
+   INIT
+══════════════════════════════════════════════ */
+window.addEventListener('DOMContentLoaded', () => {
+  loadBranches(S.process);
+});
+
+/* ══════════════════════════════════════════════
+   SWITCH PROCESS
+══════════════════════════════════════════════ */
+function switchProcess(proc, btn) {
+  S.process = proc;
+  S.activeNode = null;
+  closePanel();
+  document.querySelectorAll('.sb-btn[data-slug]').forEach(b => b.classList.remove('active'));
+  btn.classList.add('active');
+  const name = btn.textContent.trim().replace(/\d+$/, '').trim();
+  document.getElementById('sbProcessName').textContent = name;
+  document.getElementById('toolbarProcess').textContent = name;
+  loadBranches(proc);
+}
+
+/* ══════════════════════════════════════════════
+   LOAD & RENDER BRANCHES (accordion)
+══════════════════════════════════════════════ */
+function loadBranches(process) {
+  const wrap = document.getElementById('branchesWrap');
+  wrap.innerHTML = '<div class="spinner-wrap"><div class="spinner"></div></div>';
+
+  fetch(`/knowledge/api/mindmap/${process}`)
+    .then(r => r.json())
+    .then(data => renderBranches(data.nodes || [], data.meta || {}))
+    .catch(() => {
+      wrap.innerHTML = `
+        <div class="empty-state">
+          <svg width="40" height="40" fill="none" stroke="currentColor" viewBox="0 0 24 24" stroke-width="1.2">
+            <path stroke-linecap="round" stroke-linejoin="round" d="M12 8v4m0 4h.01M21 12a9 9 0 11-18 0 9 9 0 0118 0z"/>
+          </svg>
+          <p>加载失败，请刷新重试</p>
+        </div>`;
+    });
+}
+
+function renderBranches(nodes, meta) {
+  const wrap = document.getElementById('branchesWrap');
+
+  /* No mindmap data */
+  if (!nodes.length) {
+    wrap.innerHTML = `
+      <div class="empty-state">
+        <svg width="44" height="44" fill="none" stroke="${meta.color||'#9ca3af'}" viewBox="0 0 24 24" stroke-width="1.2" opacity=".4">
+          <path stroke-linecap="round" d="M9 13h6m-3-3v6m5 5H7a2 2 0 01-2-2V5a2 2 0 012-2h5.586a1 1 0 01.707.293l5.414 5.414a1 1 0 01.293.707V19a2 2 0 01-2 2z"/>
+        </svg>
+        <p style="color:${meta.color||'#9ca3af'}">${meta.name||'此工艺'}知识库建设中</p>
+        <small>可先通过「添加知识」记录条目</small>
+      </div>`;
+    return;
+  }
+
+  const root  = nodes.find(n => n.type === 'root');
+  const l1s   = nodes.filter(n => n.type === 'l1');
+
+  const branchesEl = document.createElement('div');
+  branchesEl.className = 'branches';
+  branchesEl.id = 'branchList';
+
+  /* Root card */
+  if (root) {
+    const rc = makeBranchCard(root, [], nodes, meta, true);
+    branchesEl.appendChild(rc);
+  }
+
+  /* L1 branches */
+  l1s.forEach(l1 => {
+    const children = nodes.filter(n => n.type === 'l2' && n.parent === l1.id);
+    branchesEl.appendChild(makeBranchCard(l1, children, nodes, meta, false));
+  });
+
+  wrap.innerHTML = '';
+  wrap.appendChild(branchesEl);
+}
+
+function makeBranchCard(l1, children, allNodes, meta, isRoot) {
+  const color = l1.color || meta.color || '#3b82f6';
+  const div = document.createElement('div');
+  div.className = 'branch';
+  div.id = `branch_${l1.id}`;
+
+  const childCount = children.length;
+  const stdsCount  = (l1.stds || []).length;
+
+  /* ── Header ── */
+  const hd = document.createElement('div');
+  hd.className = 'branch-hd';
+  hd.innerHTML = `
+    <div class="branch-stripe" style="background:${color}"></div>
+    <div class="branch-icon" style="background:${color}18">${l1.label?.slice(0,1) || '📋'}</div>
+    <div class="branch-info">
+      <div class="branch-title">${l1.label}</div>
+      <div class="branch-meta">${isRoot ? '工艺总览' : `${childCount} 个知识节点${stdsCount ? ` · ${stdsCount} 个标准` : ''}`}</div>
+    </div>
+    ${!isRoot ? `<span class="branch-cnt">${childCount}</span>` : ''}
+    <span class="branch-arrow" id="arr_${l1.id}">›</span>
+  `;
+
+  /* ── Body ── */
+  const body = document.createElement('div');
+  body.className = 'branch-body';
+  body.id = `body_${l1.id}`;
+
+  if (isRoot) {
+    /* Root: show description + quick click */
+    body.innerHTML = `
+      <div class="p-desc" style="margin-bottom:10px">${(l1.desc||'').replace(/\n/g,'<br>')}</div>
+      <button class="add-row" onclick="openNodeDetail('${S.process}','root')">
+        🔍 查看详情 · 关联标准和知识条目
+      </button>`;
+  } else if (children.length) {
+    /* L1 with children → sub-node grid */
+    const grid = document.createElement('div');
+    grid.className = 'sub-grid';
+    grid.id = `grid_${l1.id}`;
+    children.forEach(c => grid.appendChild(makeSubNode(c, color)));
+    body.appendChild(grid);
+  } else {
+    /* L1 with no l2 (leaf branch) */
+    body.innerHTML = `
+      <div class="p-desc" style="margin-bottom:10px">${(l1.desc||'').replace(/\n/g,'<br>')}</div>
+      <button class="add-row" onclick="openNodeDetail('${S.process}','${l1.id}')">
+        🔍 查看详情
+      </button>`;
+  }
+
+  hd.addEventListener('click', () => toggleBranch(l1.id));
+  div.appendChild(hd);
+  div.appendChild(body);
+  return div;
+}
+
+function makeSubNode(node, parentColor) {
+  const color = node.color || parentColor;
+  const div = document.createElement('div');
+  div.className = 'sub-node';
+  div.id = `sub_${node.id}`;
+  div.setAttribute('data-text', [node.label, ...(node.tags||[]), ...(node.params||[]).map(p=>p.label)].join(' ').toLowerCase());
+
+  const paramsHtml = (node.params||[]).slice(0,3).map(p =>
+    `<span class="sub-param">${p.label}: ${p.value} ${p.unit}</span>`).join('');
+
+  const tagsHtml = (node.tags||[]).slice(0,3).map(t =>
+    `<span class="sub-tag" style="background:${color}18;color:${color}">#${t}</span>`).join('');
+
+  div.innerHTML = `
+    <div class="sub-title" style="color:${color}">${node.label}</div>
+    <div class="sub-desc">${node.desc || ''}</div>
+    <div class="sub-tags">${tagsHtml}</div>
+    ${paramsHtml ? `<div class="sub-params">${paramsHtml}</div>` : ''}
+  `;
+
+  div.addEventListener('click', () => openNodeDetail(S.process, node.id));
+  return div;
+}
+
+/* ══════════════════════════════════════════════
+   TOGGLE BRANCH
+══════════════════════════════════════════════ */
+function toggleBranch(id, forceOpen) {
+  const body = document.getElementById(`body_${id}`);
+  const arr  = document.getElementById(`arr_${id}`);
+  const hd   = document.querySelector(`#branch_${id} .branch-hd`);
+  if (!body) return;
+  const open = forceOpen !== undefined ? forceOpen : !body.classList.contains('open');
+  body.classList.toggle('open', open);
+  arr?.classList.toggle('open', open);
+  hd?.classList.toggle('open', open);
+}
+
+function toggleAll(open) {
+  document.querySelectorAll('.branch').forEach(b => {
+    const id = b.id.replace('branch_','');
+    toggleBranch(id, open);
+  });
+}
+
+/* ══════════════════════════════════════════════
+   OPEN NODE DETAIL (right panel)
+══════════════════════════════════════════════ */
+function openNodeDetail(process, nodeId) {
+  /* Highlight selected sub-node */
+  document.querySelectorAll('.sub-node').forEach(el => el.classList.remove('active'));
+  document.getElementById(`sub_${nodeId}`)?.classList.add('active');
+
+  /* Show panel with spinner */
+  S.activeNode = { id: nodeId, process };
+  document.getElementById('panelTitle').textContent = '加载中…';
+  document.getElementById('panelBadge').textContent = '';
+  document.getElementById('panelBody').innerHTML = '<div class="spinner-wrap"><div class="spinner"></div></div>';
+  document.getElementById('kbPanel').classList.add('open');
+
+  fetch(`/knowledge/api/node/${process}/${nodeId}`)
+    .then(r => r.json())
+    .then(data => renderPanel(data.node, data.db_stds||[], data.db_links||[]))
+    .catch(() => {
+      document.getElementById('panelBody').innerHTML =
+        '<p style="padding:20px;font-size:13px;color:var(--c-muted)">加载失败，请重试</p>';
+    });
+}
+
+/* ══════════════════════════════════════════════
+   RENDER PANEL
+══════════════════════════════════════════════ */
+function renderPanel(node, dbStds, dbLinks) {
+  if (!node) return;
+  const c  = node.color || '#2563eb';
+  const proc  = S.activeNode.process;
+  const nid   = node.id;
+  const notes = loadNotes(proc, nid);
+
+  /* Header */
+  document.getElementById('panelBar').style.background = c;
+  document.getElementById('panelTitle').textContent = node.label || '–';
+  const badge = document.getElementById('panelBadge');
+  badge.textContent = { root:'工艺总览', l1:'主分支', l2:'知识节点' }[node.type] || '';
+  badge.style.background = c + '18';
+  badge.style.color = c;
+
+  /* Body */
+  const body = document.getElementById('panelBody');
+  let html = '';
+
+  /* Description */
+  if (node.desc) {
+    html += `<div class="p-section">
+      <div class="p-label">📖 说明</div>
+      <div class="p-desc">${escHtml(node.desc).replace(/\n/g,'<br>')}</div>
+    </div>`;
+  }
+
+  /* Key params */
+  if (node.params?.length) {
+    html += `<div class="p-section">
+      <div class="p-label">📐 关键参数</div>
+      <div class="param-grid">
+        ${node.params.map(p=>`
+          <div class="param-card">
+            <div class="param-lbl">${p.label}</div>
+            <div class="param-val">${p.value} <span class="param-unit">${p.unit||''}</span></div>
+          </div>`).join('')}
+      </div>
+    </div>`;
+  }
+
+  /* Tags */
+  if (node.tags?.length) {
+    html += `<div class="p-section">
+      <div class="p-label">🏷️ 关键词</div>
+      <div class="tag-wrap">
+        ${node.tags.map(t=>`<span class="tag-chip" style="background:${c}15;color:${c}">#${t}</span>`).join('')}
+      </div>
+    </div>`;
+  }
+
+  /* Standards */
+  const builtinStds = node.stds || [];
+  html += `<div class="p-section" id="panelStdSection">
+    <div class="p-label">📋 关联标准 / 文件</div>
+    ${builtinStds.map(s=>`
+      <div class="std-row">
+        <div class="std-icon">📄</div>
+        <div class="std-text">
+          <strong>${escHtml(s)}</strong>
+          <span>推荐参考标准</span>
+        </div>
+      </div>`).join('')}
+    ${dbStds.map(s=>`
+      <div class="std-row">
+        <div class="std-icon">${s.file_id ? '📁' : '📋'}</div>
+        <div class="std-text">
+          <strong>${escHtml(s.std_code || s.file_title || '–')}</strong>
+          <span>${escHtml(s.std_name || s.std_type || (s.file_id?'文件库':'') || '')}</span>
+        </div>
+        ${s.std_link ? `<a class="std-ext" href="${s.std_link}" target="_blank" onclick="event.stopPropagation()">🔗</a>` : ''}
+        <button class="del-btn" onclick="deleteStd(${s.id},'${proc}','${nid}')" title="取消关联">✕</button>
+      </div>`).join('')}
+    <button class="add-row" onclick="openStdModal('${proc}','${nid}')">
+      ＋ 关联标准或文件
+    </button>
+  </div>`;
+
+  /* Knowledge links */
+  html += `<div class="p-section" id="panelKiSection">
+    <div class="p-label">📝 关联知识条目</div>
+    ${dbLinks.length ? dbLinks.map(lk=>`
+      <div class="ki-row" onclick="window.open('/knowledge/item/${lk.knowledge_id}','_blank')">
+        <div class="ki-icon">📝</div>
+        <div class="std-text">
+          <strong>${escHtml(lk.knowledge_title||'–')}</strong>
+          <span>${escHtml(lk.knowledge_process||'')}</span>
+        </div>
+        <button class="del-btn" onclick="event.stopPropagation();deleteKiLink(${lk.id},'${proc}','${nid}')" title="取消关联">✕</button>
+      </div>`).join('') : '<p style="font-size:12px;color:var(--c-hint);margin-bottom:6px">暂无关联知识条目</p>'}
+    <button class="add-row" onclick="openKiModal('${proc}','${nid}')">
+      ＋ 关联已有知识条目
+    </button>
+    <a href="/knowledge/quick-add?bind_process=${proc}&bind_node_id=${nid}" target="_blank" style="display:block;margin-top:4px">
+      <button class="add-row">
+        ＋ 新建并关联知识条目
+      </button>
+    </a>
+  </div>`;
+
+  /* Experience notes */
+  html += `<div class="p-section">
+    <div class="p-label" style="justify-content:space-between">
+      <span>✏️ 经验笔记</span>
+      <button class="add-row" style="width:auto;padding:3px 9px;font-size:11px;margin-top:0"
+              onclick="showNoteInput('${proc}','${nid}')">添加</button>
+    </div>
+    <div id="notesList_${nid}">
+      ${notes.map((n,i)=>`
+        <div class="saved-note" id="note_${nid}_${i}">
+          <time class="note-time">${n.time}</time>
+          <div class="note-text">${escHtml(n.text)}</div>
+          <button class="note-del" onclick="deleteNote('${proc}','${nid}',${i})">✕</button>
+        </div>`).join('')}
+      ${!notes.length ? '<p style="font-size:12px;color:var(--c-hint)">暂无经验笔记，点击「添加」记录</p>' : ''}
+    </div>
+    <div class="note-input-area ${S.noteMode ? 'show' : ''}" id="noteInput_${nid}">
+      <textarea class="note-textarea" id="noteTa_${nid}"
+                placeholder="记录施工经验、注意事项、改进建议…"></textarea>
+      <div class="note-actions">
+        <button class="note-cancel" onclick="hideNoteInput('${nid}')">取消</button>
+        <button class="note-save" onclick="saveNote('${proc}','${nid}')">保存</button>
+      </div>
+    </div>
+  </div>`;
+
+  body.innerHTML = html;
+}
+
+/* ══════════════════════════════════════════════
+   PANEL HELPERS
+══════════════════════════════════════════════ */
+function closePanel() {
+  document.getElementById('kbPanel').classList.remove('open');
+  document.querySelectorAll('.sub-node').forEach(el => el.classList.remove('active'));
+  S.activeNode = null;
+}
+
+/* ══════════════════════════════════════════════
+   NOTES (localStorage)
+══════════════════════════════════════════════ */
+function showNoteInput(proc, nid) {
+  document.getElementById(`noteInput_${nid}`)?.classList.add('show');
+  document.getElementById(`noteTa_${nid}`)?.focus();
+}
+function hideNoteInput(nid) {
+  document.getElementById(`noteInput_${nid}`)?.classList.remove('show');
+  if (document.getElementById(`noteTa_${nid}`))
+    document.getElementById(`noteTa_${nid}`).value = '';
+}
+
+function saveNote(proc, nid) {
+  const ta = document.getElementById(`noteTa_${nid}`);
+  const txt = ta?.value.trim();
+  if (!txt) return;
+  const notes = loadNotes(proc, nid);
+  const now = new Date();
+  const time = `${now.getFullYear()}-${pad(now.getMonth()+1)}-${pad(now.getDate())} ${pad(now.getHours())}:${pad(now.getMinutes())}`;
+  notes.push({ time, text: txt });
+  saveNotes(proc, nid, notes);
+  ta.value = '';
+  hideNoteInput(nid);
+  refreshNotesList(proc, nid, notes);
+}
+
+function deleteNote(proc, nid, idx) {
+  if (!confirm('确认删除这条笔记？')) return;
+  const notes = loadNotes(proc, nid);
+  notes.splice(idx, 1);
+  saveNotes(proc, nid, notes);
+  refreshNotesList(proc, nid, notes);
+}
+
+function refreshNotesList(proc, nid, notes) {
+  const el = document.getElementById(`notesList_${nid}`);
+  if (!el) return;
+  el.innerHTML = notes.map((n,i)=>`
+    <div class="saved-note">
+      <time class="note-time">${n.time}</time>
+      <div class="note-text">${escHtml(n.text)}</div>
+      <button class="note-del" onclick="deleteNote('${proc}','${nid}',${i})">✕</button>
+    </div>`).join('') ||
+    '<p style="font-size:12px;color:var(--c-hint)">暂无经验笔记，点击「添加」记录</p>';
+}
+
+/* ══════════════════════════════════════════════
+   NOTE MODE (global toggle)
+══════════════════════════════════════════════ */
+function toggleNoteMode() {
+  S.noteMode = !S.noteMode;
+  const btn = document.getElementById('noteToggleBtn');
+  btn.classList.toggle('note-active', S.noteMode);
+  btn.textContent = S.noteMode ? '✏️ 记录中…' : '✏️ 记录经验';
+  /* If panel is open, auto-show note input */
+  if (S.noteMode && S.activeNode) {
+    showNoteInput(S.activeNode.process, S.activeNode.id);
+  }
+}
+
+/* ══════════════════════════════════════════════
+   SEARCH (filter sub-nodes)
+══════════════════════════════════════════════ */
+function doSearch(q) {
+  q = q.trim().toLowerCase();
+  const subNodes = document.querySelectorAll('.sub-node');
+  let anyMatch = !q;
+
+  subNodes.forEach(el => {
+    const text = el.getAttribute('data-text') || el.textContent.toLowerCase();
+    const match = !q || text.includes(q);
+    el.classList.toggle('hidden', !match);
+    if (match && q) {
+      anyMatch = true;
+      /* Auto-expand parent branch */
+      const grid = el.closest('[id^="grid_"]');
+      if (grid) {
+        const l1id = grid.id.replace('grid_', '');
+        toggleBranch(l1id, true);
+      }
+    }
+  });
+}
+
+/* ══════════════════════════════════════════════
+   STD MODAL
+══════════════════════════════════════════════ */
+function openStdModal(proc, nid) {
+  S._pendingStdProcess = proc;
+  S._pendingStdNode    = nid;
+  S.selectedFileId     = null;
+  ['stdCode','stdName','stdLink','stdRemark'].forEach(id => {
+    const el = document.getElementById(id);
+    if (el) el.value = '';
+  });
+  document.getElementById('stdType').value = '';
+  document.getElementById('fileSearch').value = '';
+  document.getElementById('fileList').innerHTML =
+    '<p style="font-size:12px;color:var(--c-hint);text-align:center;padding:20px;">输入关键字搜索文件</p>';
+  switchStdTab('custom');
+  document.getElementById('modalStd').classList.add('show');
+}
+
+function switchStdTab(tab) {
+  S.stdTab = tab;
+  document.getElementById('panelCustom').classList.toggle('hidden', tab !== 'custom');
+  document.getElementById('panelFile').classList.toggle('hidden',   tab !== 'file');
+  document.getElementById('tabCustom').classList.toggle('active', tab === 'custom');
+  document.getElementById('tabFile').classList.toggle('active',   tab === 'file');
+}
+
+function searchFiles(q) {
+  if (!q) return;
+  fetch(`/knowledge/api/files/search?q=${encodeURIComponent(q)}&process=${S._pendingStdProcess}`)
+    .then(r => r.json())
+    .then(files => {
+      const el = document.getElementById('fileList');
+      el.innerHTML = files.length
+        ? files.map(f=>`
+          <div class="file-item ${S.selectedFileId===f.id?'selected':''}" id="fi_${f.id}" onclick="selectFile(${f.id})">
+            <span>📁</span>
+            <div>
+              <div style="font-size:12px;font-weight:600">${escHtml(f.title)}</div>
+              <div style="font-size:11px;color:var(--c-hint)">${f.category} ${f.version||''}</div>
+            </div>
+          </div>`).join('')
+        : '<p style="font-size:12px;color:var(--c-hint);text-align:center;padding:16px;">无匹配结果</p>';
+    });
+}
+function selectFile(id) {
+  S.selectedFileId = id;
+  document.querySelectorAll('.file-item').forEach(el => el.classList.remove('selected'));
+  document.getElementById('fi_'+id)?.classList.add('selected');
+}
+
+function submitStd() {
+  const btn = document.getElementById('btnSubmitStd');
+  btn.disabled = true; btn.textContent = '提交中…';
+  const body = S.stdTab === 'custom'
+    ? { process: S._pendingStdProcess, node_id: S._pendingStdNode,
+        std_code: document.getElementById('stdCode').value.trim(),
+        std_name: document.getElementById('stdName').value.trim(),
+        std_type: document.getElementById('stdType').value,
+        std_link: document.getElementById('stdLink').value.trim(),
+        remark:   document.getElementById('stdRemark').value.trim() }
+    : { process: S._pendingStdProcess, node_id: S._pendingStdNode,
+        file_id: S.selectedFileId };
+
+  fetch('/knowledge/api/node-standard', {
+    method:'POST', headers:{'Content-Type':'application/json'}, body: JSON.stringify(body)
+  }).then(r=>r.json()).then(d => {
+    if (d.error) { alert('❌ '+d.error); }
+    else { closeModal('modalStd'); openNodeDetail(S._pendingStdProcess, S._pendingStdNode); }
+  }).catch(() => alert('提交失败，请重试'))
+    .finally(() => { btn.disabled=false; btn.textContent='确认关联'; });
+}
+
+function deleteStd(id, proc, nid) {
+  if (!confirm('确认取消关联此标准？')) return;
+  fetch(`/knowledge/api/node-standard/${id}`, { method:'DELETE' })
+    .then(() => openNodeDetail(proc, nid));
+}
+
+/* ══════════════════════════════════════════════
+   KI MODAL
+══════════════════════════════════════════════ */
+function openKiModal(proc, nid) {
+  S._pendingKiProcess = proc;
+  S._pendingKiNode    = nid;
+  S.selectedKiId      = null;
+  document.getElementById('kiSearch').value = '';
+  document.getElementById('kiList').innerHTML =
+    '<p style="font-size:12px;color:var(--c-hint);text-align:center;padding:20px;">输入关键字搜索</p>';
+  document.getElementById('modalKi').classList.add('show');
+}
+
+function searchKi(q) {
+  if (!q) return;
+  fetch(`/knowledge/api/knowledge/search?q=${encodeURIComponent(q)}&process=${S._pendingKiProcess}`)
+    .then(r => r.json())
+    .then(items => {
+      const el = document.getElementById('kiList');
+      el.innerHTML = items.length
+        ? items.map(i=>`
+          <div class="file-item ${S.selectedKiId===i.id?'selected':''}" id="ki_${i.id}" onclick="selectKi(${i.id})">
+            <span>📝</span>
+            <div>
+              <div style="font-size:12px;font-weight:600">${escHtml(i.title)}</div>
+              <div style="font-size:11px;color:var(--c-hint)">${i.process||''} ${i.case_type||''} ${i.priority==='high'?'⚠ 重要':''}</div>
+            </div>
+          </div>`).join('')
+        : '<p style="font-size:12px;color:var(--c-hint);text-align:center;padding:16px;">无匹配结果</p>';
+    });
+}
+function selectKi(id) {
+  S.selectedKiId = id;
+  document.querySelectorAll('#kiList .file-item').forEach(el => el.classList.remove('selected'));
+  document.getElementById('ki_'+id)?.classList.add('selected');
+}
+
+function submitKi() {
+  if (!S.selectedKiId) { alert('请先选择一条知识条目'); return; }
+  const btn = document.getElementById('btnSubmitKi');
+  btn.disabled = true; btn.textContent = '提交中…';
+  fetch('/knowledge/api/node-knowledge', {
+    method:'POST', headers:{'Content-Type':'application/json'},
+    body: JSON.stringify({ process:S._pendingKiProcess, node_id:S._pendingKiNode, knowledge_id:S.selectedKiId })
+  }).then(r=>r.json()).then(d => {
+    if (d.error) { alert('❌ '+d.error); }
+    else { closeModal('modalKi'); openNodeDetail(S._pendingKiProcess, S._pendingKiNode); }
+  }).catch(() => alert('提交失败，请重试'))
+    .finally(() => { btn.disabled=false; btn.textContent='确认关联'; });
+}
+
+function deleteKiLink(id, proc, nid) {
+  if (!confirm('确认取消关联此知识条目？')) return;
+  fetch(`/knowledge/api/node-knowledge/${id}`, { method:'DELETE' })
+    .then(() => openNodeDetail(proc, nid));
+}
+
+/* ══════════════════════════════════════════════
+   UTILITIES
+══════════════════════════════════════════════ */
+function closeModal(id) { document.getElementById(id).classList.remove('show'); }
+function pad(n) { return String(n).padStart(2,'0'); }
+function escHtml(s) {
+  if (!s) return '';
+  return String(s).replace(/&/g,'&amp;').replace(/</g,'&lt;').replace(/>/g,'&gt;').replace(/"/g,'&quot;');
+}
+
+/* Close modal on backdrop click */
+document.querySelectorAll('.modal-backdrop').forEach(el => {
+  el.addEventListener('click', e => { if (e.target === el) el.classList.remove('show'); });
+});
+</script>
 
 {% endblock %}

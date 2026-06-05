@@ -1,0 +1,154 @@
+{% extends "layout/base.html" %}
+{% block title %}控制计划列表{% endblock %}
+
+{% block content %}
+<div class="space-y-6">
+
+  <!-- ── Header ── -->
+  <div class="flex items-center justify-between">
+    <div>
+      <h1 class="text-2xl font-bold text-gray-900">Control Plans</h1>
+      <p class="text-sm text-gray-400 mt-1">供应商生产工序 & 控制特性记录</p>
+    </div>
+    <div class="flex gap-2">
+      <a href="{{ url_for('cp.compare') }}"
+         class="flex items-center gap-2 px-4 py-2 text-sm font-medium text-blue-600 bg-blue-50 rounded-xl hover:bg-blue-100">
+        <svg class="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24" stroke-width="2">
+          <path stroke-linecap="round" stroke-linejoin="round" d="M9 19v-6a2 2 0 00-2-2H5a2 2 0 00-2 2v6a2 2 0 002 2h2a2 2 0 002-2zm0 0V9a2 2 0 012-2h2a2 2 0 012 2v10m-6 0a2 2 0 002 2h2a2 2 0 002-2m0 0V5a2 2 0 012-2h2a2 2 0 012 2v14a2 2 0 01-2 2h-2a2 2 0 01-2-2z"/>
+        </svg>
+        跨供应商对比
+      </a>
+      <a href="{{ url_for('cp.new') }}"
+         class="flex items-center gap-2 px-4 py-2 text-sm font-semibold text-white bg-gray-900 rounded-xl hover:bg-gray-700 transition-colors">
+        <svg class="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24" stroke-width="2">
+          <path stroke-linecap="round" stroke-linejoin="round" d="M12 4v16m8-8H4"/>
+        </svg>
+        新建 CP
+      </a>
+    </div>
+  </div>
+
+  <!-- ── 筛选栏 ── -->
+  <form method="GET" class="bg-white rounded-2xl border border-gray-200 px-5 py-4 flex flex-wrap gap-3 items-end">
+    <div class="flex-1 min-w-40">
+      <label class="block text-xs font-semibold text-gray-400 mb-1">搜索</label>
+      <input type="text" name="q" value="{{ q }}" placeholder="零件号 / 描述 / 供应商"
+             class="w-full rounded-xl border border-gray-200 px-3 py-2 text-sm focus:outline-none focus:ring-2 focus:ring-gray-900">
+    </div>
+    <div class="w-40">
+      <label class="block text-xs font-semibold text-gray-400 mb-1">工艺类型</label>
+      <select name="process_type"
+              class="w-full rounded-xl border border-gray-200 px-3 py-2 text-sm focus:outline-none focus:ring-2 focus:ring-gray-900">
+        <option value="">全部</option>
+        {% for val, label in process_types %}
+        <option value="{{ val }}" {{ 'selected' if selected_type == val }}>{{ label }}</option>
+        {% endfor %}
+      </select>
+    </div>
+    <div class="w-48">
+      <label class="block text-xs font-semibold text-gray-400 mb-1">供应商</label>
+      <select name="supplier_id"
+              class="w-full rounded-xl border border-gray-200 px-3 py-2 text-sm focus:outline-none focus:ring-2 focus:ring-gray-900">
+        <option value="">全部供应商</option>
+        {% for s in suppliers %}
+        <option value="{{ s.id }}" {{ 'selected' if selected_supplier == s.id|string }}>{{ s.code }} · {{ s.name }}</option>
+        {% endfor %}
+      </select>
+    </div>
+    <button type="submit"
+            class="px-5 py-2 text-sm font-semibold text-white bg-gray-900 rounded-xl hover:bg-gray-700 transition-colors">
+      筛选
+    </button>
+    {% if q or selected_type or selected_supplier %}
+    <a href="{{ url_for('cp.index') }}"
+       class="px-4 py-2 text-sm text-gray-400 hover:text-gray-600 rounded-xl hover:bg-gray-100 transition-colors">
+      清除
+    </a>
+    {% endif %}
+  </form>
+
+  <!-- ── CP 列表 ── -->
+  {% if cps %}
+  {% for item_cp in cps %}
+    <div class="group bg-white rounded-2xl border border-gray-200 p-5 hover:border-gray-400 hover:shadow-md transition-all">
+
+      <!-- 顶部：编号 + 状态 -->
+      <div class="flex items-start justify-between mb-3">
+        <div>
+          <p class="text-xs font-mono text-gray-400">{{ item_cp.cp_no }}</p>
+          <p class="text-sm font-bold text-gray-800 mt-0.5 group-hover:text-gray-900">
+            {{ item_cp.part.pn }}
+          </p>
+          <p class="text-xs text-gray-500 truncate max-w-48">{{ item_cp.part.description or '' }}</p>
+        </div>
+        <span class="px-2 py-0.5 text-[11px] font-semibold rounded-full flex-shrink-0
+          {{ 'bg-green-100 text-green-700' if item_cp.status == 'active' else
+             'bg-yellow-100 text-yellow-700' if item_cp.status == 'draft' else
+             'bg-gray-100 text-gray-400' }}">
+          {{ item_cp.status }}
+        </span>
+      </div>
+
+      <!-- 供应商 -->
+      <div class="flex items-center gap-2 mb-3">
+        <div class="w-6 h-6 rounded-lg bg-gray-100 flex items-center justify-center flex-shrink-0">
+          <svg class="w-3.5 h-3.5 text-gray-400" fill="none" stroke="currentColor" viewBox="0 0 24 24" stroke-width="2">
+            <path stroke-linecap="round" stroke-linejoin="round" d="M19 21V5a2 2 0 00-2-2H7a2 2 0 00-2 2v16m14 0h2m-2 0h-5m-9 0H3m2 0h5M9 7h1m-1 4h1m4-4h1m-1 4h1m-5 10v-5a1 1 0 011-1h2a1 1 0 011 1v5m-4 0h4"/>
+          </svg>
+        </div>
+        <span class="text-xs text-gray-600 font-medium truncate">{{ item_cp.supplier.name }}</span>
+        <span class="text-xs text-gray-400 flex-shrink-0">{{ item_cp.supplier.code }}</span>
+      </div>
+
+      <!-- 工艺 + 统计 -->
+      <div class="flex items-center gap-2 flex-wrap">
+        {% if item_cp.process_type %}
+        <span class="px-2 py-0.5 bg-blue-50 text-blue-600 text-[11px] font-medium rounded-md">
+          {{ item_cp.process_type }}
+        </span>
+        {% endif %}
+        <span class="text-[11px] text-gray-400">{{ item_cp.total_steps() }} 道工序</span>
+        {% if item_cp.key_steps() > 0 %}
+        <span class="text-[11px] text-orange-500 font-medium">{{ item_cp.key_steps() }} 关键</span>
+        {% endif %}
+        {% if item_cp.audit_date %}
+        <span class="text-[11px] text-gray-400 ml-auto">{{ item_cp.audit_date.strftime('%Y-%m-%d') }}</span>
+        {% endif %}
+      </div>
+
+    </div>
+
+      <!-- 操作栏 -->
+      <div class="flex items-center justify-between mt-3 pt-3 border-t border-gray-100">
+        <a href="{{ url_for('cp.detail', cp_id=item_cp.id) }}"
+           class="text-xs text-gray-500 hover:text-gray-900 font-medium">查看详情 →</a>
+        <div class="flex gap-2">
+          <a href="{{ url_for('cp.edit', cp_id=item_cp.id) }}"
+             class="text-xs px-2.5 py-1 bg-gray-100 text-gray-600 rounded-lg hover:bg-gray-200">编辑</a>
+          <form method="POST" action="{{ url_for('cp.delete', cp_id=item_cp.id) }}"
+                onsubmit="return confirm('确认删除？此操作不可恢复。')">
+            <button type="submit"
+                    class="text-xs px-2.5 py-1 bg-red-50 text-red-500 rounded-lg hover:bg-red-100">删除</button>
+          </form>
+        </div>
+      </div>
+
+    </div>
+    {% endfor %}
+  </div>
+
+  {% else %}
+  <div class="bg-white rounded-2xl border border-gray-100 py-20 text-center">
+    <svg class="w-10 h-10 mx-auto text-gray-200 mb-3" fill="none" stroke="currentColor" viewBox="0 0 24 24" stroke-width="1.5">
+      <path stroke-linecap="round" stroke-linejoin="round" d="M9 12h6m-6 4h6m2 5H7a2 2 0 01-2-2V5a2 2 0 012-2h5.586a1 1 0 01.707.293l5.414 5.414a1 1 0 01.293.707V19a2 2 0 01-2 2z"/>
+    </svg>
+    <p class="text-sm text-gray-400 mb-4">暂无控制计划记录</p>
+    <a href="{{ url_for('cp.new') }}"
+       class="inline-flex items-center gap-2 px-5 py-2.5 text-sm font-semibold text-white bg-gray-900 rounded-xl hover:bg-gray-700 transition-colors">
+      新建第一份 CP
+    </a>
+  </div>
+  {% endif %}
+
+</div>
+{% endblock %}

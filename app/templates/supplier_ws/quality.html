@@ -1,0 +1,64 @@
+{% extends "supplier_ws/_supplier_layout.html" %}
+
+{% block supplier_content %}
+<div class="bg-white rounded-2xl border border-gray-100 shadow-sm overflow-hidden">
+  <div class="px-6 py-4 border-b border-gray-100 flex items-center justify-between">
+    <h2 class="text-lg font-bold text-gray-900">质量问题 ({{ trs|length }})</h2>
+    <a href="{{ url_for('tr.new_tr') }}" class="text-sm text-blue-600 font-semibold hover:text-blue-700">+ 新建 TR</a>
+  </div>
+
+  {% if trs %}
+  <div class="overflow-x-auto">
+    <table class="w-full">
+      <thead>
+        <tr class="border-b border-gray-100">
+          <th class="px-5 py-3 text-left text-[11px] font-bold text-gray-400 uppercase">TR No.</th>
+          <th class="px-4 py-3 text-left text-[11px] font-bold text-gray-400 uppercase">Part No.</th>
+          <th class="px-4 py-3 text-left text-[11px] font-bold text-gray-400 uppercase">Part Name</th>
+          <th class="px-4 py-3 text-left text-[11px] font-bold text-gray-400 uppercase">Issue</th>
+          <th class="px-3 py-3 text-center text-[11px] font-bold text-gray-400 uppercase">8D</th>
+          <th class="px-3 py-3 text-center text-[11px] font-bold text-gray-400 uppercase">Status</th>
+          <th class="px-3 py-3 text-center text-[11px] font-bold text-gray-400 uppercase">Debit</th>
+          <th class="px-3 py-3 text-center text-[11px] font-bold text-gray-400 uppercase">Date</th>
+          <th class="px-3 py-3 text-center text-[11px] font-bold text-gray-400 uppercase"></th>
+        </tr>
+      </thead>
+      <tbody class="divide-y divide-gray-50">
+        {% for tr in trs %}
+        <tr class="hover:bg-gray-50 transition">
+          <td class="px-5 py-3"><span class="font-mono font-bold text-xs px-2 py-1 rounded-lg bg-gray-900 text-white">{{ tr.tr_no }}</span></td>
+          <td class="px-4 py-3">
+            {% if tr.part_number %}<span class="font-mono text-xs px-2 py-1 rounded bg-blue-50 text-blue-700">{{ tr.part_number }}</span>{% else %}<span class="text-gray-300">—</span>{% endif %}
+          </td>
+          <td class="px-4 py-3 text-sm text-gray-600"><div class="truncate max-w-[160px]" title="{{ tr.part_name or '' }}">{{ tr.part_name or '—' }}</div></td>
+          <td class="px-4 py-3"><div class="text-xs text-gray-500 truncate max-w-[240px]" title="{{ tr.issue_description or '' }}">{{ tr.issue_description or '—' }}</div></td>
+          <td class="px-3 py-3 text-center">
+            {% set d8 = (tr.eight_d_status or 'NOT_REQUIRED')|upper %}
+            {% if d8 == 'NOT_REQUIRED' %}<span class="w-3 h-3 rounded-full bg-gray-200 inline-block"></span>
+            {% elif d8 == 'NOT_RECEIVED' %}<span class="w-3 h-3 rounded-full bg-yellow-400 inline-block" style="animation:pulse 2s infinite"></span>
+            {% elif d8 == 'RECEIVED_REJECT' %}<span class="w-3 h-3 rounded-full bg-red-500 inline-block"></span>
+            {% elif d8 == 'RECEIVED_PASS' %}<span class="w-3 h-3 rounded-full bg-green-500 inline-block"></span>{% endif %}
+          </td>
+          <td class="px-3 py-3 text-center">
+            {% set st = (tr.status or '')|lower %}
+            {% if st in ['closed','done','completed'] %}<span class="text-[10px] font-bold px-2 py-0.5 rounded bg-green-100 text-green-700">Closed</span>
+            {% elif st in ['in progress'] %}<span class="text-[10px] font-bold px-2 py-0.5 rounded bg-blue-100 text-blue-700">WIP</span>
+            {% else %}<span class="text-[10px] font-bold px-2 py-0.5 rounded bg-orange-100 text-orange-700">Open</span>{% endif %}
+          </td>
+          <td class="px-3 py-3 text-center">
+            {% if tr.debit_amount %}<span class="text-[10px] font-bold px-2 py-0.5 rounded bg-emerald-50 text-emerald-700 border border-emerald-200">€{{ '{:,.0f}'.format(tr.debit_amount) }}</span>{% else %}<span class="text-gray-300">—</span>{% endif %}
+          </td>
+          <td class="px-3 py-3 text-center text-xs text-gray-400">{{ tr.created_at.strftime('%m/%d') if tr.created_at else '' }}</td>
+          <td class="px-3 py-3 text-center">
+            <a href="{{ url_for('tr.edit_tr', tr_id=tr.id) }}" class="text-blue-500 hover:text-blue-700 text-xs font-semibold">编辑 →</a>
+          </td>
+        </tr>
+        {% endfor %}
+      </tbody>
+    </table>
+  </div>
+  {% else %}
+  <div class="py-16 text-center"><p class="text-gray-400 text-sm">该供应商暂无质量问题记录</p></div>
+  {% endif %}
+</div>
+{% endblock %}

@@ -1,17 +1,262 @@
-{% extends "supplier_ws/base.html" %}
-{% set active = "overview" %}
-{% block supplier_content %}
+{% extends "supplier_ws/_supplier_layout.html" %}
 
-<div class="bg-white rounded-2xl border border-slate-100 shadow-sm p-5">
-  <div class="font-semibold text-slate-900 mb-2">概览</div>
-  <div class="text-sm text-slate-600">
-    这里先放占位：以后你可以展示：
-    <ul class="list-disc pl-5 mt-2 space-y-1">
-      <li>最近上传的图纸/控制计划</li>
-      <li>未关闭的 Follow-up Issues</li>
-      <li>供应商 KPI 快照</li>
-    </ul>
+{% block supplier_content %}
+<script src="https://cdnjs.cloudflare.com/ajax/libs/Chart.js/4.4.1/chart.umd.min.js"></script>
+
+<style>
+  .kpi-card{transition:all .2s ease;} .kpi-card:hover{transform:translateY(-2px);box-shadow:0 8px 20px rgba(0,0,0,.06);}
+  .chart-card{transition:all .2s ease;} .chart-card:hover{box-shadow:0 4px 16px rgba(0,0,0,.06);}
+</style>
+
+<!-- KPI Cards -->
+<div class="grid grid-cols-2 lg:grid-cols-4 gap-4 mb-6">
+
+  <!-- 🚨 质量问题 -->
+  <div class="kpi-card bg-white rounded-2xl p-5 border border-gray-100 shadow-sm">
+    <div class="flex items-center gap-3 mb-3">
+      <div class="w-10 h-10 rounded-xl bg-red-50 flex items-center justify-center">
+        <svg class="w-5 h-5 text-red-500" fill="none" stroke="currentColor" viewBox="0 0 24 24" stroke-width="2"><path stroke-linecap="round" stroke-linejoin="round" d="M12 9v2m0 4h.01m-6.938 4h13.856c1.54 0 2.502-1.667 1.732-3L13.732 4c-.77-1.333-2.694-1.333-3.464 0L3.34 16c-.77 1.333.192 3 1.732 3z"/></svg>
+      </div>
+      <div class="text-xs text-gray-400 font-medium uppercase tracking-wider">质量问题</div>
+    </div>
+    <div class="flex items-end gap-2">
+      <span class="text-3xl font-bold text-gray-900">{{ total_trs }}</span>
+      {% if open_trs > 0 %}
+      <span class="text-sm font-bold text-red-500 mb-1">{{ open_trs }} 进行中</span>
+      {% else %}
+      <span class="text-sm font-medium text-green-500 mb-1">全部关闭</span>
+      {% endif %}
+    </div>
+    <div class="mt-2 flex gap-3 text-xs text-gray-400">
+      <span>🟢 {{ closed_trs }} closed</span>
+      <span>🔴 {{ open_trs }} open</span>
+    </div>
+  </div>
+
+  <!-- ⏳ 8D 待回复 -->
+  <div class="kpi-card bg-white rounded-2xl p-5 border border-gray-100 shadow-sm">
+    <div class="flex items-center gap-3 mb-3">
+      <div class="w-10 h-10 rounded-xl bg-yellow-50 flex items-center justify-center">
+        <svg class="w-5 h-5 text-yellow-500" fill="none" stroke="currentColor" viewBox="0 0 24 24" stroke-width="2"><path stroke-linecap="round" stroke-linejoin="round" d="M12 8v4l3 3m6-3a9 9 0 11-18 0 9 9 0 0118 0z"/></svg>
+      </div>
+      <div class="text-xs text-gray-400 font-medium uppercase tracking-wider">8D 待回复</div>
+    </div>
+    <div class="flex items-end gap-2">
+      <span class="text-3xl font-bold {% if eight_d_pending > 0 %}text-yellow-600{% else %}text-gray-900{% endif %}">{{ eight_d_pending }}</span>
+      {% if eight_d_pending > 3 %}
+      <span class="text-xs font-bold text-red-500 bg-red-50 px-2 py-0.5 rounded mb-1">⚠ 需催促</span>
+      {% elif eight_d_pending == 0 %}
+      <span class="text-sm font-medium text-green-500 mb-1">✓ 无待处理</span>
+      {% endif %}
+    </div>
+  </div>
+
+  <!-- 💰 本年扣款 -->
+  <div class="kpi-card bg-white rounded-2xl p-5 border border-gray-100 shadow-sm">
+    <div class="flex items-center gap-3 mb-3">
+      <div class="w-10 h-10 rounded-xl bg-emerald-50 flex items-center justify-center">
+        <svg class="w-5 h-5 text-emerald-500" fill="none" stroke="currentColor" viewBox="0 0 24 24" stroke-width="2"><path stroke-linecap="round" stroke-linejoin="round" d="M12 8c-1.657 0-3 .895-3 2s1.343 2 3 2 3 .895 3 2-1.343 2-3 2m0-8c1.11 0 2.08.402 2.599 1M12 8V7m0 1v8m0 0v1m0-1c-1.11 0-2.08-.402-2.599-1M21 12a9 9 0 11-18 0 9 9 0 0118 0z"/></svg>
+      </div>
+      <div class="text-xs text-gray-400 font-medium uppercase tracking-wider">本年扣款</div>
+    </div>
+    <div class="flex items-end gap-2">
+      <span class="text-3xl font-bold text-gray-900">€{{ '{:,.0f}'.format(debit_eur) }}</span>
+    </div>
+    <div class="mt-2 text-xs text-gray-400">{{ debit_count }} 笔扣款单</div>
+  </div>
+
+  <!-- 📋 审核 -->
+  <div class="kpi-card bg-white rounded-2xl p-5 border border-gray-100 shadow-sm">
+    <div class="flex items-center gap-3 mb-3">
+      <div class="w-10 h-10 rounded-xl bg-purple-50 flex items-center justify-center">
+        <svg class="w-5 h-5 text-purple-500" fill="none" stroke="currentColor" viewBox="0 0 24 24" stroke-width="2"><path stroke-linecap="round" stroke-linejoin="round" d="M9 5H7a2 2 0 00-2 2v12a2 2 0 002 2h10a2 2 0 002-2V7a2 2 0 00-2-2h-2M9 5a2 2 0 002 2h2a2 2 0 002-2M9 5a2 2 0 012-2h2a2 2 0 012 2"/></svg>
+      </div>
+      <div class="text-xs text-gray-400 font-medium uppercase tracking-wider">审核情况</div>
+    </div>
+    {% if last_audit %}
+    <div class="text-sm font-bold text-gray-900 mb-1">{{ last_audit.audit_date.strftime('%Y-%m-%d') if last_audit.audit_date else '—' }}</div>
+    <div class="text-xs text-gray-400">
+      上次审核
+      {% if open_findings > 0 %} · <span class="text-red-500 font-bold">{{ open_findings }} 项未关闭</span>{% endif %}
+    </div>
+    {% else %}
+    <div class="text-2xl font-bold text-gray-300 mb-1">—</div>
+    <div class="text-xs text-gray-400">暂无审核记录</div>
+    {% endif %}
   </div>
 </div>
 
+<!-- Charts 2×2 Grid -->
+<div class="grid grid-cols-1 lg:grid-cols-2 gap-4 mb-6">
+
+  <!-- 近 12 月 TR 趋势 -->
+  <div class="chart-card bg-white rounded-2xl p-5 border border-gray-100 shadow-sm">
+    <h3 class="text-sm font-bold text-gray-700 mb-4">近 12 个月质量问题趋势</h3>
+    <div style="height:220px;"><canvas id="chartTrend"></canvas></div>
+  </div>
+
+  <!-- 8D 状态分布 -->
+  <div class="chart-card bg-white rounded-2xl p-5 border border-gray-100 shadow-sm">
+    <h3 class="text-sm font-bold text-gray-700 mb-4">8D 报告状态分布</h3>
+    <div style="height:220px;" class="flex items-center justify-center"><canvas id="chart8D"></canvas></div>
+  </div>
+
+  <!-- TOP 5 问题零件 -->
+  <div class="chart-card bg-white rounded-2xl p-5 border border-gray-100 shadow-sm">
+    <h3 class="text-sm font-bold text-gray-700 mb-4">TOP 5 问题零件</h3>
+    <div style="height:220px;"><canvas id="chartParts"></canvas></div>
+  </div>
+
+  <!-- 扣款趋势 -->
+  <div class="chart-card bg-white rounded-2xl p-5 border border-gray-100 shadow-sm">
+    <h3 class="text-sm font-bold text-gray-700 mb-4">近 12 个月扣款趋势 (€)</h3>
+    <div style="height:220px;"><canvas id="chartDebit"></canvas></div>
+  </div>
+</div>
+
+<!-- 快捷统计 + 最近活动 -->
+<div class="grid grid-cols-1 lg:grid-cols-3 gap-4 mb-6">
+
+  <!-- 快捷入口 -->
+  <div class="bg-white rounded-2xl p-5 border border-gray-100 shadow-sm">
+    <h3 class="text-sm font-bold text-gray-700 mb-4">快捷信息</h3>
+    <div class="space-y-3">
+      <div class="flex items-center justify-between py-2 border-b border-gray-50">
+        <span class="text-sm text-gray-600">零件总数</span>
+        <span class="text-sm font-bold text-gray-900">{{ parts_count }}</span>
+      </div>
+      <div class="flex items-center justify-between py-2 border-b border-gray-50">
+        <span class="text-sm text-gray-600">TR 总数</span>
+        <span class="text-sm font-bold text-gray-900">{{ total_trs }}</span>
+      </div>
+      <div class="flex items-center justify-between py-2 border-b border-gray-50">
+        <span class="text-sm text-gray-600">Open TR</span>
+        <span class="text-sm font-bold {% if open_trs > 0 %}text-red-600{% else %}text-green-600{% endif %}">{{ open_trs }}</span>
+      </div>
+      <div class="flex items-center justify-between py-2 border-b border-gray-50">
+        <span class="text-sm text-gray-600">8D 待回复</span>
+        <span class="text-sm font-bold {% if eight_d_pending > 0 %}text-yellow-600{% else %}text-green-600{% endif %}">{{ eight_d_pending }}</span>
+      </div>
+      <div class="flex items-center justify-between py-2">
+        <span class="text-sm text-gray-600">累计扣款</span>
+        <span class="text-sm font-bold text-emerald-700">€{{ '{:,.0f}'.format(debit_eur) }}</span>
+      </div>
+    </div>
+  </div>
+
+  <!-- 最近活动 Timeline -->
+  <div class="lg:col-span-2 bg-white rounded-2xl p-5 border border-gray-100 shadow-sm">
+    <h3 class="text-sm font-bold text-gray-700 mb-4">最近活动</h3>
+    {% if activities %}
+    <div class="space-y-3 max-h-[320px] overflow-y-auto pr-1">
+      {% for act in activities %}
+      <a href="{{ act.url }}" class="flex items-start gap-3 p-3 rounded-xl hover:bg-gray-50 transition-all group">
+        <span class="text-lg flex-shrink-0 mt-0.5">{{ act.icon }}</span>
+        <div class="flex-1 min-w-0">
+          <div class="flex items-center gap-2 mb-0.5">
+            <span class="text-sm font-bold text-gray-900 group-hover:text-blue-600 transition">{{ act.title }}</span>
+            {% set st = (act.status or '')|lower %}
+            {% if st in ['closed','done','completed'] %}
+            <span class="text-[10px] font-bold px-1.5 py-0.5 rounded bg-green-100 text-green-700">Closed</span>
+            {% elif st in ['open'] %}
+            <span class="text-[10px] font-bold px-1.5 py-0.5 rounded bg-orange-100 text-orange-700">Open</span>
+            {% elif st == 'in_progress' %}
+            <span class="text-[10px] font-bold px-1.5 py-0.5 rounded bg-blue-100 text-blue-700">WIP</span>
+            {% endif %}
+          </div>
+          <p class="text-xs text-gray-500 truncate">{{ act.desc }}</p>
+        </div>
+        <span class="text-[11px] text-gray-400 flex-shrink-0 whitespace-nowrap">{{ act.date.strftime('%m/%d') if act.date else '' }}</span>
+      </a>
+      {% endfor %}
+    </div>
+    {% else %}
+    <div class="flex flex-col items-center justify-center py-12 text-center">
+      <div class="text-4xl mb-3 opacity-30">📭</div>
+      <p class="text-sm text-gray-400">暂无活动记录</p>
+    </div>
+    {% endif %}
+  </div>
+</div>
+
+<script>
+(function(){
+  const D = {{ chart_data | safe }};
+  const fontFamily = "'Inter','system-ui',sans-serif";
+  Chart.defaults.font.family = fontFamily;
+  Chart.defaults.font.size = 11;
+  Chart.defaults.color = '#94a3b8';
+
+  // ── TR 趋势 ──
+  new Chart(document.getElementById('chartTrend'),{
+    type:'bar',
+    data:{
+      labels:D.labels,
+      datasets:[
+        {label:'Open',data:D.open,backgroundColor:'#f87171',borderRadius:4,barPercentage:.6},
+        {label:'Closed',data:D.closed,backgroundColor:'#34d399',borderRadius:4,barPercentage:.6},
+      ]
+    },
+    options:{
+      responsive:true,maintainAspectRatio:false,
+      plugins:{legend:{position:'top',labels:{usePointStyle:true,pointStyle:'circle',padding:12,font:{size:11}}}},
+      scales:{x:{stacked:true,grid:{display:false}},y:{stacked:true,beginAtZero:true,ticks:{stepSize:1}}}
+    }
+  });
+
+  // ── 8D 分布 ──
+  const d8=D.eight_d;
+  new Chart(document.getElementById('chart8D'),{
+    type:'doughnut',
+    data:{
+      labels:['不要求','待回复','已拒绝','已通过'],
+      datasets:[{
+        data:[d8.NOT_REQUIRED,d8.NOT_RECEIVED,d8.RECEIVED_REJECT,d8.RECEIVED_PASS],
+        backgroundColor:['#e2e8f0','#fbbf24','#ef4444','#22c55e'],
+        borderWidth:0,
+      }]
+    },
+    options:{
+      responsive:true,maintainAspectRatio:false,cutout:'65%',
+      plugins:{legend:{position:'right',labels:{usePointStyle:true,pointStyle:'circle',padding:10,font:{size:11}}}}
+    }
+  });
+
+  // ── TOP 5 零件 ──
+  if(D.top_parts_labels.length>0){
+    new Chart(document.getElementById('chartParts'),{
+      type:'bar',
+      data:{
+        labels:D.top_parts_labels,
+        datasets:[{label:'问题数',data:D.top_parts_values,backgroundColor:'#818cf8',borderRadius:4,barPercentage:.5}]
+      },
+      options:{
+        indexAxis:'y',responsive:true,maintainAspectRatio:false,
+        plugins:{legend:{display:false}},
+        scales:{x:{beginAtZero:true,ticks:{stepSize:1},grid:{color:'#f1f5f9'}},y:{grid:{display:false},ticks:{font:{family:'monospace',size:11}}}}
+      }
+    });
+  } else {
+    document.getElementById('chartParts').parentElement.innerHTML='<div class="flex items-center justify-center h-full text-gray-300 text-sm">暂无数据</div>';
+  }
+
+  // ── 扣款趋势 ──
+  new Chart(document.getElementById('chartDebit'),{
+    type:'line',
+    data:{
+      labels:D.labels,
+      datasets:[{
+        label:'€',data:D.debit,
+        borderColor:'#10b981',backgroundColor:'rgba(16,185,129,.1)',
+        fill:true,tension:.3,pointRadius:3,pointBackgroundColor:'#10b981',borderWidth:2,
+      }]
+    },
+    options:{
+      responsive:true,maintainAspectRatio:false,
+      plugins:{legend:{display:false}},
+      scales:{x:{grid:{display:false}},y:{beginAtZero:true,ticks:{callback:v=>'€'+v.toLocaleString()}}}
+    }
+  });
+})();
+</script>
 {% endblock %}

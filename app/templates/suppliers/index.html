@@ -2,334 +2,209 @@
 {% block content %}
 
 <style>
-  .stat-card {
-    transition: all 0.3s cubic-bezier(0.4, 0, 0.2, 1);
+  .supplier-card {
+    transition: all .2s cubic-bezier(.4,0,.2,1);
   }
-  .stat-card:hover {
+  .supplier-card:hover {
     transform: translateY(-2px);
-    box-shadow: 0 8px 16px rgba(0, 0, 0, 0.1);
+    box-shadow: 0 10px 30px rgba(0, 0, 0, .08);
+    border-color: #cbd5e1;
   }
-  .table-row {
-    transition: all 0.3s ease;
+  .filter-pill {
+    transition: all .15s ease;
   }
-  .table-row:hover {
-    background: linear-gradient(to right, #f8fafc, #ffffff);
-    box-shadow: 0 2px 8px rgba(0, 0, 0, 0.05);
+  @keyframes pulse-red {
+    0%, 100% { box-shadow: 0 0 0 0 rgba(239, 68, 68, .4); }
+    50%      { box-shadow: 0 0 0 6px rgba(239, 68, 68, 0); }
   }
-  .search-input:focus {
-    box-shadow: 0 0 0 4px rgba(59, 130, 246, 0.1);
-  }
+  .pulse-red { animation: pulse-red 2s ease-in-out infinite; }
 </style>
 
 <div class="max-w-[1400px] mx-auto px-6 py-6">
 
-  <!-- Header Section -->
-  <div class="flex items-center justify-between mb-8">
-    <div>
-      <h1 class="text-4xl font-bold text-gray-900 mb-2 tracking-tight">Suppliers</h1>
-      <p class="text-base text-gray-500">Manage your supplier network</p>
+  <!-- Compact Header -->
+  <div class="flex items-center justify-between mb-6">
+    <div class="flex items-baseline gap-3">
+      <h1 class="text-3xl font-bold text-gray-900 tracking-tight">Suppliers</h1>
+      <span class="text-base font-semibold text-gray-400">{{ stats.total }}</span>
     </div>
-
     <a href="{{ url_for('suppliers.new_supplier') }}"
-       class="inline-flex items-center gap-2 px-6 py-3 rounded-xl
-              bg-blue-500 text-white font-semibold hover:bg-blue-600
-              transition-all hover:scale-105 active:scale-95 shadow-lg shadow-blue-500/30">
-      <svg class="w-5 h-5" fill="none" stroke="currentColor" viewBox="0 0 24 24" stroke-width="2">
+       class="inline-flex items-center gap-2 px-5 py-2.5 rounded-xl bg-gray-900 text-white text-sm font-semibold hover:bg-gray-800 transition-all hover:scale-105 active:scale-95 shadow-lg">
+      <svg class="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24" stroke-width="2.5">
         <path stroke-linecap="round" stroke-linejoin="round" d="M12 4v16m8-8H4"/>
       </svg>
       <span>Add Supplier</span>
     </a>
   </div>
 
-  <!-- Stats Grid -->
-  <div class="grid grid-cols-4 gap-6 mb-8">
-
-    <div class="stat-card bg-white rounded-2xl p-6 border border-gray-200 shadow-sm">
-      <div class="flex items-center justify-between mb-4">
-        <div class="w-12 h-12 rounded-xl bg-blue-50 flex items-center justify-center">
-          <svg class="w-6 h-6 text-blue-500" fill="none" stroke="currentColor" viewBox="0 0 24 24" stroke-width="2">
-            <path stroke-linecap="round" stroke-linejoin="round" d="M19 21V5a2 2 0 00-2-2H7a2 2 0 00-2 2v16m14 0h2m-2 0h-5m-9 0H3m2 0h5M9 7h1m-1 4h1m4-4h1m-1 4h1m-5 10v-5a1 1 0 011-1h2a1 1 0 011 1v5m-4 0h4"/>
+  <!-- Search + Filters -->
+  <div class="bg-white rounded-2xl border border-gray-100 shadow-sm p-4 mb-6">
+    <div class="flex items-center gap-3 mb-3">
+      <form method="get" class="flex-1">
+        <input type="hidden" name="filter" value="{{ filter_mode }}">
+        <input type="hidden" name="sort" value="{{ sort_mode }}">
+        <div class="relative">
+          <input type="text" name="q" value="{{ q or '' }}"
+                 placeholder="搜索 code、英文名或中文名..."
+                 autofocus
+                 class="w-full px-4 py-3 pl-11 rounded-xl bg-gray-50 border border-gray-200 text-sm focus:outline-none focus:border-blue-400 focus:bg-white focus:ring-4 focus:ring-blue-50 transition-all"/>
+          <svg class="absolute left-3.5 top-1/2 -translate-y-1/2 text-gray-400" fill="none" stroke="currentColor" viewBox="0 0 24 24" stroke-width="2" style="width:18px;height:18px;">
+            <path stroke-linecap="round" stroke-linejoin="round" d="M21 21l-6-6m2-5a7 7 0 11-14 0 7 7 0 0114 0z"/>
           </svg>
-        </div>
-      </div>
-      <div class="text-3xl font-bold text-gray-900 mb-1">{{ pagination.total }}</div>
-      <div class="text-sm text-gray-500 font-medium">Total Suppliers</div>
-    </div>
-
-    <div class="stat-card bg-white rounded-2xl p-6 border border-gray-200 shadow-sm">
-      <div class="flex items-center justify-between mb-4">
-        <div class="w-12 h-12 rounded-xl bg-green-50 flex items-center justify-center">
-          <svg class="w-6 h-6 text-green-500" fill="none" stroke="currentColor" viewBox="0 0 24 24" stroke-width="2">
-            <path stroke-linecap="round" stroke-linejoin="round" d="M9 12l2 2 4-4m6 2a9 9 0 11-18 0 9 9 0 0118 0z"/>
-          </svg>
-        </div>
-      </div>
-      <div class="text-3xl font-bold text-gray-900 mb-1">{{ pagination.total }}</div>
-      <div class="text-sm text-gray-500 font-medium">Active</div>
-    </div>
-
-    <div class="stat-card bg-white rounded-2xl p-6 border border-gray-200 shadow-sm">
-      <div class="flex items-center justify-between mb-4">
-        <div class="w-12 h-12 rounded-xl bg-purple-50 flex items-center justify-center">
-          <svg class="w-6 h-6 text-purple-500" fill="none" stroke="currentColor" viewBox="0 0 24 24" stroke-width="2">
-            <path stroke-linecap="round" stroke-linejoin="round" d="M13 7h8m0 0v8m0-8l-8 8-4-4-6 6"/>
-          </svg>
-        </div>
-      </div>
-      <div class="text-3xl font-bold text-gray-900 mb-1">—</div>
-      <div class="text-sm text-gray-500 font-medium">This Month</div>
-    </div>
-
-    <div class="stat-card bg-white rounded-2xl p-6 border border-gray-200 shadow-sm">
-      <div class="flex items-center justify-between mb-4">
-        <div class="w-12 h-12 rounded-xl bg-orange-50 flex items-center justify-center">
-          <svg class="w-6 h-6 text-orange-500" fill="none" stroke="currentColor" viewBox="0 0 24 24" stroke-width="2">
-            <path stroke-linecap="round" stroke-linejoin="round" d="M12 8v4l3 3m6-3a9 9 0 11-18 0 9 9 0 0118 0z"/>
-          </svg>
-        </div>
-      </div>
-      <div class="text-3xl font-bold text-gray-900 mb-1">—</div>
-      <div class="text-sm text-gray-500 font-medium">Pending Actions</div>
-    </div>
-  </div>
-
-  <!-- Main Table Card -->
-  <div class="bg-white rounded-2xl border border-gray-200 overflow-hidden shadow-sm">
-
-    <!-- Search Bar -->
-    <div class="px-6 py-5 border-b border-gray-200 bg-gray-50">
-      <div class="flex items-center gap-4">
-        <form method="get" class="flex-1">
-          <div class="relative">
-            <input
-              type="text"
-              name="q"
-              value="{{ q or '' }}"
-              placeholder="Search by code, name, or Chinese name..."
-              class="search-input w-full px-5 py-3 pl-12 rounded-xl bg-white border border-gray-300
-                     text-sm focus:outline-none focus:border-blue-500 transition-all"
-            />
-            <div class="absolute left-4 top-1/2 -translate-y-1/2">
-              <svg class="w-5 h-5 text-gray-400" fill="none" stroke="currentColor" viewBox="0 0 24 24" stroke-width="2">
-                <path stroke-linecap="round" stroke-linejoin="round" d="M21 21l-6-6m2-5a7 7 0 11-14 0 7 7 0 0114 0z"/>
-              </svg>
-            </div>
-            {% if q %}
-            <a href="{{ url_for('suppliers.index') }}"
-               class="absolute right-4 top-1/2 -translate-y-1/2 text-gray-400 hover:text-gray-600 transition">
-              <svg class="w-5 h-5" fill="none" stroke="currentColor" viewBox="0 0 24 24" stroke-width="2">
-                <path stroke-linecap="round" stroke-linejoin="round" d="M6 18L18 6M6 6l12 12"/>
-              </svg>
-            </a>
-            {% endif %}
-          </div>
-        </form>
-
-        <div class="px-4 py-2 bg-gray-100 rounded-xl text-sm font-semibold text-gray-600">
-          Page {{ pagination.page }} / {{ pagination.pages if pagination.pages else 1 }}
-        </div>
-      </div>
-    </div>
-
-    <!-- Table -->
-    <div class="overflow-x-auto">
-      <table class="w-full">
-        <thead>
-          <tr class="bg-gray-50 border-b border-gray-200">
-            <th class="px-6 py-4 text-left text-xs font-semibold text-gray-600 uppercase tracking-wider">
-              Supplier Code
-            </th>
-            <th class="px-6 py-4 text-left text-xs font-semibold text-gray-600 uppercase tracking-wider">
-              Company Name
-            </th>
-            <th class="px-6 py-4 text-left text-xs font-semibold text-gray-600 uppercase tracking-wider">
-              Chinese Name
-            </th>
-            <th class="px-6 py-4 text-left text-xs font-semibold text-gray-600 uppercase tracking-wider">
-              Created
-            </th>
-            <th class="px-6 py-4 text-center text-xs font-semibold text-gray-600 uppercase tracking-wider">
-              Actions
-            </th>
-          </tr>
-        </thead>
-
-        <tbody class="divide-y divide-gray-100">
-          {% for s in suppliers %}
-          <tr class="table-row">
-
-            <!-- Code -->
-            <td class="px-6 py-4">
-              <a href="{{ url_for('supplier_ws.overview', supplier_code=s.code) }}"
-                 class="group inline-flex items-center gap-2">
-                <span class="font-mono font-bold text-sm px-3 py-1.5 rounded-lg bg-blue-50 text-blue-600
-                             border border-blue-200 group-hover:bg-blue-100 transition">
-                  {{ s.code }}
-                </span>
-                <svg class="w-4 h-4 text-blue-400 opacity-0 group-hover:opacity-100 transition"
-                     fill="none" stroke="currentColor" viewBox="0 0 24 24" stroke-width="2">
-                  <path stroke-linecap="round" stroke-linejoin="round" d="M13 7l5 5m0 0l-5 5m5-5H6"/>
-                </svg>
-              </a>
-            </td>
-
-            <!-- Name -->
-            <td class="px-6 py-4">
-              <div class="font-semibold text-gray-900 text-sm">{{ s.name }}</div>
-            </td>
-
-            <!-- Chinese Name -->
-            <td class="px-6 py-4">
-              {% if s.chinese_name %}
-                <span class="px-3 py-1.5 rounded-lg bg-purple-50 text-purple-700 text-sm font-medium">
-                  {{ s.chinese_name }}
-                </span>
-              {% else %}
-                <span class="text-gray-400 text-sm">—</span>
-              {% endif %}
-            </td>
-
-            <!-- Created -->
-            <td class="px-6 py-4">
-              <div class="flex items-center gap-2 text-gray-600">
-                <svg class="w-4 h-4 text-gray-400" fill="none" stroke="currentColor" viewBox="0 0 24 24" stroke-width="2">
-                  <path stroke-linecap="round" stroke-linejoin="round" d="M8 7V3m8 4V3m-9 8h10M5 21h14a2 2 0 002-2V7a2 2 0 00-2-2H5a2 2 0 00-2 2v12a2 2 0 002 2z"/>
-                </svg>
-                <span class="text-sm">{{ s.created_at.strftime("%b %d, %Y") }}</span>
-              </div>
-            </td>
-
-            <!-- Actions -->
-            <td class="px-6 py-4">
-              <div class="flex items-center justify-center gap-2">
-                <a href="{{ url_for('suppliers.edit_supplier', supplier_id=s.id) }}"
-                   class="inline-flex items-center gap-1.5 px-3 py-1.5 rounded-lg
-                          bg-blue-50 text-blue-600 hover:bg-blue-100
-                          text-xs font-medium transition"
-                   title="Edit">
-                  <svg class="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24" stroke-width="2">
-                    <path stroke-linecap="round" stroke-linejoin="round" d="M11 5H6a2 2 0 00-2 2v11a2 2 0 002 2h11a2 2 0 002-2v-5m-1.414-9.414a2 2 0 112.828 2.828L11.828 15H9v-2.828l8.586-8.586z"/>
-                  </svg>
-                </a>
-
-                <form method="post"
-                      action="{{ url_for('suppliers.delete_supplier', supplier_id=s.id) }}"
-                      onsubmit="return confirm('Delete supplier {{ s.code }}?\n\nThis will also delete:\n• All related parts\n• All uploaded documents\n\nThis action cannot be undone!');"
-                      class="inline-block">
-                  <button type="submit"
-                          class="inline-flex items-center gap-1.5 px-3 py-1.5 rounded-lg
-                                 bg-red-50 text-red-600 hover:bg-red-100
-                                 text-xs font-medium transition"
-                          title="Delete">
-                    <svg class="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24" stroke-width="2">
-                      <path stroke-linecap="round" stroke-linejoin="round" d="M19 7l-.867 12.142A2 2 0 0116.138 21H7.862a2 2 0 01-1.995-1.858L5 7m5 4v6m4-6v6m1-10V4a1 1 0 00-1-1h-4a1 1 0 00-1 1v3M4 7h16"/>
-                    </svg>
-                  </button>
-                </form>
-              </div>
-            </td>
-          </tr>
-          {% endfor %}
-
-          {% if suppliers|length == 0 %}
-          <tr>
-            <td colspan="5" class="px-6 py-20 text-center">
-              <div class="flex flex-col items-center gap-4">
-                <div class="w-20 h-20 bg-gray-100 rounded-full flex items-center justify-center">
-                  <svg class="w-10 h-10 text-gray-300" fill="none" stroke="currentColor" viewBox="0 0 24 24" stroke-width="1.5">
-                    <path stroke-linecap="round" stroke-linejoin="round" d="M19 21V5a2 2 0 00-2-2H7a2 2 0 00-2 2v16m14 0h2m-2 0h-5m-9 0H3m2 0h5M9 7h1m-1 4h1m4-4h1m-1 4h1m-5 10v-5a1 1 0 011-1h2a1 1 0 011 1v5m-4 0h4"/>
-                  </svg>
-                </div>
-                <div>
-                  <p class="text-gray-600 font-semibold text-lg mb-1">No suppliers found</p>
-                  <p class="text-gray-400 text-sm">Click "Add Supplier" to get started</p>
-                </div>
-              </div>
-            </td>
-          </tr>
+          {% if q %}
+          <a href="{{ url_for('suppliers.index', filter=filter_mode, sort=sort_mode) }}"
+             class="absolute right-3 top-1/2 -translate-y-1/2 text-gray-400 hover:text-gray-600">
+            <svg class="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24" stroke-width="2"><path stroke-linecap="round" stroke-linejoin="round" d="M6 18L18 6M6 6l12 12"/></svg>
+          </a>
           {% endif %}
-        </tbody>
-      </table>
+        </div>
+      </form>
     </div>
 
-    <!-- Pagination -->
-    {% if pagination.pages > 1 %}
-    <div class="px-6 py-4 border-t border-gray-200 bg-gray-50 flex items-center justify-between">
-      <div class="text-sm text-gray-600">
-        {% if pagination.total > 0 %}
-          Showing <span class="font-semibold text-gray-900">{{ (pagination.page - 1) * pagination.per_page + 1 }}</span>
-          to <span class="font-semibold text-gray-900">{{ (pagination.page - 1) * pagination.per_page + suppliers|length }}</span>
-          of <span class="font-semibold text-gray-900">{{ pagination.total }}</span> suppliers
-        {% else %}
-          No results
+    <!-- Filter Pills + Sort -->
+    <div class="flex items-center justify-between gap-3 flex-wrap">
+      <div class="flex items-center gap-2 flex-wrap">
+        <a href="{{ url_for('suppliers.index', q=q, sort=sort_mode) }}"
+           class="filter-pill px-3 py-1.5 rounded-lg text-xs font-bold inline-flex items-center gap-1.5
+                  {% if filter_mode == 'all' %}bg-gray-900 text-white{% else %}bg-gray-100 text-gray-600 hover:bg-gray-200{% endif %}">
+          All <span class="opacity-60">{{ stats.total }}</span>
+        </a>
+        <a href="{{ url_for('suppliers.index', q=q, filter='issues', sort=sort_mode) }}"
+           class="filter-pill px-3 py-1.5 rounded-lg text-xs font-bold inline-flex items-center gap-1.5
+                  {% if filter_mode == 'issues' %}bg-red-500 text-white{% else %}bg-red-50 text-red-700 hover:bg-red-100{% endif %}">
+          🔴 有问题 <span class="opacity-70">{{ stats.issues }}</span>
+        </a>
+        <a href="{{ url_for('suppliers.index', q=q, filter='quiet', sort=sort_mode) }}"
+           class="filter-pill px-3 py-1.5 rounded-lg text-xs font-bold inline-flex items-center gap-1.5
+                  {% if filter_mode == 'quiet' %}bg-green-600 text-white{% else %}bg-green-50 text-green-700 hover:bg-green-100{% endif %}">
+          ✓ 平稳 <span class="opacity-70">{{ stats.quiet }}</span>
+        </a>
+        <a href="{{ url_for('suppliers.index', q=q, filter='recent', sort=sort_mode) }}"
+           class="filter-pill px-3 py-1.5 rounded-lg text-xs font-bold inline-flex items-center gap-1.5
+                  {% if filter_mode == 'recent' %}bg-blue-600 text-white{% else %}bg-blue-50 text-blue-700 hover:bg-blue-100{% endif %}">
+          🕒 最近 7 天 <span class="opacity-70">{{ stats.recent }}</span>
+        </a>
+      </div>
+
+      <!-- Sort -->
+      <div class="flex items-center gap-2 text-xs">
+        <span class="text-gray-400 font-medium">排序：</span>
+        <a href="{{ url_for('suppliers.index', q=q, filter=filter_mode, sort='name') }}"
+           class="px-2 py-1 rounded font-semibold {% if sort_mode == 'name' %}text-gray-900 bg-gray-100{% else %}text-gray-400 hover:text-gray-700{% endif %}">代码</a>
+        <a href="{{ url_for('suppliers.index', q=q, filter=filter_mode, sort='recent') }}"
+           class="px-2 py-1 rounded font-semibold {% if sort_mode == 'recent' %}text-gray-900 bg-gray-100{% else %}text-gray-400 hover:text-gray-700{% endif %}">最近活动</a>
+        <a href="{{ url_for('suppliers.index', q=q, filter=filter_mode, sort='issues') }}"
+           class="px-2 py-1 rounded font-semibold {% if sort_mode == 'issues' %}text-gray-900 bg-gray-100{% else %}text-gray-400 hover:text-gray-700{% endif %}">问题数</a>
+      </div>
+    </div>
+  </div>
+
+  <!-- Supplier Cards Grid -->
+  {% if suppliers %}
+  <div class="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-4">
+
+    {% for item in suppliers %}
+    {% set s = item.supplier %}
+    <a href="{{ url_for('supplier_ws.overview', supplier_code=s.code) }}"
+       class="supplier-card bg-white rounded-2xl p-5 border-2 border-gray-100 block group">
+
+      <!-- Top Row: Avatar + Code + Status -->
+      <div class="flex items-start justify-between mb-3">
+        <div class="flex items-center gap-3 min-w-0 flex-1">
+          <!-- Avatar -->
+          <div class="w-12 h-12 rounded-xl {{ item.avatar_bg }} flex items-center justify-center flex-shrink-0 ring-1 ring-inset ring-white">
+            <span class="text-xl font-bold {{ item.avatar_fg }}">{{ item.avatar_letter }}</span>
+          </div>
+
+          <!-- Code + Status -->
+          <div class="min-w-0 flex-1">
+            <div class="flex items-center gap-2">
+              <span class="font-mono font-bold text-xs px-2 py-0.5 rounded bg-gray-100 text-gray-700">{{ s.code }}</span>
+              {% if item.status_color == 'red' %}
+                <span class="pulse-red inline-block w-2 h-2 rounded-full bg-red-500 flex-shrink-0" title="{{ item.open_trs }} open issues"></span>
+              {% elif item.status_color == 'yellow' %}
+                <span class="inline-block w-2 h-2 rounded-full bg-yellow-400 flex-shrink-0" title="{{ item.open_trs }} open issues"></span>
+              {% else %}
+                <span class="inline-block w-2 h-2 rounded-full bg-green-400 flex-shrink-0" title="No open issues"></span>
+              {% endif %}
+            </div>
+          </div>
+        </div>
+
+        <!-- Issue Badge -->
+        {% if item.open_trs > 0 %}
+        <span class="text-[10px] font-bold px-2 py-0.5 rounded-full bg-red-50 text-red-700 border border-red-200 flex-shrink-0">
+          {{ item.open_trs }} open
+        </span>
         {% endif %}
       </div>
 
-      <nav class="flex items-center gap-2">
-        {% if pagination.has_prev %}
-          <a class="px-4 py-2 rounded-lg border border-gray-300 text-sm font-medium text-gray-700
-                    hover:bg-gray-100 hover:border-gray-400 transition bg-white"
-             href="{{ url_for('suppliers.index', page=pagination.prev_num, q=q, per_page=per_page) }}">
-            <span class="flex items-center gap-1.5">
-              <svg class="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24" stroke-width="2">
-                <path stroke-linecap="round" stroke-linejoin="round" d="M15 19l-7-7 7-7"/>
-              </svg>
-              Previous
-            </span>
-          </a>
+      <!-- Names -->
+      <div class="mb-4 min-h-[44px]">
+        {% if s.chinese_name %}
+        <div class="font-bold text-gray-900 text-base mb-0.5 leading-tight">{{ s.chinese_name }}</div>
+        <div class="text-xs text-gray-400 truncate" title="{{ s.name }}">{{ s.name }}</div>
         {% else %}
-          <span class="px-4 py-2 rounded-lg border border-gray-200 text-sm font-medium text-gray-400 bg-gray-100 cursor-not-allowed">
-            <span class="flex items-center gap-1.5">
-              <svg class="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24" stroke-width="2">
-                <path stroke-linecap="round" stroke-linejoin="round" d="M15 19l-7-7 7-7"/>
-              </svg>
-              Previous
-            </span>
-          </span>
+        <div class="font-bold text-gray-900 text-base leading-tight">{{ s.name }}</div>
         {% endif %}
+      </div>
 
-        <div class="flex items-center gap-1">
-          {% for p in range(1, pagination.pages + 1) %}
-            {% if p == pagination.page %}
-              <span class="px-4 py-2 rounded-lg bg-blue-500 text-white text-sm font-semibold shadow-sm">
-                {{ p }}
-              </span>
-            {% else %}
-              <a class="px-4 py-2 rounded-lg border border-gray-200 text-sm font-medium text-gray-700
-                        hover:bg-gray-100 hover:border-gray-400 transition bg-white"
-                 href="{{ url_for('suppliers.index', page=p, q=q, per_page=per_page) }}">
-                {{ p }}
-              </a>
-            {% endif %}
-          {% endfor %}
+      <!-- Inline Stats -->
+      <div class="flex items-center gap-3 pt-3 border-t border-gray-100 text-xs">
+        <div class="flex items-center gap-1 text-gray-500" title="零件数">
+          <svg class="w-3.5 h-3.5 text-gray-400" fill="none" stroke="currentColor" viewBox="0 0 24 24" stroke-width="2"><path stroke-linecap="round" stroke-linejoin="round" d="M19 11H5m14 0a2 2 0 012 2v6a2 2 0 01-2 2H5a2 2 0 01-2-2v-6a2 2 0 012-2m14 0V9a2 2 0 00-2-2M5 11V9a2 2 0 012-2m0 0V5a2 2 0 012-2h6a2 2 0 012 2v2M7 7h10"/></svg>
+          <span class="font-bold text-gray-700">{{ item.parts_count }}</span>
+          <span class="text-gray-400">parts</span>
         </div>
 
-        {% if pagination.has_next %}
-          <a class="px-4 py-2 rounded-lg border border-gray-300 text-sm font-medium text-gray-700
-                    hover:bg-gray-100 hover:border-gray-400 transition bg-white"
-             href="{{ url_for('suppliers.index', page=pagination.next_num, q=q, per_page=per_page) }}">
-            <span class="flex items-center gap-1.5">
-              Next
-              <svg class="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24" stroke-width="2">
-                <path stroke-linecap="round" stroke-linejoin="round" d="M9 5l7 7-7 7"/>
-              </svg>
-            </span>
-          </a>
-        {% else %}
-          <span class="px-4 py-2 rounded-lg border border-gray-200 text-sm font-medium text-gray-400 bg-gray-100 cursor-not-allowed">
-            <span class="flex items-center gap-1.5">
-              Next
-              <svg class="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24" stroke-width="2">
-                <path stroke-linecap="round" stroke-linejoin="round" d="M9 5l7 7-7 7"/>
-              </svg>
-            </span>
-          </span>
-        {% endif %}
-      </nav>
-    </div>
-    {% endif %}
+        <div class="flex items-center gap-1 text-gray-500" title="TR 总数">
+          <svg class="w-3.5 h-3.5 text-gray-400" fill="none" stroke="currentColor" viewBox="0 0 24 24" stroke-width="2"><path stroke-linecap="round" stroke-linejoin="round" d="M9 12h6m-6 4h6m2 5H7a2 2 0 01-2-2V5a2 2 0 012-2h5.586a1 1 0 01.707.293l5.414 5.414a1 1 0 01.293.707V19a2 2 0 01-2 2z"/></svg>
+          <span class="font-bold text-gray-700">{{ item.total_trs }}</span>
+          <span class="text-gray-400">TR</span>
+        </div>
 
+        {% if item.debit > 0 %}
+        <div class="flex items-center gap-1 ml-auto text-emerald-700" title="累计扣款">
+          <span class="font-bold">€{{ '{:,.0f}'.format(item.debit) }}</span>
+        </div>
+        {% endif %}
+      </div>
+
+      <!-- Last Activity (subtle) -->
+      {% if item.last_activity %}
+      <div class="mt-2 text-[10px] text-gray-400">
+        最近活动：{{ item.last_activity.strftime('%Y-%m-%d') }}
+      </div>
+      {% endif %}
+    </a>
+    {% endfor %}
   </div>
+
+  {% else %}
+  <!-- Empty State -->
+  <div class="bg-white rounded-2xl border border-gray-100 shadow-sm py-20 text-center">
+    <div class="text-5xl mb-4 opacity-30">📭</div>
+    {% if q %}
+    <p class="text-gray-600 font-semibold mb-1">没有匹配的供应商</p>
+    <p class="text-gray-400 text-sm">尝试其他关键词，或 <a href="{{ url_for('suppliers.index') }}" class="text-blue-600 font-semibold">清除筛选</a></p>
+    {% else %}
+    <p class="text-gray-600 font-semibold mb-1">还没有供应商</p>
+    <p class="text-gray-400 text-sm">点击右上角 "Add Supplier" 添加</p>
+    {% endif %}
+  </div>
+  {% endif %}
+
+  <!-- Hidden actions per card (edit/delete) - 通过供应商工作区里操作更合理，列表页保持简洁 -->
 </div>
+
+<!-- 键盘快捷键：/ 聚焦搜索框 -->
+<script>
+document.addEventListener('keydown', e => {
+  if (e.key === '/' && document.activeElement.tagName !== 'INPUT') {
+    e.preventDefault();
+    document.querySelector('input[name="q"]')?.focus();
+  }
+});
+</script>
 
 {% endblock %}

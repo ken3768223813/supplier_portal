@@ -1,5 +1,6 @@
 from datetime import datetime
 from .extensions import db
+from sqlalchemy import CheckConstraint
 
 class Supplier(db.Model):
     __tablename__ = "suppliers"
@@ -105,6 +106,13 @@ class TroubleReport(db.Model):
     updated_at = db.Column(db.DateTime, nullable=False, default=datetime.utcnow, onupdate=datetime.utcnow)
 
     documents = db.relationship("TRDocument", backref="trouble_report", lazy="dynamic", cascade="all, delete-orphan")
+
+    debit_ref = db.Column(db.String(100), nullable=True)
+    debit_amount = db.Column(db.Float, nullable=True)
+    debit_currency = db.Column(db.String(10), default='EUR')
+    debit_date = db.Column(db.String(20), nullable=True)
+
+    issue_summary = db.Column(db.Text, nullable=True)
 
     __table_args__ = (
         CheckConstraint(
@@ -685,3 +693,274 @@ class TaskAttachment(db.Model):
 
     def __repr__(self):
         return f'<TaskAttachment {self.title}>'
+
+
+# ... 你之前的 Supplier, Part, Document 等类保持不变 ...
+
+class EDCReport(db.Model):
+    """
+    SAP EDC PDF 报告数据模型
+    用于存储从 OneDrive 扫描提取的质量报告信息
+    """
+    __tablename__ = "edc_reports"
+
+    # 1. 报告核心识别信息 (主键)
+    report_no = db.Column(db.String(50), primary_key=True)
+
+    # 2. 报告分类 (Quality Classification)
+    classification = db.Column(db.String(100), nullable=True, index=True)
+
+    # 3. 报告日期 (重要修改：设为 nullable=True 以兼容缺失日期的报告)
+    report_date = db.Column(db.Date, nullable=True, index=True)
+
+    # 4. 供应商关联信息
+    supplier_code = db.Column(db.String(64), index=True)  # PDF 中的 Supplier Code
+    supplier_name = db.Column(db.String(255))           # PDF 中的 Rif./Ditta 名称
+    # 逻辑关联外键
+    supplier_id = db.Column(db.Integer, db.ForeignKey("suppliers.id"), nullable=True)
+
+    # 5. 零部件/图纸信息
+    drawing = db.Column(db.String(128), index=True)      # PDF 中的 Drawing
+    part_name = db.Column(db.String(255))               # PDF 中的 Description
+    # 逻辑关联外键
+    part_id = db.Column(db.Integer, db.ForeignKey("parts.id"), nullable=True)
+
+    # 6. 质量数据
+    rejected_parts = db.Column(db.Integer, default=0)
+    received_parts = db.Column(db.Integer, default=0)
+
+    # 7. 问题描述 (存储红框内的多行文本，包括后续页)
+    removals = db.Column(db.Text)
+
+    # 8. 系统与文件管理信息
+    file_path = db.Column(db.String(500), nullable=False)
+    has_task = db.Column(db.Boolean, default=False)
+
+    created_at = db.Column(db.DateTime, default=datetime.utcnow)
+    updated_at = db.Column(db.DateTime, default=datetime.utcnow, onupdate=datetime.utcnow)
+
+    # 定义关系
+    supplier_rel = db.relationship("Supplier", backref=db.backref("edc_reports", lazy="dynamic"))
+    part_rel = db.relationship("Part", backref=db.backref("edc_reports", lazy="dynamic"))
+
+    def __repr__(self):
+        return f"<EDCReport {self.report_no} - {self.drawing}>"
+
+    @property
+    def severity_color(self):
+        """根据不合格数量返回颜色级别"""
+        if not self.rejected_parts: return "green"
+        if self.rejected_parts > 50: return "red"
+        return "orange"
+
+
+# ── 在 models.py 末尾追加以下内容 ──────────────────────────────────────────
+
+class NodeStandard(db.Model):
+    """
+    思维导图节点 ↔ 公司标准/文件 关联表
+    将 knowledge 思维导图的某个节点与 FileLibrary 中的文档或自定义标准绑定
+    """
+    __tablename__ = "node_standards"
+
+    id           = db.Column(db.Integer, primary_key=True)
+    process      = db.Column(db.String(50),  nullable=False, index=True)   # 工艺 slug, e.g. "casting"
+    node_id      = db.Column(db.String(100), nullable=False, index=True)   # 节点 id,   e.g. "hpdc"
+
+    # 关联方式 A：指向 FileLibrary 中已上传的文件
+    file_id      = db.Column(db.Integer, db.ForeignKey("file_library.id"), nullable=True)
+
+    # 关联方式 B：手动填写自定义标准（不一定有文件）
+    std_code     = db.Column(db.String(100), nullable=True)   # 标准号, e.g. "GB/T 15115"
+    std_name     = db.Column(db.String(255), nullable=True)   # 标准名称
+    std_type     = db.Column(db.String(50),  nullable=True)   # 类型: 国标/企业标准/客户标准 …
+    std_link     = db.Column(db.String(500), nullable=True)   # 外部链接（可选）
+
+    # 备注
+    remark       = db.Column(db.Text, nullable=True)
+
+    created_at   = db.Column(db.DateTime, default=datetime.utcnow, nullable=False)
+
+    # 关系
+    file         = db.relationship("FileLibrary", backref=db.backref("node_standards", lazy="dynamic"))
+
+    __table_args__ = (
+        db.Index("ix_node_std_lookup", "process", "node_id"),
+    )
+
+    def __repr__(self):
+        return f"<NodeStandard {self.process}/{self.node_id} → {self.std_code or self.file_id}>"
+
+    def to_dict(self):
+        d = {
+            "id":       self.id,
+            "process":  self.process,
+            "node_id":  self.node_id,
+            "std_code": self.std_code,
+            "std_name": self.std_name,
+            "std_type": self.std_type,
+            "std_link": self.std_link,
+            "remark":   self.remark,
+            "file_id":  self.file_id,
+        }
+        if self.file:
+            d["file_title"]    = self.file.title
+            d["file_category"] = self.file.category
+        return d
+
+
+class NodeKnowledgeLink(db.Model):
+    """
+    思维导图节点 ↔ KnowledgeItem 关联表
+    将某个节点与已有的知识条目绑定，方便从节点直接跳转相关知识
+    """
+    __tablename__ = "node_knowledge_links"
+
+    id           = db.Column(db.Integer, primary_key=True)
+    process      = db.Column(db.String(50),  nullable=False, index=True)
+    node_id      = db.Column(db.String(100), nullable=False, index=True)
+    knowledge_id = db.Column(db.Integer, db.ForeignKey("knowledge_items.id"),
+                             nullable=False, index=True)
+    created_at   = db.Column(db.DateTime, default=datetime.utcnow, nullable=False)
+
+    knowledge    = db.relationship("KnowledgeItem",
+                                   backref=db.backref("node_links", lazy="dynamic"))
+
+    __table_args__ = (
+        db.UniqueConstraint("process", "node_id", "knowledge_id", name="uq_node_knowledge"),
+    )
+
+    def __repr__(self):
+        return f"<NodeKnowledgeLink {self.process}/{self.node_id} → KI#{self.knowledge_id}>"
+
+    def to_dict(self):
+        return {
+            "id":            self.id,
+            "process":       self.process,
+            "node_id":       self.node_id,
+            "knowledge_id":  self.knowledge_id,
+            "knowledge_title": self.knowledge.title if self.knowledge else None,
+            "knowledge_process": self.knowledge.process if self.knowledge else None,
+        }
+
+# ── 追加到 app/models.py 末尾 ──────────────────────────────────────────────
+# Control Plan 三张新表
+
+class ControlPlan(db.Model):
+    """
+    控制计划主表
+    层级: Supplier → Part → ControlPlan（一个 Part 一份 CP）
+    """
+    __tablename__ = 'control_plans'
+
+    id           = db.Column(db.Integer, primary_key=True)
+    supplier_id  = db.Column(db.Integer, db.ForeignKey('suppliers.id'), nullable=False, index=True)
+    part_id      = db.Column(db.Integer, db.ForeignKey('parts.id'),     nullable=False, index=True)
+
+    cp_no        = db.Column(db.String(50), unique=True, nullable=False, index=True)
+    # 生成规则示例: CP-SUP001-PN12345  (供应商code + 零件号)
+
+    revision     = db.Column(db.String(20), default='A0')
+    status       = db.Column(db.String(20), default='active', index=True)
+    # active / draft / obsolete
+
+    # 工艺大类 —— 用于"同类零件"筛选对比
+    process_type = db.Column(db.String(50), index=True)
+    # casting(铸造) / stamping(冲压) / injection(注塑)
+    # machining(机加工) / welding(焊接) / assembly(装配) / other
+
+    audit_date   = db.Column(db.Date)       # 审核日期（到供应商现场时填）
+    auditor      = db.Column(db.String(100))  # 审核员（你自己名字）
+    notes        = db.Column(db.Text)
+
+    created_at   = db.Column(db.DateTime, default=datetime.utcnow, nullable=False)
+    updated_at   = db.Column(db.DateTime, default=datetime.utcnow, onupdate=datetime.utcnow)
+
+    # 关系
+    steps        = db.relationship(
+        'ProcessStep', backref='control_plan',
+        lazy='dynamic', cascade='all, delete-orphan',
+        order_by='ProcessStep.seq'
+    )
+    supplier = db.relationship('Supplier', backref=db.backref('control_plans', lazy='dynamic'))
+    part     = db.relationship('Part',     backref=db.backref('control_plans', lazy='dynamic'))
+
+    __table_args__ = (
+        db.UniqueConstraint('supplier_id', 'part_id', 'process_type', name='uq_cp_supplier_part_process'),
+    )
+
+    def __repr__(self):
+        return f'<ControlPlan {self.cp_no}>'
+
+    def total_steps(self):
+        return self.steps.count()
+
+    def key_steps(self):
+        return self.steps.filter_by(is_key_process=True).count()
+
+
+class ProcessStep(db.Model):
+    """
+    工序步骤表
+    一个 CP 下按 seq 顺序排列多道工序
+    """
+    __tablename__ = 'process_steps'
+
+    id              = db.Column(db.Integer, primary_key=True)
+    cp_id           = db.Column(db.Integer, db.ForeignKey('control_plans.id'), nullable=False, index=True)
+
+    seq             = db.Column(db.Integer, nullable=False)     # 顺序号 10, 20, 30 … 便于插入
+    process_name    = db.Column(db.String(100), nullable=False) # 工序名：压铸 / T6热处理 / 机加工
+    process_code    = db.Column(db.String(50))                  # 工序编号（供应商自己的编号）
+    machine         = db.Column(db.String(100))                 # 设备/工具名称
+    is_key_process  = db.Column(db.Boolean, default=False)      # 关键工序 KPC flag
+
+    notes           = db.Column(db.Text)
+
+    # 子特性（每道工序下可有多个控制特性行）
+    characteristics = db.relationship(
+        'ControlCharacteristic', backref='step',
+        lazy='dynamic', cascade='all, delete-orphan',
+        order_by='ControlCharacteristic.id'
+    )
+
+    def __repr__(self):
+        return f'<ProcessStep {self.seq}: {self.process_name}>'
+
+    def char_count(self):
+        return self.characteristics.count()
+
+
+class ControlCharacteristic(db.Model):
+    """
+    控制特性表（AIAG Control Plan 的每一数据行）
+    一道工序下可有多个控制特性（温度、压力、时间……）
+    """
+    __tablename__ = 'control_characteristics'
+
+    id             = db.Column(db.Integer, primary_key=True)
+    step_id        = db.Column(db.Integer, db.ForeignKey('process_steps.id'), nullable=False, index=True)
+
+    char_name      = db.Column(db.String(150), nullable=False)  # 特性名称：模具温度
+    spec_value     = db.Column(db.String(100))  # 规格值（数值或文本）：220
+    spec_unit      = db.Column(db.String(30))   # 单位：°C / MPa / mm / s
+    tolerance      = db.Column(db.String(50))   # 公差：±10 / +0.05/-0.02
+    control_method = db.Column(db.String(150))  # 控制方法：热电偶 / 游标卡尺
+    sample_size    = db.Column(db.String(50))   # 抽样量：3件
+    frequency      = db.Column(db.String(50))   # 检验频次：每批次 / 每小时 / 连续
+    reaction_plan  = db.Column(db.Text)         # 超差反应计划
+    is_key_char    = db.Column(db.Boolean, default=False)  # 关键特性 KCC flag
+
+    def __repr__(self):
+        return f'<ControlCharacteristic {self.char_name}: {self.spec_value}{self.spec_unit}>'
+
+    def spec_display(self):
+        """返回完整规格显示字符串，如 220°C ±10"""
+        parts = []
+        if self.spec_value:
+            parts.append(self.spec_value)
+        if self.spec_unit:
+            parts.append(self.spec_unit)
+        if self.tolerance:
+            parts.append(self.tolerance)
+        return ' '.join(parts)

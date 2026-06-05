@@ -1,0 +1,456 @@
+{% extends "layout/base.html" %}
+{% block title %}EDC Report Management{% endblock %}
+
+{% block content %}
+<div class="space-y-6">
+
+    {# ── 顶部标题 + 按钮 ── #}
+    <div class="flex justify-between items-center bg-white p-6 rounded-2xl border-2 border-gray-100 shadow-sm">
+        <div>
+            <h1 class="text-2xl font-bold text-gray-900">SAP EDC Reports</h1>
+            <p class="text-sm text-gray-500 mt-1">
+                Total <span id="totalCount">{{ total_count }}</span> reports in database
+            </p>
+        </div>
+        <button id="syncBtn" onclick="startSync()"
+                class="bg-gray-900 text-white px-5 py-2.5 rounded-xl font-semibold flex items-center gap-2 hover:bg-black transition shadow-sm">
+            <svg id="syncIcon" class="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                <path d="M4 4v5h.582m15.356 2A8.001 8.001 0 004.582 9m0 0H9m11 11v-5h-.581m0 0a8.003 8.003 0 01-15.357-2m15.357 2H15" stroke-width="2" stroke-linecap="round"/>
+            </svg>
+            <span id="syncText">Update Database</span>
+        </button>
+    </div>
+
+    {# ── 进度面板 ── #}
+    <div id="progressPanel" class="hidden bg-white p-6 rounded-2xl border-2 border-gray-100 shadow-sm">
+        <div class="flex items-center justify-between mb-3">
+            <div class="flex items-center gap-2">
+                <svg id="progressSpinner" class="w-4 h-4 text-blue-600" style="animation:spin 1s linear infinite" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                    <path d="M4 4v5h.582m15.356 2A8.001 8.001 0 004.582 9m0 0H9m11 11v-5h-.581m0 0a8.003 8.003 0 01-15.357-2m15.357 2H15" stroke-width="2" stroke-linecap="round"/>
+                </svg>
+                <span class="font-semibold text-gray-800 text-sm" id="progressTitle">正在准备...</span>
+            </div>
+            <span class="text-sm font-bold text-gray-500" id="progressPercent">0%</span>
+        </div>
+
+        <div class="w-full bg-gray-100 rounded-full h-3 mb-4">
+            <div id="progressBar" class="h-3 rounded-full transition-all duration-500"
+                 style="width:0%; background:linear-gradient(90deg,#1a1a1a,#555)"></div>
+        </div>
+
+        <div class="grid grid-cols-4 gap-3 mb-4">
+            <div class="bg-gray-50 rounded-xl p-3 text-center">
+                <div class="text-[10px] font-bold text-gray-400 uppercase mb-1">Total</div>
+                <div class="text-lg font-bold text-gray-900" id="statTotal">0</div>
+            </div>
+            <div class="bg-green-50 rounded-xl p-3 text-center">
+                <div class="text-[10px] font-bold text-green-400 uppercase mb-1">Added</div>
+                <div class="text-lg font-bold text-green-600" id="statAdded">0</div>
+            </div>
+            <div class="bg-blue-50 rounded-xl p-3 text-center">
+                <div class="text-[10px] font-bold text-blue-400 uppercase mb-1">Skipped</div>
+                <div class="text-lg font-bold text-blue-600" id="statSkipped">0</div>
+            </div>
+            <div class="bg-red-50 rounded-xl p-3 text-center">
+                <div class="text-[10px] font-bold text-red-400 uppercase mb-1">Failed</div>
+                <div class="text-lg font-bold text-red-600" id="statFailed">0</div>
+            </div>
+        </div>
+
+        <div class="text-xs text-gray-400 font-mono truncate" id="currentFile"></div>
+    </div>
+
+    {# ── 结果提示条 ── #}
+    <div id="syncAlert" class="hidden px-5 py-3 rounded-xl text-sm font-semibold border-2"></div>
+
+    {# ── 筛选栏 ── #}
+    <form method="get" action="{{ url_for('edc.index') }}" id="filterForm"
+          class="bg-white p-4 rounded-2xl border-2 border-gray-100 shadow-sm flex flex-wrap items-center gap-4">
+        <div class="flex-1 min-w-[240px] relative">
+            <span class="absolute inset-y-0 left-0 pl-3 flex items-center text-gray-400">
+                <svg class="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                    <path d="M21 21l-6-6m2-5a7 7 0 11-14 0 7 7 0 0114 0z" stroke-width="2.5"/>
+                </svg>
+            </span>
+            <input type="text" name="search" value="{{ search }}"
+                   placeholder="Search ID, Drawing, Supplier..."
+                   class="w-full pl-9 pr-4 py-2 bg-gray-50 border-none rounded-xl text-sm focus:ring-2 focus:ring-gray-900 transition">
+        </div>
+        <div class="flex items-center gap-2 bg-gray-50 px-3 py-1 rounded-xl">
+            <span class="text-[10px] font-bold text-gray-400 uppercase">Range:</span>
+            <input type="date" name="date_from" value="{{ date_from }}"
+                   class="bg-transparent border-none text-xs font-semibold focus:ring-0 p-1">
+            <span class="text-gray-300">-</span>
+            <input type="date" name="date_to" value="{{ date_to }}"
+                   class="bg-transparent border-none text-xs font-semibold focus:ring-0 p-1">
+        </div>
+        <div class="min-w-[200px]">
+            <select name="classification"
+                    onchange="document.getElementById('filterForm').submit()"
+                    class="w-full bg-gray-50 border-none rounded-xl px-4 py-2 text-sm font-semibold text-gray-700 focus:ring-2 focus:ring-gray-900 transition">
+                <option value="">All Classifications</option>
+                <option value="INITIAL SAMPLE FUNCTIONAL"  {% if classification=='INITIAL SAMPLE FUNCTIONAL' %}selected{% endif %}>Initial Sample Functional</option>
+                <option value="INITIAL SAMPLE DIMENSIONAL" {% if classification=='INITIAL SAMPLE DIMENSIONAL' %}selected{% endif %}>Initial Sample Dimensional</option>
+                <option value="INITIAL SAMPLE MATERIAL"    {% if classification=='INITIAL SAMPLE MATERIAL' %}selected{% endif %}>Initial Sample Material</option>
+                <option value="MASS PRODUCTION"            {% if classification=='MASS PRODUCTION' %}selected{% endif %}>Mass Production</option>
+                <option value="MARKET CLAIM"               {% if classification=='MARKET CLAIM' %}selected{% endif %}>Market Claim</option>
+                <option value="CONTROL PLAN"               {% if classification=='CONTROL PLAN' %}selected{% endif %}>Control Plan</option>
+            </select>
+        </div>
+        <button type="submit"
+                class="text-xs font-bold bg-gray-900 text-white px-4 py-2 rounded-xl hover:bg-black transition">
+            Search
+        </button>
+        <a href="{{ url_for('edc.index') }}"
+           class="text-xs font-bold text-blue-600 hover:text-blue-800 px-2 transition">Reset</a>
+    </form>
+
+    {# ── 数据表格 ── #}
+    <div class="bg-white rounded-2xl border-2 border-gray-100 overflow-hidden shadow-sm">
+        <table class="w-full text-left border-collapse">
+            <thead>
+                <tr class="bg-gray-50/50 border-b-2 border-gray-100 text-[11px] font-bold uppercase text-gray-400 tracking-wider">
+                    <th class="px-6 py-4">Classification & No.</th>
+                    <th class="px-6 py-4">Date</th>
+                    <th class="px-6 py-4">Part Details</th>
+                    <th class="px-6 py-4">Supplier</th>
+                    <th class="px-6 py-4">Rejected</th>
+                    <th class="px-6 py-4">Problem</th>
+                    <th class="px-6 py-4 text-right">Action</th>
+                </tr>
+            </thead>
+            <tbody class="divide-y divide-gray-100 text-sm">
+                {% if reports %}
+                    {% for r in reports %}
+                        {% if r.classification == 'MASS PRODUCTION' %}{% set badge = 'bg-blue-100 text-blue-700' %}
+                        {% elif r.classification == 'MARKET CLAIM' %}{% set badge = 'bg-purple-100 text-purple-700' %}
+                        {% elif 'INITIAL SAMPLE' in r.classification %}{% set badge = 'bg-green-100 text-green-700' %}
+                        {% elif r.classification == 'CONTROL PLAN' %}{% set badge = 'bg-orange-100 text-orange-700' %}
+                        {% else %}{% set badge = 'bg-gray-100 text-gray-600' %}{% endif %}
+
+                        <tr class="hover:bg-gray-50 transition">
+                            <td class="px-6 py-4">
+                                <span class="inline-block px-2 py-0.5 rounded text-[10px] font-bold {{ badge }} mb-1">
+                                    {{ r.classification }}
+                                </span>
+                                <div class="font-bold text-gray-900 font-mono">#{{ r.report_no }}</div>
+                            </td>
+                            <td class="px-6 py-4 text-gray-600 font-medium text-xs">
+                                {{ r.report_date.strftime('%d.%m.%Y') if r.report_date else '—' }}
+                            </td>
+                            <td class="px-6 py-4">
+                                <div class="font-bold text-blue-600">{{ r.drawing or '—' }}</div>
+                                {% if r.part_name %}
+                                <div class="text-[10px] text-gray-400 uppercase truncate max-w-[150px]">{{ r.part_name }}</div>
+                                {% endif %}
+                            </td>
+                            <td class="px-6 py-4">
+                                <div class="font-medium text-gray-700">{{ r.supplier_name or '—' }}</div>
+                                {% if r.supplier_code %}
+                                <div class="text-[10px] text-gray-400 font-mono">{{ r.supplier_code }}</div>
+                                {% endif %}
+                            </td>
+                            <td class="px-6 py-4">
+                                {% if r.rejected_parts and r.rejected_parts > 0 %}
+                                <span class="font-bold text-red-600 bg-red-50 px-2 py-1 rounded-lg">
+                                    {{ r.rejected_parts }} Pcs
+                                </span>
+                                {% else %}
+                                <span class="font-bold text-gray-400 italic">0 Pcs</span>
+                                {% endif %}
+                            </td>
+                            <td class="px-6 py-4">
+                                {% if r.removals %}
+                                <button type="button"
+                                        class="view-detail-btn text-xs font-bold text-gray-400 border-b border-dashed border-gray-300 hover:text-gray-900 transition"
+                                        data-report="{{ r.report_no }}"
+                                        data-key="{{ r.report_no }}">
+                                    View Details
+                                </button>
+                                {# 用 script 标签安全存储多行文本，tojson 处理所有转义 #}
+                                <script type="application/json" id="removals-{{ r.report_no }}">
+                                    {{ r.removals | tojson }}
+                                </script>
+                                {% else %}
+                                <span class="text-gray-300 text-xs">—</span>
+                                {% endif %}
+                            </td>
+                            <td class="px-6 py-4 text-right">
+                                {% if r.has_task %}
+                                <span class="text-xs bg-green-100 text-green-700 px-4 py-2 rounded-xl font-bold">
+                                    ✓ Task Created
+                                </span>
+                                {% else %}
+                                <a href="#"
+                                   class="text-xs bg-gray-100 px-4 py-2 rounded-xl font-bold hover:bg-gray-900 hover:text-white transition">
+                                    Create Task
+                                </a>
+                                {% endif %}
+                            </td>
+                        </tr>
+                    {% endfor %}
+                {% else %}
+                    <tr>
+                        <td colspan="7" class="px-6 py-16 text-center text-gray-400">
+                            <div class="text-4xl mb-3">📂</div>
+                            <div class="font-semibold">No reports found</div>
+                            <div class="text-xs mt-1">
+                                {% if search or date_from or date_to or classification %}
+                                Try adjusting your filters or
+                                <a href="{{ url_for('edc.index') }}" class="text-blue-600 hover:underline">reset all</a>
+                                {% else %}
+                                Click <strong>Update Database</strong> to import reports from OneDrive
+                                {% endif %}
+                            </div>
+                        </td>
+                    </tr>
+                {% endif %}
+            </tbody>
+        </table>
+
+        {% if pagination and pagination.pages > 1 %}
+        <div class="px-6 py-4 border-t border-gray-100 flex items-center justify-between text-sm text-gray-500">
+            <span>
+                Showing {{ ((pagination.page-1)*pagination.per_page)+1 }}–{{ [pagination.page*pagination.per_page, pagination.total]|min }}
+                of {{ pagination.total }}
+            </span>
+            <div class="flex gap-1">
+                {% if pagination.has_prev %}
+                <a href="{{ url_for('edc.index', page=pagination.prev_num, search=search, date_from=date_from, date_to=date_to, classification=classification) }}"
+                   class="px-3 py-1.5 rounded-lg bg-gray-100 hover:bg-gray-200 font-semibold transition">← Prev</a>
+                {% endif %}
+                {% for p in pagination.iter_pages(left_edge=1,right_edge=1,left_current=2,right_current=2) %}
+                    {% if p %}
+                    <a href="{{ url_for('edc.index', page=p, search=search, date_from=date_from, date_to=date_to, classification=classification) }}"
+                       class="px-3 py-1.5 rounded-lg font-semibold transition {% if p==pagination.page %}bg-gray-900 text-white{% else %}bg-gray-100 hover:bg-gray-200{% endif %}">{{ p }}</a>
+                    {% else %}
+                    <span class="px-2 py-1.5 text-gray-300">…</span>
+                    {% endif %}
+                {% endfor %}
+                {% if pagination.has_next %}
+                <a href="{{ url_for('edc.index', page=pagination.next_num, search=search, date_from=date_from, date_to=date_to, classification=classification) }}"
+                   class="px-3 py-1.5 rounded-lg bg-gray-100 hover:bg-gray-200 font-semibold transition">Next →</a>
+                {% endif %}
+            </div>
+        </div>
+        {% endif %}
+    </div>
+
+</div>{# end .space-y-6 #}
+
+
+{# ══════════════════════════════════════════════════════════
+   REMOVALS 弹窗 —— 纯 JS 实现，不依赖 Alpine.js
+   彻底避免 r.removals 含换行/引号/反斜杠时 Alpine 表达式报错
+   ══════════════════════════════════════════════════════════ #}
+<div id="removalModal"
+     class="hidden fixed inset-0 z-50 flex items-center justify-center p-4 bg-black/40 backdrop-blur-md"
+     role="dialog" aria-modal="true" aria-labelledby="modalTitle">
+
+    {# 点击遮罩关闭 #}
+    <div id="modalBackdrop" class="absolute inset-0" onclick="closeModal()"></div>
+
+    <div class="relative bg-white w-full max-w-2xl rounded-[32px] shadow-2xl overflow-hidden
+                transition-all duration-200 scale-95 opacity-0" id="modalCard">
+
+        {# 标题栏 #}
+        <div class="px-8 py-6 border-b border-gray-100 flex justify-between items-center bg-gray-50/50">
+            <div>
+                <h3 id="modalTitle" class="font-bold text-gray-900">Removals Description</h3>
+                <p id="modalReportNo" class="text-xs text-blue-600 font-mono mt-1"></p>
+            </div>
+            <button type="button" onclick="closeModal()"
+                    class="bg-white p-2 rounded-full shadow-sm hover:bg-red-50 hover:text-red-500 transition"
+                    aria-label="Close">
+                <svg class="w-5 h-5" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                    <path d="M6 18L18 6M6 6l12 12" stroke-width="2.5"/>
+                </svg>
+            </button>
+        </div>
+
+        {# 内容区 #}
+        <div class="p-8">
+            <div class="bg-gray-50 p-6 rounded-2xl border border-gray-100 max-h-[60vh] overflow-y-auto">
+                <p id="modalContent"
+                   class="text-gray-700 leading-relaxed text-sm whitespace-pre-line font-medium"></p>
+            </div>
+        </div>
+
+        {# 底部按钮 #}
+        <div class="px-8 py-6 text-right border-t border-gray-100">
+            <button type="button" onclick="closeModal()"
+                    class="bg-gray-900 text-white px-8 py-2.5 rounded-2xl text-sm font-bold hover:bg-black transition shadow-lg">
+                Got it
+            </button>
+        </div>
+    </div>
+</div>
+
+
+<style>
+@keyframes spin { from { transform: rotate(0deg); } to { transform: rotate(360deg); } }
+
+/* 弹窗动画 */
+#removalModal.modal-open #modalCard {
+    transform: scale(1);
+    opacity: 1;
+}
+</style>
+
+
+<script>
+/* ── 弹窗控制 ───────────────────────────────────────────── */
+
+function openModal(reportNo, removalsText) {
+    document.getElementById('modalReportNo').textContent  = 'Report ID: #' + reportNo;
+    document.getElementById('modalContent').textContent   = removalsText;   // textContent 安全，不解析 HTML
+
+    const modal = document.getElementById('removalModal');
+    modal.classList.remove('hidden');
+
+    // 触发动画（需要一帧延迟）
+    requestAnimationFrame(() => {
+        requestAnimationFrame(() => modal.classList.add('modal-open'));
+    });
+
+    document.addEventListener('keydown', onEscKey);
+}
+
+function closeModal() {
+    const modal = document.getElementById('removalModal');
+    modal.classList.remove('modal-open');
+
+    // 等动画结束再隐藏
+    setTimeout(() => modal.classList.add('hidden'), 200);
+    document.removeEventListener('keydown', onEscKey);
+}
+
+function onEscKey(e) {
+    if (e.key === 'Escape') closeModal();
+}
+
+/* ── 绑定所有 View Details 按钮 ─────────────────────────── */
+document.addEventListener('DOMContentLoaded', () => {
+    document.querySelectorAll('.view-detail-btn').forEach(btn => {
+        btn.addEventListener('click', () => {
+            const reportNo = btn.dataset.report;
+            const key      = btn.dataset.key;
+
+            // 从 <script> 标签里读取，JSON.parse 完全安全
+            let removals = '';
+            try {
+                const scriptEl = document.getElementById('removals-' + key);
+                removals = JSON.parse(scriptEl.textContent);
+            } catch (e) {
+                removals = '(解析失败)';
+                console.error(e);
+            }
+
+            openModal(reportNo, removals);
+        });
+    });
+});
+
+
+/* ── 同步进度 ────────────────────────────────────────────── */
+let pollTimer = null;
+
+async function startSync() {
+    const btn   = document.getElementById('syncBtn');
+    const icon  = document.getElementById('syncIcon');
+    const text  = document.getElementById('syncText');
+    const panel = document.getElementById('progressPanel');
+    const alertEl = document.getElementById('syncAlert');
+
+    alertEl.className = 'hidden';
+    panel.classList.remove('hidden');
+    btn.disabled = true;
+    icon.style.animation = 'spin 1s linear infinite';
+    text.textContent = 'Syncing...';
+
+    updateDisplay(0, 0, 0, 0, 0, '正在启动...');
+
+    try {
+        const res  = await fetch("{{ url_for('edc.sync_start') }}", { method: 'POST' });
+        const data = await res.json();
+        if (data.status === 'already_running') {
+            text.textContent = 'Already Running...';
+        }
+    } catch (e) {
+        showAlert('❌ 启动失败: ' + e.message, false);
+        btn.disabled = false;
+        icon.style.animation = '';
+        text.textContent = 'Update Database';
+        return;
+    }
+
+    pollTimer = setInterval(pollProgress, 1000);
+}
+
+async function pollProgress() {
+    try {
+        const res  = await fetch("{{ url_for('edc.sync_progress') }}");
+        const data = await res.json();
+
+        updateDisplay(data.percent, data.total, data.added, data.skipped, data.failed, data.file);
+
+        if (data.total > 0) {
+            document.getElementById('progressTitle').textContent =
+                `正在处理 ${data.total} 个新文件...`;
+        }
+
+        if (data.done) {
+            clearInterval(pollTimer);
+            pollTimer = null;
+
+            const btn  = document.getElementById('syncBtn');
+            const icon = document.getElementById('syncIcon');
+            const text = document.getElementById('syncText');
+
+            btn.disabled = false;
+            icon.style.animation = '';
+            text.textContent = 'Update Database';
+
+            if (data.error) {
+                showAlert('❌ ' + data.error, false);
+            } else {
+                const bar = document.getElementById('progressBar');
+                bar.style.background = 'linear-gradient(90deg,#16a34a,#22c55e)';
+                bar.style.width = '100%';
+                document.getElementById('progressPercent').textContent = '100%';
+                document.getElementById('progressTitle').textContent   = data.message;
+                document.getElementById('progressSpinner').style.display = 'none';
+                document.getElementById('currentFile').textContent = '';
+
+                if (data.added > 0) {
+                    setTimeout(() => location.reload(), 2000);
+                }
+            }
+        }
+    } catch (e) {
+        console.error('Poll error:', e);
+    }
+}
+
+function updateDisplay(percent, total, added, skipped, failed, filename) {
+    document.getElementById('progressBar').style.width     = percent + '%';
+    document.getElementById('progressPercent').textContent = percent + '%';
+    document.getElementById('statTotal').textContent       = total;
+    document.getElementById('statAdded').textContent       = added;
+    document.getElementById('statSkipped').textContent     = skipped;
+    document.getElementById('statFailed').textContent      = failed;
+    document.getElementById('currentFile').textContent     = filename ? '📄 ' + filename : '';
+}
+
+function showAlert(msg, success) {
+    const alertEl = document.getElementById('syncAlert');
+    alertEl.className = 'px-5 py-3 rounded-xl text-sm font-semibold border-2 ' +
+        (success
+            ? 'bg-green-50 text-green-700 border-green-200'
+            : 'bg-red-50 text-red-700 border-red-200');
+    alertEl.textContent = msg;
+    alertEl.classList.remove('hidden');
+}
+</script>
+
+{% endblock %}

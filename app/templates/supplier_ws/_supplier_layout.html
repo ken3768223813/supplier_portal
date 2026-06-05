@@ -1,0 +1,88 @@
+{% extends "layout/base.html" %}
+{% block content %}
+
+<!-- Supplier Header + Tab Navigation -->
+<div class="bg-white rounded-2xl border border-slate-200 shadow-sm mb-5">
+  <div class="px-5 py-3">
+    <div class="flex items-center justify-between">
+
+      <!-- Left: Tabs -->
+      <nav class="flex items-center gap-1 text-sm">
+        <a href="{{ url_for('supplier_ws.overview', supplier_code=supplier.code) }}"
+           class="px-3.5 py-2 rounded-xl font-medium transition-all
+           {% if active=='overview' %}text-blue-700 bg-blue-50 font-semibold{% else %}text-slate-600 hover:bg-slate-50{% endif %}">
+          📊 概览
+        </a>
+        <a href="{{ url_for('parts.list_parts', supplier_code=supplier.code) }}"
+           class="px-3.5 py-2 rounded-xl font-medium transition-all
+           {% if active=='parts' %}text-blue-700 bg-blue-50 font-semibold{% else %}text-slate-600 hover:bg-slate-50{% endif %}">
+          🔧 零件
+        </a>
+        <a href="{{ url_for('supplier_ws.quality', supplier_code=supplier.code) }}"
+           class="px-3.5 py-2 rounded-xl font-medium transition-all
+           {% if active=='quality' %}text-red-700 bg-red-50 font-semibold{% else %}text-slate-600 hover:bg-slate-50{% endif %}">
+          🚨 质量问题
+        </a>
+        <a href="{{ url_for('supplier_ws.debit', supplier_code=supplier.code) }}"
+           class="px-3.5 py-2 rounded-xl font-medium transition-all
+           {% if active=='debit' %}text-emerald-700 bg-emerald-50 font-semibold{% else %}text-slate-600 hover:bg-slate-50{% endif %}">
+          💰 扣款
+        </a>
+        <a href="{{ url_for('supplier_ws.audits', supplier_code=supplier.code) }}"
+           class="px-3.5 py-2 rounded-xl font-medium transition-all
+           {% if active=='audits' %}text-purple-700 bg-purple-50 font-semibold{% else %}text-slate-600 hover:bg-slate-50{% endif %}">
+          📋 审核
+        </a>
+        <a href="{{ url_for('docs.list_docs', supplier_code=supplier.code) }}"
+           class="px-3.5 py-2 rounded-xl font-medium transition-all
+           {% if active=='docs' %}text-blue-700 bg-blue-50 font-semibold{% else %}text-slate-600 hover:bg-slate-50{% endif %}">
+          📁 文档
+        </a>
+      </nav>
+
+      <!-- Right: Supplier Identity -->
+      <div class="text-right pl-4">
+        <div class="font-bold text-slate-800 text-sm">
+          <span class="font-mono bg-slate-100 px-2 py-0.5 rounded text-slate-600 text-xs mr-1">{{ supplier.code }}</span>
+          {{ supplier.chinese_name or supplier.name }}
+        </div>
+        {% if supplier.chinese_name and supplier.name != supplier.chinese_name %}
+        <div class="text-xs text-slate-400 mt-0.5">{{ supplier.name }}</div>
+        {% endif %}
+      </div>
+    </div>
+  </div>
+</div>
+
+<!-- Page Content -->
+{% block supplier_content %}{% endblock %}
+
+<!-- Drawings Modal (shared) -->
+<div id="drawingsModal" class="fixed inset-0 z-50 hidden">
+  <div class="absolute inset-0 bg-black/30" onclick="closeDrawings()"></div>
+  <div class="absolute left-1/2 top-1/2 w-[92vw] max-w-2xl -translate-x-1/2 -translate-y-1/2">
+    <div class="rounded-2xl bg-white shadow-xl border overflow-hidden">
+      <div class="flex items-center justify-between px-5 py-4 border-b"><div class="font-semibold">Drawings</div><button class="text-slate-400 hover:text-slate-700" onclick="closeDrawings()">✕</button></div>
+      <div id="drawingsBody" class="p-5"><div class="text-sm text-slate-500">Loading...</div></div>
+    </div>
+  </div>
+</div>
+
+<div id="previewModal" class="fixed inset-0 z-50 hidden">
+  <div class="absolute inset-0 bg-black/50" onclick="closePreview()"></div>
+  <div class="absolute inset-2 md:inset-6">
+    <div class="rounded-2xl bg-white shadow-xl overflow-hidden h-full flex flex-col">
+      <div class="flex items-center justify-between px-5 py-4 border-b"><div class="font-semibold">Preview</div><button class="text-slate-400 hover:text-slate-700 text-xl" onclick="closePreview()">×</button></div>
+      <iframe id="previewFrame" class="w-full flex-1 bg-slate-100" src=""></iframe>
+    </div>
+  </div>
+</div>
+
+<script>
+async function openDrawings(sc,pid){const m=document.getElementById('drawingsModal');const b=document.getElementById('drawingsBody');m.classList.remove('hidden');b.innerHTML='Loading...';b.innerHTML=await fetch(`/suppliers/${sc}/parts/${pid}/drawings`).then(r=>r.text());}
+function closeDrawings(){document.getElementById('drawingsModal').classList.add('hidden');}
+function previewDrawing(url){document.getElementById('previewModal').classList.remove('hidden');document.getElementById('previewFrame').src=url;}
+function closePreview(){document.getElementById('previewFrame').src='';document.getElementById('previewModal').classList.add('hidden');}
+</script>
+
+{% endblock %}

@@ -2,35 +2,23 @@
 {% block content %}
 
 <style>
-  .form-input:focus {
-    box-shadow: 0 0 0 3px rgba(0, 0, 0, 0.05);
-  }
-
-  .form-select:focus {
-    box-shadow: 0 0 0 3px rgba(0, 0, 0, 0.05);
-  }
-
+  .form-input:focus, .form-select:focus { box-shadow: 0 0 0 3px rgba(0,0,0,.05); }
   .status-not-required { background-color: #f1f5f9; }
   .status-not-received { background-color: #fef3c7; }
   .status-reject { background-color: #fee2e2; }
   .status-pass { background-color: #d1fae5; }
+  @keyframes spin { to { transform: rotate(360deg); } }
 </style>
 
 <div class="max-w-6xl mx-auto px-6 py-6">
 
   <!-- Breadcrumb -->
   <div class="mb-6 flex items-center gap-2 text-sm text-gray-500">
-    <a href="{{ url_for('tr.index') }}"
-       class="hover:text-gray-900 transition font-medium">Trouble Reports</a>
-    <svg class="w-4 h-4 text-gray-300" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-      <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M9 5l7 7-7 7"/>
-    </svg>
-    <span class="text-gray-900 font-semibold">
-      {% if mode == "edit" %}Edit TR{% else %}New TR{% endif %}
-    </span>
+    <a href="{{ url_for('tr.index') }}" class="hover:text-gray-900 transition font-medium">Trouble Reports</a>
+    <svg class="w-4 h-4 text-gray-300" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M9 5l7 7-7 7"/></svg>
+    <span class="text-gray-900 font-semibold">{% if mode == "edit" %}Edit TR{% else %}New TR{% endif %}</span>
   </div>
 
-  <!-- Main Card -->
   <div class="bg-white rounded-2xl border-2 border-gray-200 overflow-hidden">
 
     <!-- Header -->
@@ -38,197 +26,112 @@
       <div class="flex items-center justify-between">
         <div class="flex items-center gap-4">
           <div class="w-14 h-14 bg-red-500 rounded-xl flex items-center justify-center">
-            {% if mode == "edit" %}
-              <svg class="w-7 h-7 text-white" fill="none" stroke="currentColor" viewBox="0 0 24 24" stroke-width="2">
-                <path stroke-linecap="round" stroke-linejoin="round" d="M11 5H6a2 2 0 00-2 2v11a2 2 0 002 2h11a2 2 0 002-2v-5m-1.414-9.414a2 2 0 112.828 2.828L11.828 15H9v-2.828l8.586-8.586z"/>
-              </svg>
-            {% else %}
-              <svg class="w-7 h-7 text-white" fill="none" stroke="currentColor" viewBox="0 0 24 24" stroke-width="2">
-                <path stroke-linecap="round" stroke-linejoin="round" d="M12 9v2m0 4h.01m-6.938 4h13.856c1.54 0 2.502-1.667 1.732-3L13.732 4c-.77-1.333-2.694-1.333-3.464 0L3.34 16c-.77 1.333.192 3 1.732 3z"/>
-              </svg>
-            {% endif %}
+            <svg class="w-7 h-7 text-white" fill="none" stroke="currentColor" viewBox="0 0 24 24" stroke-width="2">
+              {% if mode == "edit" %}
+              <path stroke-linecap="round" stroke-linejoin="round" d="M11 5H6a2 2 0 00-2 2v11a2 2 0 002 2h11a2 2 0 002-2v-5m-1.414-9.414a2 2 0 112.828 2.828L11.828 15H9v-2.828l8.586-8.586z"/>
+              {% else %}
+              <path stroke-linecap="round" stroke-linejoin="round" d="M12 9v2m0 4h.01m-6.938 4h13.856c1.54 0 2.502-1.667 1.732-3L13.732 4c-.77-1.333-2.694-1.333-3.464 0L3.34 16c-.77 1.333.192 3 1.732 3z"/>
+              {% endif %}
+            </svg>
           </div>
           <div>
-            <h1 class="text-3xl font-bold text-gray-900">
-              {% if mode == "edit" %}Edit Trouble Report{% else %}New Trouble Report{% endif %}
-            </h1>
+            <h1 class="text-3xl font-bold text-gray-900">{% if mode == "edit" %}Edit Trouble Report{% else %}New Trouble Report{% endif %}</h1>
             <p class="text-sm text-gray-500 mt-1">Track quality issues and corrective actions</p>
           </div>
         </div>
-
         {% if mode == "edit" and tr %}
-          <div class="bg-gray-100 rounded-xl px-4 py-2 border-2 border-gray-200">
-            <div class="text-xs text-gray-500 mb-0.5 font-semibold">TR Number</div>
-            <div class="font-mono font-bold text-gray-900">{{ tr.tr_no }}</div>
-          </div>
+        <div class="bg-gray-100 rounded-xl px-4 py-2 border-2 border-gray-200">
+          <div class="text-xs text-gray-500 mb-0.5 font-semibold">TR Number</div>
+          <div class="font-mono font-bold text-gray-900">{{ tr.tr_no }}</div>
+        </div>
         {% endif %}
       </div>
     </div>
 
-    <!-- Form Content -->
-    <form method="post"
-          action="{% if mode=='edit' %}{{ url_for('tr.edit_tr', tr_id=tr.id) }}{% else %}{{ url_for('tr.new_tr') }}{% endif %}"
-          class="p-8">
+    <!-- EDC Import Panel (New mode only) -->
+    {% if mode == "new" %}
+    <div id="edcPanel" class="mx-8 mt-6 mb-0 rounded-2xl border-2 border-blue-200 bg-blue-50 overflow-hidden">
+      <button type="button" onclick="toggleEDC()" class="w-full flex items-center gap-3 px-6 py-4 text-left hover:bg-blue-100 transition-colors">
+        <div class="w-9 h-9 rounded-xl bg-blue-600 flex items-center justify-center flex-shrink-0">
+          <svg class="w-5 h-5 text-white" fill="none" stroke="currentColor" viewBox="0 0 24 24" stroke-width="2"><path stroke-linecap="round" stroke-linejoin="round" d="M3 8l7.89 5.26a2 2 0 002.22 0L21 8M5 19h14a2 2 0 002-2V7a2 2 0 00-2-2H5a2 2 0 00-2 2v10a2 2 0 002 2z"/></svg>
+        </div>
+        <div class="flex-1"><p class="text-sm font-bold text-blue-800">Import from EDC Notification</p><p class="text-xs text-blue-500 mt-0.5">Scan Outlook → pick EDC → fill form</p></div>
+        <svg id="edcChevron" class="w-5 h-5 text-blue-400 transition-transform" fill="none" stroke="currentColor" viewBox="0 0 24 24" stroke-width="2"><path stroke-linecap="round" stroke-linejoin="round" d="M19 9l-7 7-7-7"/></svg>
+      </button>
+      <div id="edcBody" class="hidden border-t-2 border-blue-200">
+        <div class="flex gap-0 divide-x-2 divide-blue-200" style="min-height:220px;">
+          <div class="flex-1 p-5">
+            <div class="flex items-center justify-between mb-3">
+              <p class="text-xs font-bold text-blue-700 uppercase tracking-wide">Outlook — FPVT-EDC Ass.</p>
+              <button type="button" onclick="scanOutlook()" id="scanBtn" class="flex items-center gap-1.5 px-4 py-1.5 rounded-lg bg-blue-600 text-white text-xs font-bold hover:bg-blue-700 transition-all">Scan Outlook</button>
+            </div>
+            <div id="emailListArea"><div class="flex flex-col items-center justify-center h-28 text-center"><p class="text-xs text-blue-400 font-medium">Click "Scan Outlook" to load EDC emails</p></div></div>
+          </div>
+          <div class="flex-1 p-5">
+            <p class="text-xs font-bold text-blue-700 uppercase tracking-wide mb-3">PDF Fields Preview</p>
+            <div id="pdfPreviewArea"><div class="flex flex-col items-center justify-center h-28 text-center"><p class="text-xs text-blue-400">Select an EDC email to load PDF</p></div></div>
+            <div id="pdfStatus" class="hidden mt-2"></div>
+            <div id="applyBtnWrap" class="hidden mt-3">
+              <button type="button" onclick="applyToForm()" class="w-full flex items-center justify-center gap-2 px-5 py-2.5 rounded-xl bg-green-600 text-white font-bold text-sm hover:bg-green-700 transition-all">
+                <svg class="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24" stroke-width="2.5"><path stroke-linecap="round" stroke-linejoin="round" d="M5 13l4 4L19 7"/></svg>
+                Apply to Form ↓
+              </button>
+            </div>
+          </div>
+        </div>
+      </div>
+    </div>
+    {% endif %}
+
+    <!-- Form -->
+    <form method="post" action="{% if mode=='edit' %}{{ url_for('tr.edit_tr', tr_id=tr.id) }}{% else %}{{ url_for('tr.new_tr') }}{% endif %}" class="p-8">
 
       <!-- Basic Information -->
       <div class="mb-8">
-        <h2 class="text-lg font-bold text-gray-900 mb-4 flex items-center gap-2">
-          <svg class="w-5 h-5 text-red-600" fill="none" stroke="currentColor" viewBox="0 0 24 24" stroke-width="2">
-            <path stroke-linecap="round" stroke-linejoin="round" d="M13 16h-1v-4h-1m1-4h.01M21 12a9 9 0 11-18 0 9 9 0 0118 0z"/>
-          </svg>
-          Basic Information
-        </h2>
-
+        <h2 class="text-lg font-bold text-gray-900 mb-4">Basic Information</h2>
         <div class="grid grid-cols-12 gap-4">
-
-          <!-- TR No. -->
           <div class="col-span-12 md:col-span-4">
-            <label class="flex items-center gap-2 text-sm font-bold text-gray-700 mb-2">
-              <svg class="w-4 h-4 text-red-600" fill="none" stroke="currentColor" viewBox="0 0 24 24" stroke-width="2">
-                <path stroke-linecap="round" stroke-linejoin="round" d="M7 7h.01M7 3h5c.512 0 1.024.195 1.414.586l7 7a2 2 0 010 2.828l-7 7a2 2 0 01-2.828 0l-7-7A1.994 1.994 0 013 12V7a4 4 0 014-4z"/>
-              </svg>
-              TR Number <span class="text-red-500">*</span>
-            </label>
-            <input name="tr_no" required
-                   value="{{ tr.tr_no if tr else '' }}"
-                   placeholder="TR-2024-001"
-                   class="form-input w-full px-4 py-3 border-2 border-gray-200 rounded-xl text-sm
-                          focus:outline-none focus:border-gray-900 transition-all
-                          placeholder:text-gray-400 font-mono font-semibold">
+            <label class="text-sm font-bold text-gray-700 mb-2 block">TR Number <span class="text-red-500">*</span></label>
+            <input name="tr_no" required value="{{ tr.tr_no if tr else '' }}" placeholder="TR-2024-001" class="form-input w-full px-4 py-3 border-2 border-gray-200 rounded-xl text-sm focus:outline-none focus:border-gray-900 font-mono font-semibold">
           </div>
-
-          <!-- Supplier Name -->
-<!-- 在 TR 表单中，找到 Supplier Name 字段，替换为： -->
-
-            <!-- Supplier Name -->
-            <div class="col-span-12 md:col-span-8">
-              <label class="flex items-center gap-2 text-sm font-bold text-gray-700 mb-2">
-                <svg class="w-4 h-4 text-blue-600" fill="none" stroke="currentColor" viewBox="0 0 24 24" stroke-width="2">
-                  <path stroke-linecap="round" stroke-linejoin="round" d="M19 21V5a2 2 0 00-2-2H7a2 2 0 00-2 2v16m14 0h2m-2 0h-5m-9 0H3m2 0h5M9 7h1m-1 4h1m4-4h1m-1 4h1m-5 10v-5a1 1 0 011-1h2a1 1 0 011 1v5m-4 0h4"/>
-                </svg>
-                Supplier Name <span class="text-red-500">*</span>
-              </label>
-
-              <select name="supplier_name" required
-                      class="form-select w-full px-4 py-3 border-2 border-gray-200 rounded-xl text-sm
-                             focus:outline-none focus:border-gray-900 transition-all cursor-pointer">
-                <option value="">Select a supplier</option>
-                {% for supplier in suppliers %}
-                  <option value="{{ supplier.name }}"
-                          {% if tr and tr.supplier_name == supplier.name %}selected{% endif %}>
-                    {{ supplier.supplier_code }} - {{ supplier.name }}
-                  </option>
-                {% endfor %}
-              </select>
-
-              <p class="mt-2 text-xs text-gray-500">
-                Don't see your supplier?
-                <a href="{{ url_for('suppliers.new_supplier') }}" target="_blank" class="text-blue-600 hover:text-blue-700 font-semibold">
-                  Add new supplier
-                </a>
-              </p>
-            </div>
-
-          <!-- Part Number -->
-          <div class="col-span-12 md:col-span-6">
-            <label class="flex items-center gap-2 text-sm font-bold text-gray-700 mb-2">
-              <svg class="w-4 h-4 text-green-600" fill="none" stroke="currentColor" viewBox="0 0 24 24" stroke-width="2">
-                <path stroke-linecap="round" stroke-linejoin="round" d="M19 11H5m14 0a2 2 0 012 2v6a2 2 0 01-2 2H5a2 2 0 01-2-2v-6a2 2 0 012-2m14 0V9a2 2 0 00-2-2M5 11V9a2 2 0 012-2m0 0V5a2 2 0 012-2h6a2 2 0 012 2v2M7 7h10"/>
-              </svg>
-              Part Number
-            </label>
-            <input name="part_number"
-                   value="{{ tr.part_number if tr and tr.part_number else '' }}"
-                   placeholder="Part P/N"
-                   class="form-input w-full px-4 py-3 border-2 border-gray-200 rounded-xl text-sm
-                          focus:outline-none focus:border-gray-900 transition-all
-                          placeholder:text-gray-400 font-mono">
+          <div class="col-span-12 md:col-span-8">
+            <label class="text-sm font-bold text-gray-700 mb-2 block">Supplier Name <span class="text-red-500">*</span></label>
+            <select name="supplier_name" required class="form-select w-full px-4 py-3 border-2 border-gray-200 rounded-xl text-sm focus:outline-none focus:border-gray-900 cursor-pointer">
+              <option value="">Select a supplier</option>
+              {% for supplier in suppliers %}
+              <option value="{{ supplier.chinese_name or supplier.name }}" data-code="{{ supplier.code }}" {% if tr and tr.supplier_name == (supplier.chinese_name or supplier.name) %}selected{% endif %}>{{ supplier.code }} - {{ supplier.chinese_name or supplier.name }}</option>
+              {% endfor %}
+            </select>
+            <p class="mt-2 text-xs text-gray-500">Don't see your supplier? <a href="{{ url_for('suppliers.new_supplier') }}" target="_blank" class="text-blue-600 font-semibold">Add new supplier</a></p>
           </div>
-
-          <!-- Part Name -->
           <div class="col-span-12 md:col-span-6">
-            <label class="flex items-center gap-2 text-sm font-bold text-gray-700 mb-2">
-              <svg class="w-4 h-4 text-purple-600" fill="none" stroke="currentColor" viewBox="0 0 24 24" stroke-width="2">
-                <path stroke-linecap="round" stroke-linejoin="round" d="M4 6h16M4 12h16M4 18h7"/>
-              </svg>
-              Part Name
-            </label>
-            <input name="part_name"
-                   value="{{ tr.part_name if tr and tr.part_name else '' }}"
-                   placeholder="Part name or description"
-                   class="form-input w-full px-4 py-3 border-2 border-gray-200 rounded-xl text-sm
-                          focus:outline-none focus:border-gray-900 transition-all
-                          placeholder:text-gray-400">
+            <label class="text-sm font-bold text-gray-700 mb-2 block">Part Number</label>
+            <input name="part_number" value="{{ tr.part_number if tr and tr.part_number else '' }}" placeholder="Part P/N" class="form-input w-full px-4 py-3 border-2 border-gray-200 rounded-xl text-sm focus:outline-none focus:border-gray-900 font-mono">
+          </div>
+          <div class="col-span-12 md:col-span-6">
+            <label class="text-sm font-bold text-gray-700 mb-2 block">Part Name</label>
+            <input name="part_name" value="{{ tr.part_name if tr and tr.part_name else '' }}" placeholder="Part name or description" class="form-input w-full px-4 py-3 border-2 border-gray-200 rounded-xl text-sm focus:outline-none focus:border-gray-900">
           </div>
         </div>
       </div>
 
       <!-- Issue Description -->
       <div class="mb-8">
-        <h2 class="text-lg font-bold text-gray-900 mb-4 flex items-center gap-2">
-          <svg class="w-5 h-5 text-amber-600" fill="none" stroke="currentColor" viewBox="0 0 24 24" stroke-width="2">
-            <path stroke-linecap="round" stroke-linejoin="round" d="M12 9v2m0 4h.01m-6.938 4h13.856c1.54 0 2.502-1.667 1.732-3L13.732 4c-.77-1.333-2.694-1.333-3.464 0L3.34 16c-.77 1.333.192 3 1.732 3z"/>
-          </svg>
-          Issue Description
-        </h2>
-
-        <div>
-          <label class="flex items-center gap-2 text-sm font-bold text-gray-700 mb-2">
-            <svg class="w-4 h-4 text-amber-600" fill="none" stroke="currentColor" viewBox="0 0 24 24" stroke-width="2">
-              <path stroke-linecap="round" stroke-linejoin="round" d="M9 12h6m-6 4h6m2 5H7a2 2 0 01-2-2V5a2 2 0 012-2h5.586a1 1 0 01.707.293l5.414 5.414a1 1 0 01.293.707V19a2 2 0 01-2 2z"/>
-            </svg>
-            Detailed Description <span class="text-red-500">*</span>
-          </label>
-          <textarea
-            name="issue_description"
-            rows="6"
-            required
-            placeholder="Describe the issue in detail:&#10;• Symptom: What happened&#10;• Conditions: When/where it occurred&#10;• Impact: What was affected&#10;• Temporary actions: Any immediate measures taken"
-            class="form-input w-full px-4 py-3 border-2 border-gray-200 rounded-xl text-sm
-                   focus:outline-none focus:border-gray-900 transition-all
-                   placeholder:text-gray-400 resize-y leading-6">{{ tr.issue_description if tr else "" }}</textarea>
-          <p class="mt-2 text-xs text-gray-500">Structured format recommended for better tracking and analysis</p>
-        </div>
+        <h2 class="text-lg font-bold text-gray-900 mb-4">Issue Description</h2>
+        <textarea name="issue_description" rows="5" required placeholder="Describe the issue in detail..." class="form-input w-full px-4 py-3 border-2 border-gray-200 rounded-xl text-sm focus:outline-none focus:border-gray-900 resize-y leading-6">{{ tr.issue_description if tr else "" }}</textarea>
       </div>
 
       <!-- Status Management -->
       <div class="mb-8">
-        <h2 class="text-lg font-bold text-gray-900 mb-4 flex items-center gap-2">
-          <svg class="w-5 h-5 text-indigo-600" fill="none" stroke="currentColor" viewBox="0 0 24 24" stroke-width="2">
-            <path stroke-linecap="round" stroke-linejoin="round" d="M9 5H7a2 2 0 00-2 2v12a2 2 0 002 2h10a2 2 0 002-2V7a2 2 0 00-2-2h-2M9 5a2 2 0 002 2h2a2 2 0 002-2M9 5a2 2 0 012-2h2a2 2 0 012 2"/>
-          </svg>
-          Status Management
-        </h2>
-
+        <h2 class="text-lg font-bold text-gray-900 mb-4">Status Management</h2>
         <div class="grid grid-cols-12 gap-4">
-
-          <!-- Severity -->
           <div class="col-span-12 md:col-span-3">
-            <label class="flex items-center gap-2 text-sm font-bold text-gray-700 mb-2">
-              <svg class="w-4 h-4 text-red-600" fill="none" stroke="currentColor" viewBox="0 0 24 24" stroke-width="2">
-                <path stroke-linecap="round" stroke-linejoin="round" d="M12 9v2m0 4h.01m-6.938 4h13.856c1.54 0 2.502-1.667 1.732-3L13.732 4c-.77-1.333-2.694-1.333-3.464 0L3.34 16c-.77 1.333.192 3 1.732 3z"/>
-              </svg>
-              Severity
-            </label>
-            <input name="severity"
-                   value="{{ tr.severity if tr and tr.severity else '' }}"
-                   placeholder="S0/S1/40/100..."
-                   class="form-input w-full px-4 py-3 border-2 border-gray-200 rounded-xl text-sm
-                          focus:outline-none focus:border-gray-900 transition-all
-                          placeholder:text-gray-400 font-mono">
+            <label class="text-sm font-bold text-gray-700 mb-2 block">Severity</label>
+            <input name="severity" value="{{ tr.severity if tr and tr.severity else '' }}" placeholder="S0/S1/40/100..." class="form-input w-full px-4 py-3 border-2 border-gray-200 rounded-xl text-sm focus:outline-none focus:border-gray-900 font-mono">
           </div>
-
-          <!-- 8D Status -->
           <div class="col-span-12 md:col-span-3">
-            <label class="flex items-center gap-2 text-sm font-bold text-gray-700 mb-2">
-              <svg class="w-4 h-4 text-blue-600" fill="none" stroke="currentColor" viewBox="0 0 24 24" stroke-width="2">
-                <path stroke-linecap="round" stroke-linejoin="round" d="M9 12h6m-6 4h6m2 5H7a2 2 0 01-2-2V5a2 2 0 012-2h5.586a1 1 0 01.707.293l5.414 5.414a1 1 0 01.293.707V19a2 2 0 01-2 2z"/>
-              </svg>
-              8D Status
-            </label>
-            <select id="eight_d_status" name="eight_d_status"
-                    class="form-select w-full px-4 py-3 border-2 border-gray-200 rounded-xl text-sm
-                           focus:outline-none focus:border-gray-900 transition-all cursor-pointer">
+            <label class="text-sm font-bold text-gray-700 mb-2 block">8D Status</label>
+            <select id="eight_d_status" name="eight_d_status" class="form-select w-full px-4 py-3 border-2 border-gray-200 rounded-xl text-sm focus:outline-none focus:border-gray-900 cursor-pointer">
               {% set d8 = (tr.eight_d_status if tr and tr.eight_d_status else "NOT_REQUIRED") %}
               <option value="NOT_REQUIRED" {% if d8=="NOT_REQUIRED" %}selected{% endif %}>⚪ Not Required</option>
               <option value="NOT_RECEIVED" {% if d8=="NOT_RECEIVED" %}selected{% endif %}>🟡 Required but Not Received</option>
@@ -236,35 +139,13 @@
               <option value="RECEIVED_PASS" {% if d8=="RECEIVED_PASS" %}selected{% endif %}>🟢 Received (Pass)</option>
             </select>
           </div>
-
-          <!-- 8D Reference -->
           <div class="col-span-12 md:col-span-3">
-            <label class="flex items-center gap-2 text-sm font-bold text-gray-700 mb-2">
-              <svg class="w-4 h-4 text-indigo-600" fill="none" stroke="currentColor" viewBox="0 0 24 24" stroke-width="2">
-                <path stroke-linecap="round" stroke-linejoin="round" d="M13.828 10.172a4 4 0 00-5.656 0l-4 4a4 4 0 105.656 5.656l1.102-1.101m-.758-4.899a4 4 0 005.656 0l4-4a4 4 0 00-5.656-5.656l-1.1 1.1"/>
-              </svg>
-              8D Reference
-            </label>
-            <input id="eight_d" name="eight_d"
-                   value="{{ tr.eight_d if tr and tr.eight_d else '' }}"
-                   placeholder="8D number/filename/link..."
-                   class="form-input w-full px-4 py-3 border-2 border-gray-200 rounded-xl text-sm
-                          focus:outline-none focus:border-gray-900 transition-all
-                          placeholder:text-gray-400 font-mono">
-            <p class="mt-2 text-xs text-gray-500">For tracking 8D report number or link</p>
+            <label class="text-sm font-bold text-gray-700 mb-2 block">8D Reference</label>
+            <input id="eight_d" name="eight_d" value="{{ tr.eight_d if tr and tr.eight_d else '' }}" placeholder="8D number/filename/link..." class="form-input w-full px-4 py-3 border-2 border-gray-200 rounded-xl text-sm focus:outline-none focus:border-gray-900 font-mono">
           </div>
-
-          <!-- Status -->
           <div class="col-span-12 md:col-span-3">
-            <label class="flex items-center gap-2 text-sm font-bold text-gray-700 mb-2">
-              <svg class="w-4 h-4 text-green-600" fill="none" stroke="currentColor" viewBox="0 0 24 24" stroke-width="2">
-                <path stroke-linecap="round" stroke-linejoin="round" d="M9 12l2 2 4-4m6 2a9 9 0 11-18 0 9 9 0 0118 0z"/>
-              </svg>
-              Processing Status
-            </label>
-            <select name="status"
-                    class="form-select w-full px-4 py-3 border-2 border-gray-200 rounded-xl text-sm
-                           focus:outline-none focus:border-gray-900 transition-all cursor-pointer">
+            <label class="text-sm font-bold text-gray-700 mb-2 block">Processing Status</label>
+            <select name="status" class="form-select w-full px-4 py-3 border-2 border-gray-200 rounded-xl text-sm focus:outline-none focus:border-gray-900 cursor-pointer">
               {% set current = (tr.status if tr and tr.status else "Open") %}
               <option value="Open" {% if current=="Open" %}selected{% endif %}>🔵 Open</option>
               <option value="In Progress" {% if current=="In Progress" %}selected{% endif %}>🟡 In Progress</option>
@@ -274,47 +155,53 @@
         </div>
       </div>
 
-      <!-- Remarks -->
+      <!-- Debit Note -->
       <div class="mb-8">
         <h2 class="text-lg font-bold text-gray-900 mb-4 flex items-center gap-2">
-          <svg class="w-5 h-5 text-gray-600" fill="none" stroke="currentColor" viewBox="0 0 24 24" stroke-width="2">
-            <path stroke-linecap="round" stroke-linejoin="round" d="M7 8h10M7 12h4m1 8l-4-4H5a2 2 0 01-2-2V6a2 2 0 012-2h14a2 2 0 012 2v8a2 2 0 01-2 2h-3l-4 4z"/>
+          <svg class="w-5 h-5 text-emerald-600" fill="none" stroke="currentColor" viewBox="0 0 24 24" stroke-width="2">
+            <path stroke-linecap="round" stroke-linejoin="round" d="M12 8c-1.657 0-3 .895-3 2s1.343 2 3 2 3 .895 3 2-1.343 2-3 2m0-8c1.11 0 2.08.402 2.599 1M12 8V7m0 1v8m0 0v1m0-1c-1.11 0-2.08-.402-2.599-1M21 12a9 9 0 11-18 0 9 9 0 0118 0z"/>
           </svg>
-          Remarks
+          Debit Note
         </h2>
-
-        <div>
-          <label class="text-sm font-bold text-gray-700 mb-2 block">Additional Notes</label>
-          <input name="remark"
-                 value="{{ tr.remark if tr and tr.remark else '' }}"
-                 placeholder="Any other information to record..."
-                 class="form-input w-full px-4 py-3 border-2 border-gray-200 rounded-xl text-sm
-                        focus:outline-none focus:border-gray-900 transition-all
-                        placeholder:text-gray-400">
+        <div class="grid grid-cols-12 gap-4 bg-emerald-50 rounded-xl p-5 border-2 border-emerald-200">
+          <div class="col-span-12 md:col-span-4">
+            <label class="text-sm font-bold text-gray-700 mb-2 block">Debit Ref. No.</label>
+            <input name="debit_ref" value="{{ tr.debit_ref if tr and tr.debit_ref else '' }}" placeholder="P&C-2026-93 / MT01" class="form-input w-full px-4 py-3 border-2 border-gray-200 rounded-xl text-sm focus:outline-none focus:border-gray-900 font-mono bg-white">
+          </div>
+          <div class="col-span-12 md:col-span-3">
+            <label class="text-sm font-bold text-gray-700 mb-2 block">Amount</label>
+            <input name="debit_amount" type="number" step="0.01" value="{{ tr.debit_amount if tr and tr.debit_amount else '' }}" placeholder="17280.00" class="form-input w-full px-4 py-3 border-2 border-gray-200 rounded-xl text-sm focus:outline-none focus:border-gray-900 font-mono bg-white">
+          </div>
+          <div class="col-span-12 md:col-span-2">
+            <label class="text-sm font-bold text-gray-700 mb-2 block">Currency</label>
+            <select name="debit_currency" class="form-select w-full px-4 py-3 border-2 border-gray-200 rounded-xl text-sm focus:outline-none focus:border-gray-900 cursor-pointer bg-white">
+              {% set cur = (tr.debit_currency if tr and tr.debit_currency else "EUR") %}
+              <option value="EUR" {% if cur=="EUR" %}selected{% endif %}>EUR €</option>
+              <option value="USD" {% if cur=="USD" %}selected{% endif %}>USD $</option>
+              <option value="CNY" {% if cur=="CNY" %}selected{% endif %}>CNY ¥</option>
+              <option value="VND" {% if cur=="VND" %}selected{% endif %}>VND ₫</option>
+            </select>
+          </div>
+          <div class="col-span-12 md:col-span-3">
+            <label class="text-sm font-bold text-gray-700 mb-2 block">Debit Date</label>
+            <input name="debit_date" value="{{ tr.debit_date if tr and tr.debit_date else '' }}" placeholder="03/06/2026" class="form-input w-full px-4 py-3 border-2 border-gray-200 rounded-xl text-sm focus:outline-none focus:border-gray-900 font-mono bg-white">
+          </div>
         </div>
+      </div>
+
+      <!-- Remarks -->
+      <div class="mb-8">
+        <h2 class="text-lg font-bold text-gray-900 mb-4">Remarks</h2>
+        <input name="remark" value="{{ tr.remark if tr and tr.remark else '' }}" placeholder="Any other information to record..." class="form-input w-full px-4 py-3 border-2 border-gray-200 rounded-xl text-sm focus:outline-none focus:border-gray-900">
       </div>
 
       <!-- Action Buttons -->
       <div class="flex items-center gap-3 pt-6 border-t-2 border-gray-100">
-        <button type="submit"
-                class="inline-flex items-center gap-2 px-6 py-3 rounded-xl
-                       bg-gray-900 text-white font-bold
-                       hover:bg-gray-800 transition-all hover:scale-105 active:scale-95">
-          <svg class="w-5 h-5" fill="none" stroke="currentColor" viewBox="0 0 24 24" stroke-width="2">
-            <path stroke-linecap="round" stroke-linejoin="round" d="M5 13l4 4L19 7"/>
-          </svg>
-          <span>{% if mode == "edit" %}Save Changes{% else %}Create TR{% endif %}</span>
+        <button type="submit" class="inline-flex items-center gap-2 px-6 py-3 rounded-xl bg-gray-900 text-white font-bold hover:bg-gray-800 transition-all">
+          <svg class="w-5 h-5" fill="none" stroke="currentColor" viewBox="0 0 24 24" stroke-width="2"><path stroke-linecap="round" stroke-linejoin="round" d="M5 13l4 4L19 7"/></svg>
+          {% if mode == "edit" %}Save Changes{% else %}Create TR{% endif %}
         </button>
-
-        <a href="{{ url_for('tr.index') }}"
-           class="inline-flex items-center gap-2 px-6 py-3 rounded-xl
-                  border-2 border-gray-300 bg-white text-gray-700 font-semibold
-                  hover:bg-gray-50 hover:border-gray-900 transition-all">
-          <svg class="w-5 h-5" fill="none" stroke="currentColor" viewBox="0 0 24 24" stroke-width="2">
-            <path stroke-linecap="round" stroke-linejoin="round" d="M10 19l-7-7m0 0l7-7m-7 7h18"/>
-          </svg>
-          <span>Back to List</span>
-        </a>
+        <a href="{{ url_for('tr.index') }}" class="inline-flex items-center gap-2 px-6 py-3 rounded-xl border-2 border-gray-300 bg-white text-gray-700 font-semibold hover:bg-gray-50 transition-all">Back to List</a>
       </div>
     </form>
 
@@ -322,173 +209,107 @@
     {% if mode == "edit" and tr %}
     <div class="px-8 pb-8">
       <div class="border-t-2 border-gray-100 pt-8">
-        <h2 class="text-lg font-bold text-gray-900 mb-4 flex items-center gap-2">
-          <svg class="w-5 h-5 text-indigo-600" fill="none" stroke="currentColor" viewBox="0 0 24 24" stroke-width="2">
-            <path stroke-linecap="round" stroke-linejoin="round" d="M7 21h10a2 2 0 002-2V9.414a1 1 0 00-.293-.707l-5.414-5.414A1 1 0 0012.586 3H7a2 2 0 00-2 2v14a2 2 0 002 2z"/>
-          </svg>
-          Related Documents
-        </h2>
+        <div class="flex items-center justify-between mb-4">
+          <h2 class="text-lg font-bold text-gray-900 flex items-center gap-2">
+            <svg class="w-5 h-5 text-indigo-600" fill="none" stroke="currentColor" viewBox="0 0 24 24" stroke-width="2"><path stroke-linecap="round" stroke-linejoin="round" d="M7 21h10a2 2 0 002-2V9.414a1 1 0 00-.293-.707l-5.414-5.414A1 1 0 0012.586 3H7a2 2 0 00-2 2v14a2 2 0 002 2z"/></svg>
+            Related Documents
+          </h2>
+          {% if tr.tr_no.startswith('TR-EDC-') %}
+          <form method="post" action="{{ url_for('tr.reimport_edc_attachments', tr_id=tr.id) }}" onsubmit="return confirm('从 OneDrive 重新扫描并导入该 EDC 的所有附件？');" class="inline">
+            <button type="submit" class="inline-flex items-center gap-2 px-4 py-2 rounded-lg bg-blue-50 text-blue-700 text-sm font-bold border-2 border-blue-200 hover:bg-blue-100 hover:border-blue-400 transition-all">
+              <svg class="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24" stroke-width="2"><path stroke-linecap="round" stroke-linejoin="round" d="M4 4v5h.582m15.356 2A8.001 8.001 0 004.582 9m0 0H9m11 11v-5h-.581m0 0a8.003 8.003 0 01-15.357-2m15.357 2H15"/></svg>
+              Sync EDC Attachments
+            </button>
+          </form>
+          {% endif %}
+        </div>
 
         <!-- Upload Form -->
         <div class="bg-indigo-50 rounded-xl p-6 border-2 border-indigo-200 mb-6">
-          <h3 class="text-sm font-bold text-gray-900 mb-4 flex items-center gap-2">
-            <svg class="w-4 h-4 text-indigo-600" fill="none" stroke="currentColor" viewBox="0 0 24 24" stroke-width="2">
-              <path stroke-linecap="round" stroke-linejoin="round" d="M7 16a4 4 0 01-.88-7.903A5 5 0 1115.9 6L16 6a5 5 0 011 9.9M15 13l-3-3m0 0l-3 3m3-3v12"/>
-            </svg>
-            Upload New Document
-          </h3>
-
-          <form method="post"
-                action="{{ url_for('tr.upload_document', tr_id=tr.id) }}"
-                enctype="multipart/form-data"
-                class="grid grid-cols-12 gap-4">
-
+          <h3 class="text-sm font-bold text-gray-900 mb-4">Upload New Document</h3>
+          <form method="post" action="{{ url_for('tr.upload_document', tr_id=tr.id) }}" enctype="multipart/form-data" class="grid grid-cols-12 gap-4">
             <div class="col-span-12 md:col-span-3">
               <label class="text-xs font-bold text-gray-700 mb-1.5 block">Document Type</label>
-              <select name="doc_type" required
-                      class="w-full px-3 py-2 border-2 border-gray-200 rounded-lg text-sm
-                             focus:outline-none focus:border-gray-900 bg-white cursor-pointer">
+              <select name="doc_type" required class="w-full px-3 py-2 border-2 border-gray-200 rounded-lg text-sm focus:outline-none focus:border-gray-900 bg-white cursor-pointer">
                 <option value="quality_report">Quality Report</option>
                 <option value="test_report">Test Report</option>
                 <option value="8d_report">8D Report</option>
                 <option value="photo">Photos</option>
                 <option value="capa">CAPA</option>
+                <option value="email">Email</option>
+                <option value="debit_note">Debit Note</option>
                 <option value="other">Other</option>
               </select>
             </div>
-
             <div class="col-span-12 md:col-span-4">
               <label class="text-xs font-bold text-gray-700 mb-1.5 block">Document Title</label>
-              <input type="text" name="title" placeholder="Enter title (optional, uses filename if blank)"
-                     class="w-full px-3 py-2 border-2 border-gray-200 rounded-lg text-sm
-                            focus:outline-none focus:border-gray-900 placeholder:text-gray-400">
+              <input type="text" name="title" placeholder="Enter title (optional)" class="w-full px-3 py-2 border-2 border-gray-200 rounded-lg text-sm focus:outline-none focus:border-gray-900">
             </div>
-
             <div class="col-span-12 md:col-span-5">
               <label class="text-xs font-bold text-gray-700 mb-1.5 block">Select File</label>
               <div class="flex gap-2">
-                <input type="file" name="file" required
-                       class="flex-1 px-3 py-2 border-2 border-gray-200 rounded-lg text-sm
-                              focus:outline-none focus:border-gray-900 bg-white
-                              file:mr-3 file:py-1 file:px-3 file:rounded file:border-0
-                              file:text-xs file:font-bold file:bg-gray-100 file:text-gray-700
-                              hover:file:bg-gray-200 cursor-pointer">
-                <button type="submit"
-                        class="px-5 py-2 rounded-lg bg-gray-900 text-white text-sm font-bold
-                               hover:bg-gray-800 transition-all hover:scale-105 active:scale-95">
-                  Upload
-                </button>
+                <input type="file" name="file" required class="flex-1 px-3 py-2 border-2 border-gray-200 rounded-lg text-sm bg-white file:mr-3 file:py-1 file:px-3 file:rounded file:border-0 file:text-xs file:font-bold file:bg-gray-100 file:text-gray-700 cursor-pointer">
+                <button type="submit" class="px-5 py-2 rounded-lg bg-gray-900 text-white text-sm font-bold hover:bg-gray-800 transition-all">Upload</button>
               </div>
-              <p class="text-xs text-gray-500 mt-1">
-                PDF, Office, Images, ZIP supported (max 50MB)
-              </p>
+              <p class="text-xs text-gray-500 mt-1">PDF, Office, Images, ZIP, MSG/EML supported</p>
             </div>
-
             <div class="col-span-12">
-              <label class="text-xs font-bold text-gray-700 mb-1.5 block">Remarks (Optional)</label>
-              <input type="text" name="remark" placeholder="Notes about this document..."
-                     class="w-full px-3 py-2 border-2 border-gray-200 rounded-lg text-sm
-                            focus:outline-none focus:border-gray-900 placeholder:text-gray-400">
+              <input type="text" name="remark" placeholder="Remarks (optional)" class="w-full px-3 py-2 border-2 border-gray-200 rounded-lg text-sm focus:outline-none focus:border-gray-900">
             </div>
           </form>
         </div>
 
-        <!-- Uploaded Documents List -->
+        <!-- Documents List -->
         {% if documents %}
         <div class="space-y-3">
           <h3 class="text-sm font-bold text-gray-700 mb-3">Uploaded Documents ({{ documents|length }})</h3>
           {% for doc in documents %}
-          <div class="bg-white rounded-xl p-4 border-2 border-gray-200 hover:border-gray-400 transition-all group">
+          <div class="bg-white rounded-xl p-4 border-2 border-gray-200 hover:border-gray-400 transition-all">
             <div class="flex items-start gap-4">
-
-              <!-- Document Icon -->
               <div class="w-12 h-12 rounded-lg flex items-center justify-center shrink-0 border-2
-                          {% if doc.doc_type == 'quality_report' %}bg-blue-100 border-blue-200
-                          {% elif doc.doc_type == 'test_report' %}bg-green-100 border-green-200
-                          {% elif doc.doc_type == '8d_report' %}bg-purple-100 border-purple-200
-                          {% elif doc.doc_type == 'photo' %}bg-pink-100 border-pink-200
-                          {% elif doc.doc_type == 'capa' %}bg-amber-100 border-amber-200
-                          {% else %}bg-gray-100 border-gray-200{% endif %}">
-                {% if doc.mime and 'image' in doc.mime %}
-                  <svg class="w-6 h-6 text-pink-600" fill="none" stroke="currentColor" viewBox="0 0 24 24" stroke-width="2">
-                    <path stroke-linecap="round" stroke-linejoin="round" d="M4 16l4.586-4.586a2 2 0 012.828 0L16 16m-2-2l1.586-1.586a2 2 0 012.828 0L20 14m-6-6h.01M6 20h12a2 2 0 002-2V6a2 2 0 00-2-2H6a2 2 0 00-2 2v12a2 2 0 002 2z"/>
-                  </svg>
+                {% if doc.doc_type == 'quality_report' %}bg-blue-100 border-blue-200
+                {% elif doc.doc_type == 'test_report' %}bg-green-100 border-green-200
+                {% elif doc.doc_type == '8d_report' %}bg-purple-100 border-purple-200
+                {% elif doc.doc_type == 'photo' %}bg-pink-100 border-pink-200
+                {% elif doc.doc_type == 'capa' %}bg-amber-100 border-amber-200
+                {% elif doc.doc_type == 'email' %}bg-cyan-100 border-cyan-200
+                {% elif doc.doc_type == 'debit_note' %}bg-emerald-100 border-emerald-200
+                {% else %}bg-gray-100 border-gray-200{% endif %}">
+                {% if doc.doc_type == 'email' %}
+                <svg class="w-6 h-6 text-cyan-600" fill="none" stroke="currentColor" viewBox="0 0 24 24" stroke-width="2"><path stroke-linecap="round" stroke-linejoin="round" d="M3 8l7.89 5.26a2 2 0 002.22 0L21 8M5 19h14a2 2 0 002-2V7a2 2 0 00-2-2H5a2 2 0 00-2 2v10a2 2 0 002 2z"/></svg>
+                {% elif doc.doc_type == 'debit_note' %}
+                <svg class="w-6 h-6 text-emerald-600" fill="none" stroke="currentColor" viewBox="0 0 24 24" stroke-width="2"><path stroke-linecap="round" stroke-linejoin="round" d="M12 8c-1.657 0-3 .895-3 2s1.343 2 3 2 3 .895 3 2-1.343 2-3 2m0-8c1.11 0 2.08.402 2.599 1M12 8V7m0 1v8m0 0v1m0-1c-1.11 0-2.08-.402-2.599-1M21 12a9 9 0 11-18 0 9 9 0 0118 0z"/></svg>
+                {% elif doc.mime and 'image' in doc.mime %}
+                <svg class="w-6 h-6 text-pink-600" fill="none" stroke="currentColor" viewBox="0 0 24 24" stroke-width="2"><path stroke-linecap="round" stroke-linejoin="round" d="M4 16l4.586-4.586a2 2 0 012.828 0L16 16m-2-2l1.586-1.586a2 2 0 012.828 0L20 14m-6-6h.01M6 20h12a2 2 0 002-2V6a2 2 0 00-2-2H6a2 2 0 00-2 2v12a2 2 0 002 2z"/></svg>
                 {% elif doc.mime and 'pdf' in doc.mime %}
-                  <svg class="w-6 h-6 text-red-600" fill="none" stroke="currentColor" viewBox="0 0 24 24" stroke-width="2">
-                    <path stroke-linecap="round" stroke-linejoin="round" d="M7 21h10a2 2 0 002-2V9.414a1 1 0 00-.293-.707l-5.414-5.414A1 1 0 0012.586 3H7a2 2 0 00-2 2v14a2 2 0 002 2z"/>
-                  </svg>
+                <svg class="w-6 h-6 text-red-600" fill="none" stroke="currentColor" viewBox="0 0 24 24" stroke-width="2"><path stroke-linecap="round" stroke-linejoin="round" d="M7 21h10a2 2 0 002-2V9.414a1 1 0 00-.293-.707l-5.414-5.414A1 1 0 0012.586 3H7a2 2 0 00-2 2v14a2 2 0 002 2z"/></svg>
                 {% else %}
-                  <svg class="w-6 h-6 text-gray-600" fill="none" stroke="currentColor" viewBox="0 0 24 24" stroke-width="2">
-                    <path stroke-linecap="round" stroke-linejoin="round" d="M9 12h6m-6 4h6m2 5H7a2 2 0 01-2-2V5a2 2 0 012-2h5.586a1 1 0 01.707.293l5.414 5.414a1 1 0 01.293.707V19a2 2 0 01-2 2z"/>
-                  </svg>
+                <svg class="w-6 h-6 text-gray-600" fill="none" stroke="currentColor" viewBox="0 0 24 24" stroke-width="2"><path stroke-linecap="round" stroke-linejoin="round" d="M9 12h6m-6 4h6m2 5H7a2 2 0 01-2-2V5a2 2 0 012-2h5.586a1 1 0 01.707.293l5.414 5.414a1 1 0 01.293.707V19a2 2 0 01-2 2z"/></svg>
                 {% endif %}
               </div>
-
-              <!-- Document Info -->
               <div class="flex-1 min-w-0">
                 <div class="flex items-start justify-between gap-3 mb-2">
-                  <div>
-                    <h4 class="font-bold text-gray-900 text-sm">{{ doc.title }}</h4>
-                    <p class="text-xs text-gray-500 mt-0.5 font-mono">{{ doc.original_name }}</p>
-                  </div>
+                  <div><h4 class="font-bold text-gray-900 text-sm">{{ doc.title }}</h4><p class="text-xs text-gray-500 mt-0.5 font-mono">{{ doc.original_name }}</p></div>
                   <span class="px-2 py-1 rounded-md text-xs font-bold border-2 shrink-0
-                               {% if doc.doc_type == 'quality_report' %}bg-blue-50 text-blue-700 border-blue-200
-                               {% elif doc.doc_type == 'test_report' %}bg-green-50 text-green-700 border-green-200
-                               {% elif doc.doc_type == '8d_report' %}bg-purple-50 text-purple-700 border-purple-200
-                               {% elif doc.doc_type == 'photo' %}bg-pink-50 text-pink-700 border-pink-200
-                               {% elif doc.doc_type == 'capa' %}bg-amber-50 text-amber-700 border-amber-200
-                               {% else %}bg-gray-50 text-gray-700 border-gray-200{% endif %}">
-                    {{ doc_types[doc.doc_type] }}
-                  </span>
+                    {% if doc.doc_type == 'quality_report' %}bg-blue-50 text-blue-700 border-blue-200
+                    {% elif doc.doc_type == 'test_report' %}bg-green-50 text-green-700 border-green-200
+                    {% elif doc.doc_type == '8d_report' %}bg-purple-50 text-purple-700 border-purple-200
+                    {% elif doc.doc_type == 'photo' %}bg-pink-50 text-pink-700 border-pink-200
+                    {% elif doc.doc_type == 'capa' %}bg-amber-50 text-amber-700 border-amber-200
+                    {% elif doc.doc_type == 'email' %}bg-cyan-50 text-cyan-700 border-cyan-200
+                    {% elif doc.doc_type == 'debit_note' %}bg-emerald-50 text-emerald-700 border-emerald-200
+                    {% else %}bg-gray-50 text-gray-700 border-gray-200{% endif %}">{{ doc_types[doc.doc_type] }}</span>
                 </div>
-
                 <div class="flex items-center gap-4 text-xs text-gray-500 font-semibold">
                   <span>{{ (doc.size / 1024 / 1024)|round(2) }} MB</span>
                   <span>{{ doc.created_at.strftime('%b %d, %Y %H:%M') }}</span>
-                  {% if doc.remark %}
-                  <span class="truncate max-w-xs" title="{{ doc.remark }}">📝 {{ doc.remark }}</span>
-                  {% endif %}
+                  {% if doc.remark %}<span class="truncate max-w-xs" title="{{ doc.remark }}">📝 {{ doc.remark }}</span>{% endif %}
                 </div>
               </div>
-
-              <!-- Action Buttons -->
               <div class="flex items-center gap-2 shrink-0">
-                <a href="{{ url_for('tr.view_document', tr_id=tr.id, doc_id=doc.id) }}"
-                   target="_blank"
-                   class="inline-flex items-center justify-center w-8 h-8 rounded-lg
-                          bg-blue-50 text-blue-600 hover:bg-blue-100 hover:text-blue-700
-                          border-2 border-blue-200 hover:border-blue-400 transition-all hover:scale-110"
-                   title="View">
-                  <svg class="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24" stroke-width="2">
-                    <path stroke-linecap="round" stroke-linejoin="round" d="M15 12a3 3 0 11-6 0 3 3 0 016 0z"/>
-                    <path stroke-linecap="round" stroke-linejoin="round" d="M2.458 12C3.732 7.943 7.523 5 12 5c4.478 0 8.268 2.943 9.542 7-1.274 4.057-5.064 7-9.542 7-4.477 0-8.268-2.943-9.542-7z"/>
-                  </svg>
-                </a>
-
-                <a href="{{ url_for('tr.download_document', tr_id=tr.id, doc_id=doc.id) }}"
-                   class="inline-flex items-center justify-center w-8 h-8 rounded-lg
-                          bg-green-50 text-green-600 hover:bg-green-100 hover:text-green-700
-                          border-2 border-green-200 hover:border-green-400 transition-all hover:scale-110"
-                   title="Download">
-                  <svg class="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24" stroke-width="2">
-                    <path stroke-linecap="round" stroke-linejoin="round" d="M4 16v1a3 3 0 003 3h10a3 3 0 003-3v-1m-4-4l-4 4m0 0l-4-4m4 4V4"/>
-                  </svg>
-                </a>
-
-                <form method="post"
-                      action="{{ url_for('tr.delete_document', tr_id=tr.id, doc_id=doc.id) }}"
-                      onsubmit="return confirm('Delete document {{ doc.title }}?');"
-                      class="inline">
-                  <button type="submit"
-                          class="inline-flex items-center justify-center w-8 h-8 rounded-lg
-                                 bg-red-50 text-red-600 hover:bg-red-100 hover:text-red-700
-                                 border-2 border-red-200 hover:border-red-400 transition-all hover:scale-110"
-                          title="Delete">
-                    <svg class="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24" stroke-width="2">
-                      <path stroke-linecap="round" stroke-linejoin="round" d="M19 7l-.867 12.142A2 2 0 0116.138 21H7.862a2 2 0 01-1.995-1.858L5 7m5 4v6m4-6v6m1-10V4a1 1 0 00-1-1h-4a1 1 0 00-1 1v3M4 7h16"/>
-                    </svg>
-                  </button>
-                </form>
+                <a href="{{ url_for('tr.view_document', tr_id=tr.id, doc_id=doc.id) }}" target="_blank" class="w-8 h-8 rounded-lg bg-blue-50 text-blue-600 hover:bg-blue-100 border-2 border-blue-200 inline-flex items-center justify-center" title="View"><svg class="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24" stroke-width="2"><path stroke-linecap="round" stroke-linejoin="round" d="M15 12a3 3 0 11-6 0 3 3 0 016 0z"/><path stroke-linecap="round" stroke-linejoin="round" d="M2.458 12C3.732 7.943 7.523 5 12 5c4.478 0 8.268 2.943 9.542 7-1.274 4.057-5.064 7-9.542 7-4.477 0-8.268-2.943-9.542-7z"/></svg></a>
+                <a href="{{ url_for('tr.download_document', tr_id=tr.id, doc_id=doc.id) }}" class="w-8 h-8 rounded-lg bg-green-50 text-green-600 hover:bg-green-100 border-2 border-green-200 inline-flex items-center justify-center" title="Download"><svg class="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24" stroke-width="2"><path stroke-linecap="round" stroke-linejoin="round" d="M4 16v1a3 3 0 003 3h10a3 3 0 003-3v-1m-4-4l-4 4m0 0l-4-4m4 4V4"/></svg></a>
+                <form method="post" action="{{ url_for('tr.delete_document', tr_id=tr.id, doc_id=doc.id) }}" onsubmit="return confirm('Delete?');" class="inline"><button type="submit" class="w-8 h-8 rounded-lg bg-red-50 text-red-600 hover:bg-red-100 border-2 border-red-200 inline-flex items-center justify-center" title="Delete"><svg class="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24" stroke-width="2"><path stroke-linecap="round" stroke-linejoin="round" d="M19 7l-.867 12.142A2 2 0 0116.138 21H7.862a2 2 0 01-1.995-1.858L5 7m5 4v6m4-6v6m1-10V4a1 1 0 00-1-1h-4a1 1 0 00-1 1v3M4 7h16"/></svg></button></form>
               </div>
             </div>
           </div>
@@ -496,10 +317,8 @@
         </div>
         {% else %}
         <div class="text-center py-8 bg-gray-50 rounded-xl border-2 border-dashed border-gray-300">
-          <svg class="w-12 h-12 text-gray-300 mx-auto mb-3" fill="none" stroke="currentColor" viewBox="0 0 24 24" stroke-width="2">
-            <path stroke-linecap="round" stroke-linejoin="round" d="M7 21h10a2 2 0 002-2V9.414a1 1 0 00-.293-.707l-5.414-5.414A1 1 0 0012.586 3H7a2 2 0 00-2 2v14a2 2 0 002 2z"/>
-          </svg>
           <p class="text-sm text-gray-500 font-semibold">No documents yet</p>
+          {% if tr.tr_no.startswith('TR-EDC-') %}<p class="text-xs text-gray-400 mt-2">Click "Sync EDC Attachments" above to import from OneDrive</p>{% endif %}
         </div>
         {% endif %}
       </div>
@@ -509,45 +328,28 @@
 </div>
 
 <script>
-  (function () {
-    const statusSelect = document.getElementById("eight_d_status");
-    const refInput = document.getElementById("eight_d");
+(function(){
+  const ss=document.getElementById("eight_d_status"),ri=document.getElementById("eight_d");
+  if(!ss||!ri)return;
+  function u(){
+    const v=ss.value;
+    if(v==="NOT_REQUIRED"){ri.classList.add("bg-gray-50","text-gray-500");ri.placeholder="Not required";}
+    else{ri.classList.remove("bg-gray-50","text-gray-500");ri.placeholder="8D number/filename/link...";}
+    ss.className=ss.className.replace(/status-\S+/g,"");
+    ss.classList.add({NOT_REQUIRED:"status-not-required",NOT_RECEIVED:"status-not-received",RECEIVED_REJECT:"status-reject",RECEIVED_PASS:"status-pass"}[v]||"");
+  }
+  ss.addEventListener("change",u);u();
+})();
 
-    if (!statusSelect || !refInput) return;
-
-    function updateRefField() {
-      const value = statusSelect.value;
-      const notRequired = (value === "NOT_REQUIRED");
-
-      if (notRequired) {
-        refInput.classList.add("bg-gray-50", "text-gray-500");
-        refInput.placeholder = "Not required, can leave blank";
-      } else {
-        refInput.classList.remove("bg-gray-50", "text-gray-500");
-        refInput.placeholder = "8D number/filename/link...";
-      }
-
-      statusSelect.classList.remove("status-not-required", "status-not-received", "status-reject", "status-pass");
-
-      switch(value) {
-        case "NOT_REQUIRED":
-          statusSelect.classList.add("status-not-required");
-          break;
-        case "NOT_RECEIVED":
-          statusSelect.classList.add("status-not-received");
-          break;
-        case "RECEIVED_REJECT":
-          statusSelect.classList.add("status-reject");
-          break;
-        case "RECEIVED_PASS":
-          statusSelect.classList.add("status-pass");
-          break;
-      }
-    }
-
-    statusSelect.addEventListener("change", updateRefField);
-    updateRefField();
-  })();
+let _edcFields=null;
+function toggleEDC(){const b=document.getElementById('edcBody'),c=document.getElementById('edcChevron');if(!b)return;const h=b.classList.toggle('hidden');c.style.transform=h?'':'rotate(180deg)';}
+async function scanOutlook(){const btn=document.getElementById('scanBtn'),area=document.getElementById('emailListArea');btn.disabled=true;area.innerHTML=miniSpinner('Reading Outlook...');try{const r=await fetch('/tr/edc-inbox',{method:'POST'});const data=await r.json();if(!data.ok){area.innerHTML=errorBox(data.error);return;}if(data.emails.length===0){area.innerHTML='<p class="text-xs text-center text-blue-400 py-6">No EDC emails</p>';return;}renderEmailList(data.emails);}catch(e){area.innerHTML=errorBox(e.message);}finally{btn.disabled=false;}}
+function renderEmailList(emails){const area=document.getElementById('emailListArea');area.innerHTML=`<div class="space-y-1.5 max-h-52 overflow-y-auto pr-1">${emails.map(e=>{const rc=(e.result||'').toLowerCase().includes('not approved')?'text-red-600 bg-red-50 border-red-200':'text-green-700 bg-green-50 border-green-200';const done=e.already_has_tr;return`<div class="flex items-center gap-2 px-3 py-2 rounded-lg border cursor-pointer transition-all ${done?'border-gray-200 bg-gray-50 opacity-50 cursor-not-allowed':'border-blue-100 bg-white hover:border-blue-400 hover:bg-blue-50'}" onclick="${done?'':`selectEDC('${e.edc_no}',this)`}"><span class="font-mono font-bold text-xs bg-blue-100 text-blue-800 px-2 py-0.5 rounded flex-shrink-0">${e.edc_no}</span><div class="flex-1 min-w-0"><p class="text-xs text-gray-600 truncate font-medium">${e.supplier||'—'}</p><p class="text-[10px] text-gray-400 truncate">${e.material||''} · ${e.received_at||''}</p></div><div class="flex-shrink-0 flex flex-col items-end gap-1"><span class="text-[10px] font-bold px-1.5 py-0.5 rounded border ${rc}">${(e.result||'Unknown').replace('Not Approved','N/A')}</span>${done?`<a href="/tr/${e.tr_id}/edit" class="text-[10px] text-blue-500 hover:underline font-semibold">TR exists →</a>`:''}</div></div>`;}).join('')}</div><p class="text-[10px] text-blue-400 mt-2 text-right">${emails.length} email(s)</p>`;}
+async function selectEDC(edcNo,rowEl){document.querySelectorAll('[id^="erow-"]').forEach(r=>r.classList.remove('border-blue-500','bg-blue-100','ring-2','ring-blue-300'));rowEl.classList.add('border-blue-500','bg-blue-100','ring-2','ring-blue-300');_edcFields=null;document.getElementById('applyBtnWrap').classList.add('hidden');showPDFStatus('loading',`Searching OneDrive for ${edcNo}...`);document.getElementById('pdfPreviewArea').innerHTML='';try{const r=await fetch('/tr/import-edc-no',{method:'POST',headers:{'Content-Type':'application/json'},body:JSON.stringify({edc_no:edcNo})});const data=await r.json();if(!data.ok){showPDFStatus('error',data.error);return;}_edcFields=data.fields;showPDFStatus('success',`✓ ${data.pdf_name}`);renderPDFPreview(data.fields);document.getElementById('applyBtnWrap').classList.remove('hidden');}catch(e){showPDFStatus('error',e.message);}}
+function renderPDFPreview(f){const area=document.getElementById('pdfPreviewArea');const rows=[['TR No.',f.tr_no],['Supplier Code',f.supplier_code],['Supplier Name',f.supplier_name],['Drawing',f.part_number],['Part Name',f.part_name],['Report Date',f.report_date],['Rejected',`${f.rejected_parts} / ${f.received_parts} pcs`]];area.innerHTML=`<div class="space-y-1 mb-3">${rows.map(([k,v])=>`<div class="flex gap-2 text-xs"><span class="text-gray-400 min-w-[90px]">${k}</span><span class="text-gray-800 font-semibold font-mono truncate">${v||'—'}</span></div>`).join('')}</div>${f.issue_description?`<details class="text-xs"><summary class="text-gray-400 cursor-pointer font-semibold">Issue ▸</summary><pre class="mt-1.5 text-gray-700 whitespace-pre-wrap text-[11px] bg-gray-50 p-2 rounded border max-h-28 overflow-y-auto">${f.issue_description.slice(0,500)}</pre></details>`:''}`;}
+function applyToForm(){if(!_edcFields)return;const f=_edcFields;const set=(sel,val)=>{const el=document.querySelector(sel);if(el&&!el.value)el.value=val||'';};set('[name="tr_no"]',f.tr_no);set('[name="part_number"]',f.part_number);set('[name="part_name"]',f.part_name);set('[name="issue_description"]',f.issue_description);set('[name="remark"]',`EDC ${f.report_no} | Rejected: ${f.rejected_parts}/${f.received_parts} pcs | ${f.report_date}`);const sel=document.querySelector('[name="supplier_name"]');if(sel&&f.supplier_code){for(const opt of sel.options){if(opt.dataset.code===f.supplier_code){opt.selected=true;break;}}if(!sel.value&&f.supplier_name){const key=f.supplier_name.slice(0,12).toUpperCase();for(const opt of sel.options){if(key&&opt.text.toUpperCase().includes(key)){opt.selected=true;break;}}}}const d8=document.getElementById('eight_d_status');if(d8){d8.value='NOT_RECEIVED';d8.dispatchEvent(new Event('change'));}toggleEDC();document.querySelector('form[method="post"]')?.scrollIntoView({behavior:'smooth',block:'start'});}
+function miniSpinner(msg){return`<div class="flex items-center gap-2 py-6 justify-center text-xs text-blue-500 font-medium"><span style="display:inline-block;width:14px;height:14px;border:2px solid #bfdbfe;border-top-color:#3b82f6;border-radius:50%;animation:spin .7s linear infinite;"></span>${msg}</div>`;}
+function errorBox(msg){return`<div style="background:#fef2f2;color:#dc2626;border:1px solid #fecaca;padding:10px 14px;border-radius:8px;font-size:11px;white-space:pre-wrap;">${msg}</div>`;}
+function showPDFStatus(type,html){const el=document.getElementById('pdfStatus');if(!el)return;el.classList.remove('hidden');const s={loading:'background:#eff6ff;color:#1d4ed8;border:1px solid #bfdbfe',success:'background:#f0fdf4;color:#15803d;border:1px solid #bbf7d0',error:'background:#fef2f2;color:#dc2626;border:1px solid #fecaca'}[type];const spin=type==='loading'?'<span style="display:inline-block;width:11px;height:11px;border:2px solid #93c5fd;border-top-color:#1d4ed8;border-radius:50%;animation:spin .7s linear infinite;margin-right:7px;"></span>':'';el.innerHTML=`<div style="padding:7px 12px;border-radius:7px;font-size:11px;font-weight:600;display:flex;align-items:center;${s}">${spin}${html}</div>`;}
 </script>
-
 {% endblock %}

@@ -328,3 +328,23 @@ def delete_doc(supplier_code, doc_id):
     db.session.commit()
     flash(f"✅ '{title}' deleted successfully.", "success")
     return redirect(url_for("docs.list_docs", supplier_code=supplier.code))
+
+@docs_bp.route("/<int:doc_id>/edit", methods=["GET", "POST"])
+def edit_doc(supplier_code, doc_id):
+    supplier = get_supplier_or_404(supplier_code)
+    doc = Document.query.filter_by(id=doc_id, supplier_id=supplier.id).first_or_404()
+    parts = Part.query.filter_by(supplier_id=supplier.id).order_by(Part.created_at.desc()).all()
+
+    if request.method == "POST":
+        doc.doc_type = (request.form.get("doc_type") or doc.doc_type).strip()
+        doc.title = (request.form.get("title") or "").strip() or doc.title
+        doc.revision = (request.form.get("revision") or "").strip()
+        doc.status = (request.form.get("status") or "valid").strip()
+        part_id_raw = (request.form.get("part_id") or "").strip()
+        doc.part_id = int(part_id_raw) if part_id_raw else None
+
+        db.session.commit()
+        flash(f"✅ '{doc.title}' updated successfully.", "success")
+        return redirect(url_for("docs.list_docs", supplier_code=supplier.code))
+
+    return render_template("docs/edit.html", supplier=supplier, doc=doc, parts=parts, doc_types=DOC_TYPES)
