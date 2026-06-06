@@ -114,6 +114,9 @@ class TroubleReport(db.Model):
 
     issue_summary = db.Column(db.Text, nullable=True)
 
+    eight_d_root_cause = db.Column(db.Text)
+    eight_d_action = db.Column(db.Text)
+
     __table_args__ = (
         CheckConstraint(
             "eight_d_status IN ('NOT_REQUIRED','NOT_RECEIVED','RECEIVED_REJECT','RECEIVED_PASS')",

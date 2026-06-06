@@ -85,6 +85,7 @@
 
     <!-- Form -->
     <form method="post" action="{% if mode=='edit' %}{{ url_for('tr.edit_tr', tr_id=tr.id) }}{% else %}{{ url_for('tr.new_tr') }}{% endif %}" class="p-8">
+        {% if next_url %}<input type="hidden" name="next" value="{{ next_url }}">{% endif %}
 
       <!-- Basic Information -->
       <div class="mb-8">

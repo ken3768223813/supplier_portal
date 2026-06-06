@@ -33,8 +33,9 @@ def _call_ollama(prompt, timeout=120, num_predict=300, logger=None):
             OLLAMA_URL,
             json={
                 "model": OLLAMA_MODEL,
-                "prompt": prompt + "\n/no_think",
+                "prompt": prompt,
                 "stream": False,
+                "think": False,
                 "options": {"temperature": 0.2, "num_predict": num_predict},
             },
             timeout=timeout,
@@ -83,15 +84,19 @@ def _parse_json(text):
 # ──────────────────────────────────────────────────────────
 
 _SUMMARY_PROMPT = {
-    "zh": """你是汽车零部件质量工程师。以下是 EDC 质量报告的问题描述原文，可能含意大利语/英语、格式符号和无关信息。
-请提取核心质量问题，用一句简洁中文概括，不超过 40 字。
-只描述：哪个零件、什么缺陷、哪个工序发现。直接输出概括，不要前缀/引号/解释。
-
-原文：
-{raw}""",
     "en": """You are an automotive parts quality engineer. Below is the raw issue description from an EDC quality report. It may contain Italian/English text, formatting symbols, and irrelevant info.
-Extract the core quality problem in ONE concise English sentence (max 20 words).
-Only describe: which part, what defect, at which process found. Output only the summary, no prefix/quotes/explanation.
+
+CRITICAL RULES:
+- Extract ONLY the specific defect/failure description from the text.
+- Do NOT mention: 8D report requests, cost charges, supplier actions, rejection/selection processes, or administrative instructions. These are irrelevant.
+- Do NOT state obvious facts like "parts were rejected" or "non-conforming parts found" — every EDC report has rejections, that is not useful information.
+- Do NOT include quantities or piece counts.
+- Focus ONLY on: what is the SPECIFIC technical defect? (e.g., cracks, porosity, paint defects, leakage, excess weight, dimensional deviation, surface dents)
+- If the report does NOT describe any specific defect characteristics, output exactly: "No specific defect described in report, further investigation needed."
+- NEVER invent or guess a defect type not explicitly stated in the text.
+
+Summarize the specific defect in ONE concise English sentence (max 15 words).
+Output only the summary, no prefix/quotes/explanation.
 
 Raw text:
 {raw}""",

@@ -142,7 +142,7 @@ def _convert_to_pdf(src_path, cache_dir, logger=None):
         if logger:
             logger.info(f"[Preview] converting {src.name}...")
         result = subprocess.run(
-            [soffice, "--headless", "--convert-to", "pdf", "--outdir", str(cache_dir), str(src)],
+            [soffice, "--headless", "--convert-to", "pdf:calc_pdf_Export:{'SinglePageSheets':{'type':1,'value':true}}", "--outdir", str(cache_dir), str(src)],
             timeout=60, capture_output=True, text=True,
         )
         if result.returncode != 0:
@@ -503,10 +503,12 @@ def new_tr():
             flash("✅ TR created. Importing attachments + generating AI summary...", "success")
         else:
             flash("✅ TR created successfully", "success")
-        return redirect(url_for("tr.index"))
+            next_url = request.form.get("next") or request.args.get("next") or url_for("tr.index")
+            return redirect(next_url)
 
     suppliers = Supplier.query.order_by(Supplier.code).all()
-    return render_template("tr/form.html", mode="new", tr=None, suppliers=suppliers)
+    next_url = request.args.get("next", "")
+    return render_template("tr/form.html", mode="new", tr=None, suppliers=suppliers, next_url=next_url)
 
 
 @tr_bp.route("/<int:tr_id>/edit", methods=["GET", "POST"])
@@ -555,11 +557,14 @@ def edit_tr(tr_id):
         threading.Thread(target=_generate_issue_summary,
                         args=(current_app._get_current_object(), tr.id), daemon=True).start()
         flash("✅ TR updated successfully", "success")
-        return redirect(url_for("tr.index"))
+        next_url = request.form.get("next") or request.args.get("next") or url_for("tr.index")
+        return redirect(next_url)
 
     documents = tr.documents.order_by(TRDocument.created_at.desc()).all()
     suppliers = Supplier.query.order_by(Supplier.code).all()
-    return render_template("tr/form.html", mode="edit", tr=tr, documents=documents, doc_types=DOC_TYPES, suppliers=suppliers)
+    next_url = request.args.get("next", "")
+    return render_template("tr/form.html", mode="edit", tr=tr, documents=documents, doc_types=DOC_TYPES,
+                           suppliers=suppliers, next_url=next_url)
 
 
 @tr_bp.route("/<int:tr_id>/delete", methods=["POST"])
@@ -572,7 +577,8 @@ def delete_tr(tr_id):
             except OSError: pass
     db.session.delete(tr); db.session.commit()
     flash("✅ TR deleted successfully", "success")
-    return redirect(url_for("tr.index"))
+    next_url = request.form.get("next") or request.args.get("next") or url_for("tr.index")
+    return redirect(next_url)
 
 
 # ── 文档管理 ──
@@ -607,6 +613,13 @@ def upload_document(tr_id):
         mime=file.mimetype, size=os.path.getsize(file_path), remark=remark,
     ))
     db.session.commit()
+
+    if doc_type == "8d_report":
+        threading.Thread(
+            target=_extract_8d_for_tr,
+            args=(current_app._get_current_object(), tr.id),
+            daemon=True
+        ).start()
     flash(f"✅ Document uploaded: {title}", "success")
     return redirect(url_for("tr.edit_tr", tr_id=tr_id))
 
@@ -808,11 +821,22 @@ def import_edc_no():
     m_sup = re.search(r"Rif\.:\s*(.+)", text)
     supplier_name = re.sub(r"\s+\d+.*$", "", m_sup.group(1)).strip() if m_sup else ""
     received = find(r"Received Parts\.:\s*(\d+)"); rejected = find(r"Rejected Parts:\s*(\d+)")
-    m_rem = re.search(r"\*{5,}\s*\n(Parts rejected.+?)(?=SUPPLY QUALITY|\Z)", text, re.DOTALL)
+    m_rem = re.search(r"\*{5,}\s*\n(.+?)(?=SUPPLY QUALITY|SAMPLE LAB|PIAGGIO & C\.|$)", text, re.DOTALL)
     removals = m_rem.group(1).strip() if m_rem else ""
     if not removals:
         blocks = re.findall(r"REMOVALS\s*\n(.*?)(?=REMOVALS|SUPPLY QUALITY|\Z)", text, re.DOTALL | re.IGNORECASE)
-        removals = blocks[-1].strip() if blocks else ""
+        if blocks:
+            # 优先选英文块（检测常见英文关键词）
+            def _is_english(t):
+                en = sum(1 for w in ['parts', 'rejected', 'compliant', 'found', 'defect', 'check'] if w in t.lower())
+                it = sum(1 for w in ['conformi', 'pezzi', 'imballo', 'verifiche', 'consegna', 'riscontrato'] if
+                         w in t.lower())
+                return en > it
+
+            eng_blocks = [b.strip() for b in blocks if _is_english(b)]
+            removals = eng_blocks[0] if eng_blocks else blocks[0].strip()
+        else:
+            removals = ""
     issue_lines = [removals] if removals else []
     try:
         if int(rejected) > 0: issue_lines.append(f"\nRejected: {rejected} / Received: {received} pcs  |  Report Date: {report_date}")
@@ -836,3 +860,66 @@ def regenerate_summary(tr_id):
     ).start()
     flash("✅ AI 正在重新生成问题摘要，稍后刷新查看", "success")
     return redirect(url_for("tr.edit_tr", tr_id=tr_id))
+
+@tr_bp.route("/ai-status/<int:tr_id>")
+def ai_status(tr_id):
+    tr = TroubleReport.query.get_or_404(tr_id)
+    return jsonify({
+        "done": bool(tr.issue_summary),
+        "summary": tr.issue_summary or "",
+    })
+
+@tr_bp.route("/8d-detail/<int:tr_id>")
+def eight_d_detail(tr_id):
+    tr = TroubleReport.query.get_or_404(tr_id)
+    has_8d_doc = TRDocument.query.filter_by(
+        tr_id=tr.id, doc_type="8d_report"
+    ).first() is not None
+    return jsonify({
+        "tr_no": tr.tr_no,
+        "status": tr.eight_d_status or "NOT_REQUIRED",
+        "root_cause": tr.eight_d_root_cause or "",
+        "action": tr.eight_d_action or "",
+        "has_8d_doc": has_8d_doc,
+        "part_number": tr.part_number or "",
+        "part_name": tr.part_name or "",
+    })
+
+def _extract_8d_for_tr(app, tr_id):
+    """找到该 TR 的 8D 报告附件，AI 提取根因和措施"""
+    import os
+    from ...ai_helper import extract_8d
+    with app.app_context():
+        try:
+            tr = TroubleReport.query.get(tr_id)
+            if not tr:
+                return
+            doc = TRDocument.query.filter_by(
+                tr_id=tr.id, doc_type="8d_report"
+            ).order_by(TRDocument.created_at.desc()).first()
+            if not doc:
+                return
+            file_path = os.path.join(app.config["UPLOAD_DIR"], doc.rel_path)
+            if not os.path.exists(file_path):
+                return
+            root_cause, action = extract_8d(file_path, logger=app.logger)
+            if root_cause or action:
+                tr.eight_d_root_cause = root_cause
+                tr.eight_d_action = action
+                db.session.commit()
+                app.logger.info(f"[AI 8D] TR {tr.tr_no} extracted")
+        except Exception as e:
+            app.logger.warning(f"[AI 8D] failed for TR {tr_id}: {e}")
+
+@tr_bp.route("/8d-extract/<int:tr_id>", methods=["POST"])
+def eight_d_extract_ajax(tr_id):
+    tr = TroubleReport.query.get_or_404(tr_id)
+    doc = TRDocument.query.filter_by(tr_id=tr.id, doc_type="8d_report").first()
+    if not doc:
+        return jsonify({"ok": False, "msg": "该 TR 没有 8D 报告附件"})
+    threading.Thread(
+        target=_extract_8d_for_tr,
+        args=(current_app._get_current_object(), tr.id),
+        daemon=True
+    ).start()
+    return jsonify({"ok": True, "msg": "AI 正在分析，约 20-40 秒后刷新查看"})

@@ -1,0 +1,145 @@
+{# =================================================================
+   8D RCCA 弹窗 —— 共享组件
+   保存为 app/blueprints/tr/templates/tr/_8d_modal.html
+   在 index.html 和 quality.html 末尾用 {% include "tr/_8d_modal.html" %} 引入
+   ================================================================= #}
+
+<div id="rccaModal" class="fixed inset-0 z-50 hidden">
+  <div class="absolute inset-0 bg-black/40 backdrop-blur-sm" onclick="closeRcca()"></div>
+
+  <div class="absolute left-1/2 top-1/2 w-[92vw] max-w-lg -translate-x-1/2 -translate-y-1/2">
+    <div class="rounded-2xl bg-white shadow-2xl overflow-hidden">
+
+      <!-- Header -->
+      <div class="px-6 py-4 bg-gradient-to-r from-violet-500 to-purple-600 text-white">
+        <div class="flex items-center justify-between">
+          <div>
+            <div class="flex items-center gap-2">
+              <svg class="w-5 h-5" fill="none" stroke="currentColor" viewBox="0 0 24 24" stroke-width="2"><path stroke-linecap="round" stroke-linejoin="round" d="M9.663 17h4.673M12 3v1m6.364 1.636l-.707.707M21 12h-1M4 12H3m3.343-5.657l-.707-.707m2.828 9.9a5 5 0 117.072 0l-.548.547A3.374 3.374 0 0014 18.469V19a2 2 0 11-4 0v-.531c0-.895-.356-1.754-.988-2.386l-.548-.547z"/></svg>
+              <h3 class="font-bold text-lg">8D 分析</h3>
+            </div>
+            <p id="rccaTrNo" class="text-xs text-violet-100 mt-0.5 font-mono"></p>
+          </div>
+          <button onclick="closeRcca()" class="text-white/80 hover:text-white text-2xl leading-none">×</button>
+        </div>
+      </div>
+
+      <!-- Body -->
+      <div id="rccaBody" class="p-6 space-y-5 max-h-[60vh] overflow-y-auto">
+        <div class="text-center py-8 text-gray-400 text-sm">Loading...</div>
+      </div>
+
+      <!-- Footer -->
+      <div id="rccaFooter" class="px-6 py-3 bg-gray-50 border-t border-gray-100 flex items-center justify-between hidden">
+        <span id="rccaHint" class="text-xs text-gray-400"></span>
+        <button id="rccaExtractBtn" onclick="extractRcca()"
+                class="inline-flex items-center gap-1.5 px-3 py-1.5 rounded-lg bg-violet-600 text-white text-xs font-bold hover:bg-violet-700 transition-all">
+          <svg class="w-3.5 h-3.5" fill="none" stroke="currentColor" viewBox="0 0 24 24" stroke-width="2"><path stroke-linecap="round" stroke-linejoin="round" d="M4 4v5h.582m15.356 2A8.001 8.001 0 004.582 9m0 0H9m11 11v-5h-.581m0 0a8.003 8.003 0 01-15.357-2m15.357 2H15"/></svg>
+          AI 重新提取
+        </button>
+      </div>
+    </div>
+  </div>
+</div>
+
+<script>
+let _currentTrId = null;
+
+function openRcca(trId) {
+  _currentTrId = trId;
+  const modal = document.getElementById('rccaModal');
+  const body = document.getElementById('rccaBody');
+  const footer = document.getElementById('rccaFooter');
+  modal.classList.remove('hidden');
+  footer.classList.add('hidden');
+  body.innerHTML = '<div class="text-center py-8 text-gray-400 text-sm">Loading...</div>';
+
+  fetch(`/tr/8d-detail/${trId}`)
+    .then(r => r.json())
+    .then(d => {
+      document.getElementById('rccaTrNo').textContent = d.tr_no + (d.part_number ? ' · ' + d.part_number : '');
+
+      const statusMap = {
+        'NOT_REQUIRED': ['不要求', 'bg-gray-100 text-gray-600'],
+        'NOT_RECEIVED': ['8D 待回复', 'bg-yellow-100 text-yellow-700'],
+        'RECEIVED_REJECT': ['已拒绝', 'bg-red-100 text-red-700'],
+        'RECEIVED_PASS': ['已通过', 'bg-green-100 text-green-700'],
+      };
+      const [stLabel, stClass] = statusMap[d.status] || statusMap['NOT_REQUIRED'];
+
+      if (!d.root_cause && !d.action) {
+        // 空状态
+        body.innerHTML = `
+          <div class="text-center py-6">
+            <div class="text-4xl mb-3 opacity-30">🔍</div>
+            ${d.has_8d_doc
+              ? '<p class="text-sm text-gray-600 font-medium mb-1">还没有提取 8D 分析</p><p class="text-xs text-gray-400">点击下方 "AI 重新提取" 从已上传的 8D 报告中分析</p>'
+              : '<p class="text-sm text-gray-600 font-medium mb-1">尚未上传 8D 报告</p><p class="text-xs text-gray-400">在 TR 编辑页上传 8D 报告（类型选 8D Report），AI 会自动提取根因和措施</p>'}
+          </div>`;
+      } else {
+        body.innerHTML = `
+          <div class="flex items-center gap-2 mb-2">
+            <span class="text-[11px] font-bold px-2.5 py-1 rounded-full ${stClass}">${stLabel}</span>
+          </div>
+          <div class="rounded-xl bg-amber-50 border border-amber-200 p-4">
+            <div class="flex items-center gap-2 mb-2">
+              <span class="w-6 h-6 rounded-lg bg-amber-100 flex items-center justify-center text-sm">🎯</span>
+              <span class="text-sm font-bold text-amber-800">根本原因 (D4)</span>
+            </div>
+            <p class="text-sm text-gray-700 leading-relaxed">${d.root_cause || '<span class="text-gray-400">未提取到</span>'}</p>
+          </div>
+          <div class="rounded-xl bg-green-50 border border-green-200 p-4">
+            <div class="flex items-center gap-2 mb-2">
+              <span class="w-6 h-6 rounded-lg bg-green-100 flex items-center justify-center text-sm">🔧</span>
+              <span class="text-sm font-bold text-green-800">纠正措施 (D5/D6)</span>
+            </div>
+            <p class="text-sm text-gray-700 leading-relaxed whitespace-pre-line">${d.action || '<span class="text-gray-400">未提取到</span>'}</p>
+          </div>`;
+      }
+
+      // Footer
+      const footer = document.getElementById('rccaFooter');
+      const hint = document.getElementById('rccaHint');
+      const btn = document.getElementById('rccaExtractBtn');
+      footer.classList.remove('hidden');
+      if (d.has_8d_doc) {
+        hint.textContent = '可重新提取以更新分析';
+        btn.style.display = '';
+      } else {
+        hint.textContent = '上传 8D 报告后可提取';
+        btn.style.display = 'none';
+      }
+    })
+    .catch(() => {
+      body.innerHTML = '<div class="text-center py-8 text-red-400 text-sm">加载失败</div>';
+    });
+}
+
+function extractRcca() {
+  if (!_currentTrId) return;
+  const btn = document.getElementById('rccaExtractBtn');
+  btn.disabled = true;
+  btn.textContent = '提取中...';
+  fetch(`/tr/8d-extract/${_currentTrId}`, {method: 'POST'})
+    .then(r => r.json())
+    .then(d => {
+      alert(d.msg);
+      btn.disabled = false;
+      btn.innerHTML = '🔄 AI 重新提取';
+      if (d.ok) closeRcca();
+    })
+    .catch(() => {
+      btn.disabled = false;
+      btn.innerHTML = '🔄 AI 重新提取';
+    });
+}
+
+function closeRcca() {
+  document.getElementById('rccaModal').classList.add('hidden');
+  _currentTrId = null;
+}
+
+document.addEventListener('keydown', e => {
+  if (e.key === 'Escape') closeRcca();
+});
+</script>
