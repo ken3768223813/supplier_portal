@@ -444,10 +444,25 @@ def index():
             )
         )
 
-    query = query.order_by(TroubleReport.created_at.desc(), TroubleReport.id.desc())
+    query = query.order_by(TroubleReport.is_pinned.desc(), TroubleReport.created_at.desc(), TroubleReport.id.desc())
     pagination = query.paginate(page=page, per_page=per_page, error_out=False)
 
-    return render_template("tr/index.html", trs=pagination.items, pagination=pagination, q=q, per_page=per_page)
+    # 全局统计（不受分页影响）
+    from sqlalchemy import func, case
+    stats = db.session.query(
+        func.count(TroubleReport.id).label('total'),
+        func.sum(case((func.lower(TroubleReport.status).in_(['closed', 'done', 'completed']), 1), else_=0)).label(
+            'closed'),
+        func.sum(case((TroubleReport.eight_d_status == 'NOT_RECEIVED', 1), else_=0)).label('pending_8d'),
+    ).first()
+    total = stats.total or 0
+    closed = int(stats.closed or 0)
+    ongoing = total - closed
+    pending_8d = int(stats.pending_8d or 0)
+
+    return render_template("tr/index.html", trs=pagination.items, pagination=pagination,
+                           q=q, per_page=per_page,
+                           stat_ongoing=ongoing, stat_closed=closed, stat_8d=pending_8d)
 
 
 @tr_bp.route("/new", methods=["GET", "POST"])
@@ -489,6 +504,7 @@ def new_tr():
             status=status, remark=remark,
             debit_ref=debit_ref, debit_amount=debit_amount,
             debit_currency=debit_currency, debit_date=debit_date,
+            lot_number=(request.form.get("lot_number") or "").strip() or None,
         )
         db.session.add(tr)
         db.session.commit()
@@ -820,7 +836,7 @@ def import_edc_no():
             description = " ".join(ww["text"] for ww in line); break
     m_sup = re.search(r"Rif\.:\s*(.+)", text)
     supplier_name = re.sub(r"\s+\d+.*$", "", m_sup.group(1)).strip() if m_sup else ""
-    received = find(r"Received Parts\.:\s*(\d+)"); rejected = find(r"Rejected Parts:\s*(\d+)")
+    received = find(r"Received Parts\.:\s*(\d+)"); rejected = find(r"Rejected Parts:\s*(\d+)"); lot_number = find(r"Lot\s*check[.:]?\s*(\S+)")
     m_rem = re.search(r"\*{5,}\s*\n(.+?)(?=SUPPLY QUALITY|SAMPLE LAB|PIAGGIO & C\.|$)", text, re.DOTALL)
     removals = m_rem.group(1).strip() if m_rem else ""
     if not removals:
@@ -848,6 +864,7 @@ def import_edc_no():
         "part_number": drawing, "part_name": description,
         "issue_description": "\n".join(issue_lines),
         "received_parts": received, "rejected_parts": rejected, "eight_d_status": "NOT_RECEIVED",
+        "lot_number": lot_number,
     }})
 
 @tr_bp.route("/<int:tr_id>/regenerate-summary", methods=["POST"])
@@ -879,10 +896,16 @@ def eight_d_detail(tr_id):
         "tr_no": tr.tr_no,
         "status": tr.eight_d_status or "NOT_REQUIRED",
         "root_cause": tr.eight_d_root_cause or "",
+        "root_cause_en": tr.eight_d_root_cause_en or "",
+        "escape_cause": tr.eight_d_escape_cause or "",
+        "escape_cause_en": tr.eight_d_escape_cause_en or "",
         "action": tr.eight_d_action or "",
+        "action_en": tr.eight_d_action_en or "",
         "has_8d_doc": has_8d_doc,
         "part_number": tr.part_number or "",
         "part_name": tr.part_name or "",
+        "escape_action": tr.eight_d_escape_action or "",
+        "escape_action_en": tr.eight_d_escape_action_en or "",
     })
 
 def _extract_8d_for_tr(app, tr_id):
@@ -902,12 +925,22 @@ def _extract_8d_for_tr(app, tr_id):
             file_path = os.path.join(app.config["UPLOAD_DIR"], doc.rel_path)
             if not os.path.exists(file_path):
                 return
-            root_cause, action = extract_8d(file_path, logger=app.logger)
-            if root_cause or action:
-                tr.eight_d_root_cause = root_cause
-                tr.eight_d_action = action
+            result = extract_8d(file_path, logger=app.logger)
+            if result:
+                tr.eight_d_root_cause = result.get("root_cause", "")
+                tr.eight_d_root_cause_en = result.get("root_cause_en", "")
+                tr.eight_d_escape_cause = result.get("escape_cause", "")
+                tr.eight_d_escape_cause_en = result.get("escape_cause_en", "")
+                tr.eight_d_action = result.get("action", "")
+                tr.eight_d_action_en = result.get("action_en", "")
+                tr.eight_d_escape_action = result.get("escape_action", "")
+                tr.eight_d_escape_action_en = result.get("escape_action_en", "")
                 db.session.commit()
-                app.logger.info(f"[AI 8D] TR {tr.tr_no} extracted")
+                app.logger.info(
+                    f"[AI 8D] TR {tr.tr_no} saved | "
+                    f"occ_cn={len(tr.eight_d_root_cause)} occ_en={len(tr.eight_d_root_cause_en)} "
+                    f"esc_cn={len(tr.eight_d_escape_cause)} esc_en={len(tr.eight_d_escape_cause_en)}"
+                )
         except Exception as e:
             app.logger.warning(f"[AI 8D] failed for TR {tr_id}: {e}")
 
@@ -923,3 +956,19 @@ def eight_d_extract_ajax(tr_id):
         daemon=True
     ).start()
     return jsonify({"ok": True, "msg": "AI 正在分析，约 20-40 秒后刷新查看"})
+
+@tr_bp.route("/<int:tr_id>/toggle-pin", methods=["POST"])
+def toggle_pin(tr_id):
+    tr = TroubleReport.query.get_or_404(tr_id)
+    tr.is_pinned = not tr.is_pinned
+    db.session.commit()
+    return jsonify({"ok": True, "pinned": tr.is_pinned})
+
+@tr_bp.route("/<int:tr_id>/investigation", methods=["POST"])
+def save_investigation(tr_id):
+    tr = TroubleReport.query.get_or_404(tr_id)
+    data = request.get_json(silent=True) or {}
+    note = (data.get("note") or "").strip()
+    tr.investigation_note = note or None
+    db.session.commit()
+    return jsonify({"ok": True, "note": tr.investigation_note or ""})

@@ -1,0 +1,215 @@
+<!doctype html>
+<html lang="zh">
+<head>
+<meta charset="utf-8">
+<title>质量报告 · {{ supplier.chinese_name or supplier.name }} · {{ period_label }}</title>
+<script src="https://cdn.tailwindcss.com"></script>
+<style>
+  body { background:#f1f5f9; font-family:-apple-system,BlinkMacSystemFont,'Segoe UI',Roboto,'PingFang SC','Microsoft YaHei',sans-serif; }
+  .page { width:210mm; min-height:297mm; margin:16px auto; background:#fff; box-shadow:0 4px 24px rgba(0,0,0,.08); }
+  .pad { padding:16mm 15mm; }
+  @media print {
+    body { background:#fff; }
+    .no-print { display:none !important; }
+    .page { width:auto; min-height:auto; margin:0; box-shadow:none; }
+    .pad { padding:0; }
+    .avoid-break { break-inside:avoid; }
+    @page { size:A4; margin:14mm; }
+  }
+  .bar { transition:none; }
+</style>
+</head>
+<body>
+
+<!-- ░░ 工具栏（打印时隐藏）░░ -->
+<div class="no-print sticky top-0 z-10 bg-white border-b border-gray-200 shadow-sm">
+  <div class="max-w-[210mm] mx-auto px-4 py-3 flex items-center justify-between gap-4 flex-wrap">
+    <a href="{{ url_for('supplier_ws.quality', supplier_code=supplier.code) }}" class="text-sm text-gray-500 hover:text-gray-900 inline-flex items-center gap-1">
+      <svg class="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24" stroke-width="2"><path stroke-linecap="round" stroke-linejoin="round" d="M15 19l-7-7 7-7"/></svg>返回
+    </a>
+    <div class="flex items-center gap-1.5 flex-wrap">
+      {% set periods = [('this_month','本月'),('this_quarter','本季'),('this_half','半年'),('this_year','本年'),('all','全部')] %}
+      {% for key, label in periods %}
+      <a href="{{ url_for('supplier_ws.report', supplier_code=supplier.code, period=key) }}"
+         class="text-xs font-bold px-3 py-1.5 rounded-lg {{ 'bg-gray-900 text-white' if period==key else 'bg-gray-100 text-gray-600 hover:bg-gray-200' }}">{{ label }}</a>
+      {% endfor %}
+    </div>
+    <button onclick="window.print()" class="inline-flex items-center gap-2 px-4 py-2 rounded-lg bg-blue-600 text-white text-sm font-semibold hover:bg-blue-700">
+      <svg class="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24" stroke-width="2"><path stroke-linecap="round" stroke-linejoin="round" d="M17 17h2a2 2 0 002-2v-4a2 2 0 00-2-2H5a2 2 0 00-2 2v4a2 2 0 002 2h2m2 4h6a2 2 0 002-2v-4a2 2 0 00-2-2H9a2 2 0 00-2 2v4a2 2 0 002 2zm8-12V5a2 2 0 00-2-2H9a2 2 0 00-2 2v4h10z"/></svg>
+      打印 / 导出 PDF
+    </button>
+  </div>
+</div>
+
+<!-- ░░ 报告主体 ░░ -->
+<div class="page">
+ <div class="pad text-gray-900">
+
+  <!-- 标题区 -->
+  <div class="flex items-start justify-between border-b-2 border-gray-900 pb-5 mb-6">
+    <div>
+      <div class="text-[11px] font-bold tracking-[0.2em] text-gray-400 uppercase mb-1">Supplier Quality Report · 供应商质量报告</div>
+      <h1 class="text-3xl font-bold leading-tight">{{ supplier.chinese_name or supplier.name }}</h1>
+      <div class="text-sm text-gray-500 mt-1">
+        <span class="font-mono">{{ supplier.code }}</span>
+        {% if supplier.chinese_name and supplier.name != supplier.chinese_name %}<span class="mx-2 text-gray-300">|</span>{{ supplier.name }}{% endif %}
+      </div>
+    </div>
+    <div class="text-right">
+      <div class="text-sm font-semibold text-gray-700">{{ period_label }}</div>
+      {% set rc = {'red':'bg-red-50 text-red-700 border-red-200','amber':'bg-amber-50 text-amber-700 border-amber-200','green':'bg-green-50 text-green-700 border-green-200'} %}
+      <div class="inline-block mt-2 text-xs font-bold px-3 py-1.5 rounded-lg border {{ rc[rating.color] }}">{{ rating.label }}</div>
+    </div>
+  </div>
+
+  <!-- KPI 卡片 -->
+  <div class="grid grid-cols-4 gap-3 mb-7 avoid-break">
+    <div class="rounded-xl border border-gray-200 p-4">
+      <div class="text-[11px] font-bold uppercase tracking-wider text-gray-400">问题总数</div>
+      <div class="text-3xl font-bold mt-1">{{ total }}</div>
+      {% if prev_total is not none %}
+        {% set diff = total - prev_total %}
+        <div class="text-[11px] mt-1 font-semibold {{ 'text-red-600' if diff>0 else ('text-green-600' if diff<0 else 'text-gray-400') }}">
+          {% if diff>0 %}▲ +{{ diff }}{% elif diff<0 %}▼ {{ diff }}{% else %}— 持平{% endif %} <span class="text-gray-400 font-normal">vs 上期 {{ prev_total }}</span>
+        </div>
+      {% endif %}
+    </div>
+    <div class="rounded-xl border border-gray-200 p-4">
+      <div class="text-[11px] font-bold uppercase tracking-wider text-gray-400">未闭环</div>
+      <div class="text-3xl font-bold mt-1 text-orange-600">{{ open_cnt }}</div>
+      <div class="text-[11px] mt-1 text-gray-400">已闭环 {{ closed }}</div>
+    </div>
+    <div class="rounded-xl border border-gray-200 p-4">
+      <div class="text-[11px] font-bold uppercase tracking-wider text-gray-400">8D 待回复</div>
+      <div class="text-3xl font-bold mt-1 text-amber-600">{{ pending_8d }}</div>
+      <div class="text-[11px] mt-1 text-gray-400">需供应商提交</div>
+    </div>
+    <div class="rounded-xl border border-gray-200 p-4">
+      <div class="text-[11px] font-bold uppercase tracking-wider text-gray-400">累计扣款</div>
+      <div class="text-2xl font-bold mt-1.5 text-emerald-700">€{{ '{:,.0f}'.format(debit_total) }}</div>
+    </div>
+  </div>
+
+  <!-- 月度趋势 + 8D 分布 -->
+  <div class="grid grid-cols-2 gap-6 mb-7 avoid-break">
+    <!-- 趋势 -->
+    <div>
+      <h2 class="text-sm font-bold text-gray-900 mb-3">问题月度趋势</h2>
+      {% if monthly %}
+      <svg viewBox="0 0 320 160" class="w-full">
+        {% set n = monthly|length %}
+        {% set bw = (300 / n) %}
+        {% for m in monthly %}
+          {% set h = (m.count / month_max * 110)|round(1) %}
+          {% set x = (10 + loop.index0 * bw) %}
+          <rect class="bar" x="{{ x + bw*0.18 }}" y="{{ 125 - h }}" width="{{ bw*0.64 }}" height="{{ h }}" rx="2" fill="#3b82f6"></rect>
+          {% if m.count > 0 %}<text x="{{ x + bw*0.5 }}" y="{{ 120 - h }}" text-anchor="middle" font-size="9" fill="#475569" font-weight="bold">{{ m.count }}</text>{% endif %}
+          <text x="{{ x + bw*0.5 }}" y="140" text-anchor="middle" font-size="8" fill="#94a3b8">{{ m.label }}</text>
+        {% endfor %}
+        <line x1="10" y1="125" x2="310" y2="125" stroke="#e2e8f0" stroke-width="1"></line>
+      </svg>
+      {% else %}
+      <div class="text-xs text-gray-400 py-8 text-center border border-dashed border-gray-200 rounded-lg">本周期无数据</div>
+      {% endif %}
+    </div>
+    <!-- 8D 分布 -->
+    <div>
+      <h2 class="text-sm font-bold text-gray-900 mb-3">8D 状态分布</h2>
+      {% set d8total = total or 1 %}
+      {% set d8colors = {'NOT_RECEIVED':'#f59e0b','RECEIVED_REJECT':'#ef4444','RECEIVED_PASS':'#22c55e','NOT_REQUIRED':'#cbd5e1'} %}
+      <div class="space-y-2.5">
+        {% for d in eight_d %}
+        <div>
+          <div class="flex items-center justify-between text-xs mb-1">
+            <span class="text-gray-600">{{ d.label }}</span>
+            <span class="font-bold text-gray-900">{{ d.count }}</span>
+          </div>
+          <div class="h-2.5 rounded-full bg-gray-100 overflow-hidden">
+            <div class="h-full rounded-full" style="width:{{ (d.count/d8total*100)|round(1) }}%;background:{{ d8colors[d.key] }}"></div>
+          </div>
+        </div>
+        {% endfor %}
+      </div>
+    </div>
+  </div>
+
+  <!-- Top 问题零件 -->
+  {% if top_parts %}
+  <div class="mb-7 avoid-break">
+    <h2 class="text-sm font-bold text-gray-900 mb-3">问题集中零件 Top {{ top_parts|length }}</h2>
+    <div class="space-y-2">
+      {% for p in top_parts %}
+      <div class="flex items-center gap-3">
+        <div class="w-32 shrink-0 text-right">
+          <div class="font-mono text-xs font-bold text-gray-800 truncate">{{ p.pn }}</div>
+          {% if p.name %}<div class="text-[10px] text-gray-400 truncate">{{ p.name }}</div>{% endif %}
+        </div>
+        <div class="flex-1 h-5 bg-gray-100 rounded-md overflow-hidden">
+          <div class="h-full bg-indigo-500 rounded-md flex items-center justify-end pr-2" style="width:{{ (p.count/top_max*100)|round(1) }}%">
+            <span class="text-[10px] font-bold text-white">{{ p.count }}</span>
+          </div>
+        </div>
+      </div>
+      {% endfor %}
+    </div>
+  </div>
+  {% endif %}
+
+  <!-- 问题清单 -->
+  <div class="avoid-break">
+    <h2 class="text-sm font-bold text-gray-900 mb-3">问题清单（{{ trs|length }}）<span class="text-xs font-normal text-gray-400 ml-1">未闭环优先</span></h2>
+    <table class="w-full text-xs">
+      <thead>
+        <tr class="border-b-2 border-gray-200 text-left text-gray-400">
+          <th class="py-2 pr-2 font-bold">日期</th>
+          <th class="py-2 pr-2 font-bold">TR 编号</th>
+          <th class="py-2 pr-2 font-bold">零件</th>
+          <th class="py-2 pr-2 font-bold">问题描述</th>
+          <th class="py-2 pr-1 font-bold text-center">8D</th>
+          <th class="py-2 pl-1 font-bold text-center">状态</th>
+        </tr>
+      </thead>
+      <tbody>
+        {% for tr in trs %}
+        {% set d = tr_date(tr) %}
+        {% set st = (tr.status or '')|lower %}
+        {% set is_closed = st in ['closed','done','completed'] %}
+        <tr class="border-b border-gray-100 align-top">
+          <td class="py-2 pr-2 text-gray-500 whitespace-nowrap">{{ d.strftime('%Y-%m-%d') if d else '—' }}</td>
+          <td class="py-2 pr-2"><span class="font-mono font-bold text-[11px]">{{ tr.tr_no }}</span></td>
+          <td class="py-2 pr-2">
+            <div class="font-mono text-[11px] text-gray-700">{{ tr.part_number or '—' }}</div>
+            {% if tr.part_name %}<div class="text-[10px] text-gray-400 truncate max-w-[120px]">{{ tr.part_name }}</div>{% endif %}
+          </td>
+          <td class="py-2 pr-2 text-gray-600 leading-snug">{{ tr.issue_summary or tr.issue_description or '—' }}</td>
+          <td class="py-2 pr-1 text-center whitespace-nowrap">
+            {% set d8 = (tr.eight_d_status or 'NOT_REQUIRED')|upper %}
+            {% if d8=='NOT_RECEIVED' %}<span class="text-amber-600 font-bold">待回</span>
+            {% elif d8=='RECEIVED_REJECT' %}<span class="text-red-600 font-bold">拒收</span>
+            {% elif d8=='RECEIVED_PASS' %}<span class="text-green-600 font-bold">通过</span>
+            {% else %}<span class="text-gray-300">—</span>{% endif %}
+          </td>
+          <td class="py-2 pl-1 text-center">
+            {% if is_closed %}<span class="text-[10px] font-bold text-green-700">已闭环</span>
+            {% else %}<span class="text-[10px] font-bold text-orange-600">未闭环</span>{% endif %}
+          </td>
+        </tr>
+        {% endfor %}
+        {% if not trs %}
+        <tr><td colspan="6" class="py-8 text-center text-gray-400">本周期无质量问题记录</td></tr>
+        {% endif %}
+      </tbody>
+    </table>
+  </div>
+
+  <!-- 页脚 -->
+  <div class="mt-8 pt-4 border-t border-gray-200 flex items-center justify-between text-[10px] text-gray-400">
+    <span>Quality Engineering Portal · 供应商质量管理</span>
+    <span>生成时间：{{ generated_at.strftime('%Y-%m-%d %H:%M') }}</span>
+  </div>
+
+ </div>
+</div>
+
+</body>
+</html>

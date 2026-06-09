@@ -1,154 +1,283 @@
 {% extends "layout/base.html" %}
-{% block title %}控制计划列表{% endblock %}
+{% block title %}控制计划{% endblock %}
 
 {% block content %}
-<div class="space-y-6">
+<div class="max-w-[1400px] mx-auto px-1 py-2 space-y-6">
 
-  <!-- ── Header ── -->
+  <!-- Header -->
   <div class="flex items-center justify-between">
     <div>
-      <h1 class="text-2xl font-bold text-gray-900">Control Plans</h1>
-      <p class="text-sm text-gray-400 mt-1">供应商生产工序 & 控制特性记录</p>
+      <h1 class="text-3xl font-bold text-gray-900 tracking-tight">Control Plans</h1>
+      <p class="text-sm text-gray-400 mt-1">供应商控制计划文档库 · 共 {{ cps|length }} 份</p>
     </div>
-    <div class="flex gap-2">
-      <a href="{{ url_for('cp.compare') }}"
-         class="flex items-center gap-2 px-4 py-2 text-sm font-medium text-blue-600 bg-blue-50 rounded-xl hover:bg-blue-100">
-        <svg class="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24" stroke-width="2">
-          <path stroke-linecap="round" stroke-linejoin="round" d="M9 19v-6a2 2 0 00-2-2H5a2 2 0 00-2 2v6a2 2 0 002 2h2a2 2 0 002-2zm0 0V9a2 2 0 012-2h2a2 2 0 012 2v10m-6 0a2 2 0 002 2h2a2 2 0 002-2m0 0V5a2 2 0 012-2h2a2 2 0 012 2v14a2 2 0 01-2 2h-2a2 2 0 01-2-2z"/>
-        </svg>
-        跨供应商对比
-      </a>
-      <a href="{{ url_for('cp.new') }}"
-         class="flex items-center gap-2 px-4 py-2 text-sm font-semibold text-white bg-gray-900 rounded-xl hover:bg-gray-700 transition-colors">
-        <svg class="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24" stroke-width="2">
-          <path stroke-linecap="round" stroke-linejoin="round" d="M12 4v16m8-8H4"/>
-        </svg>
-        新建 CP
-      </a>
-    </div>
+    <button type="button" onclick="openUpload()"
+            class="inline-flex items-center gap-2 px-5 py-2.5 rounded-xl bg-gray-900 text-white text-sm font-semibold hover:bg-gray-800 transition-all shadow-lg">
+      <svg class="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24" stroke-width="2.5"><path stroke-linecap="round" stroke-linejoin="round" d="M12 4v16m8-8H4"/></svg>
+      上传控制计划
+    </button>
   </div>
 
-  <!-- ── 筛选栏 ── -->
-  <form method="GET" class="bg-white rounded-2xl border border-gray-200 px-5 py-4 flex flex-wrap gap-3 items-end">
-    <div class="flex-1 min-w-40">
-      <label class="block text-xs font-semibold text-gray-400 mb-1">搜索</label>
-      <input type="text" name="q" value="{{ q }}" placeholder="零件号 / 描述 / 供应商"
-             class="w-full rounded-xl border border-gray-200 px-3 py-2 text-sm focus:outline-none focus:ring-2 focus:ring-gray-900">
+  <!-- Search / Filter -->
+  <form method="GET" class="bg-white rounded-2xl border border-gray-100 shadow-sm px-5 py-4 flex flex-wrap gap-3 items-end">
+    <div class="flex-1 min-w-[200px]">
+      <label class="block text-[11px] font-bold text-gray-400 uppercase tracking-wider mb-1.5">搜索</label>
+      <div class="relative">
+        <input type="text" name="q" value="{{ q }}" placeholder="零件号 / 描述 / 供应商 / CP编号"
+               class="w-full rounded-xl border border-gray-200 bg-gray-50 pl-10 pr-3 py-2.5 text-sm focus:outline-none focus:border-blue-400 focus:bg-white focus:ring-4 focus:ring-blue-50 transition-all">
+        <svg class="absolute left-3 top-1/2 -translate-y-1/2 w-4 h-4 text-gray-400" fill="none" stroke="currentColor" viewBox="0 0 24 24" stroke-width="2"><path stroke-linecap="round" stroke-linejoin="round" d="M21 21l-6-6m2-5a7 7 0 11-14 0 7 7 0 0114 0z"/></svg>
+      </div>
     </div>
-    <div class="w-40">
-      <label class="block text-xs font-semibold text-gray-400 mb-1">工艺类型</label>
-      <select name="process_type"
-              class="w-full rounded-xl border border-gray-200 px-3 py-2 text-sm focus:outline-none focus:ring-2 focus:ring-gray-900">
+    <div class="w-44">
+      <label class="block text-[11px] font-bold text-gray-400 uppercase tracking-wider mb-1.5">工艺类型</label>
+      <select name="process_type" class="w-full rounded-xl border border-gray-200 bg-gray-50 px-3 py-2.5 text-sm focus:outline-none focus:border-blue-400 focus:bg-white cursor-pointer">
         <option value="">全部</option>
         {% for val, label in process_types %}
         <option value="{{ val }}" {{ 'selected' if selected_type == val }}>{{ label }}</option>
         {% endfor %}
       </select>
     </div>
-    <div class="w-48">
-      <label class="block text-xs font-semibold text-gray-400 mb-1">供应商</label>
-      <select name="supplier_id"
-              class="w-full rounded-xl border border-gray-200 px-3 py-2 text-sm focus:outline-none focus:ring-2 focus:ring-gray-900">
-        <option value="">全部供应商</option>
+    <div class="w-52">
+      <label class="block text-[11px] font-bold text-gray-400 uppercase tracking-wider mb-1.5">供应商</label>
+      <select name="supplier_id" class="w-full rounded-xl border border-gray-200 bg-gray-50 px-3 py-2.5 text-sm focus:outline-none focus:border-blue-400 focus:bg-white cursor-pointer">
+        <option value="">全部</option>
         {% for s in suppliers %}
-        <option value="{{ s.id }}" {{ 'selected' if selected_supplier == s.id|string }}>{{ s.code }} · {{ s.name }}</option>
+        <option value="{{ s.id }}" {{ 'selected' if selected_supplier == s.id|string }}>{{ s.code }} · {{ s.chinese_name or s.name }}</option>
         {% endfor %}
       </select>
     </div>
-    <button type="submit"
-            class="px-5 py-2 text-sm font-semibold text-white bg-gray-900 rounded-xl hover:bg-gray-700 transition-colors">
-      筛选
-    </button>
+    <button type="submit" class="px-5 py-2.5 rounded-xl bg-blue-600 text-white text-sm font-semibold hover:bg-blue-700 transition-all">筛选</button>
     {% if q or selected_type or selected_supplier %}
-    <a href="{{ url_for('cp.index') }}"
-       class="px-4 py-2 text-sm text-gray-400 hover:text-gray-600 rounded-xl hover:bg-gray-100 transition-colors">
-      清除
-    </a>
+    <a href="{{ url_for('cp.index') }}" class="px-4 py-2.5 rounded-xl border border-gray-200 text-sm font-medium text-gray-500 hover:bg-gray-50">清除</a>
     {% endif %}
   </form>
 
-  <!-- ── CP 列表 ── -->
+  <!-- List -->
   {% if cps %}
-  {% for item_cp in cps %}
-    <div class="group bg-white rounded-2xl border border-gray-200 p-5 hover:border-gray-400 hover:shadow-md transition-all">
-
-      <!-- 顶部：编号 + 状态 -->
-      <div class="flex items-start justify-between mb-3">
-        <div>
-          <p class="text-xs font-mono text-gray-400">{{ item_cp.cp_no }}</p>
-          <p class="text-sm font-bold text-gray-800 mt-0.5 group-hover:text-gray-900">
-            {{ item_cp.part.pn }}
-          </p>
-          <p class="text-xs text-gray-500 truncate max-w-48">{{ item_cp.part.description or '' }}</p>
-        </div>
-        <span class="px-2 py-0.5 text-[11px] font-semibold rounded-full flex-shrink-0
-          {{ 'bg-green-100 text-green-700' if item_cp.status == 'active' else
-             'bg-yellow-100 text-yellow-700' if item_cp.status == 'draft' else
-             'bg-gray-100 text-gray-400' }}">
-          {{ item_cp.status }}
-        </span>
-      </div>
-
-      <!-- 供应商 -->
-      <div class="flex items-center gap-2 mb-3">
-        <div class="w-6 h-6 rounded-lg bg-gray-100 flex items-center justify-center flex-shrink-0">
-          <svg class="w-3.5 h-3.5 text-gray-400" fill="none" stroke="currentColor" viewBox="0 0 24 24" stroke-width="2">
-            <path stroke-linecap="round" stroke-linejoin="round" d="M19 21V5a2 2 0 00-2-2H7a2 2 0 00-2 2v16m14 0h2m-2 0h-5m-9 0H3m2 0h5M9 7h1m-1 4h1m4-4h1m-1 4h1m-5 10v-5a1 1 0 011-1h2a1 1 0 011 1v5m-4 0h4"/>
-          </svg>
-        </div>
-        <span class="text-xs text-gray-600 font-medium truncate">{{ item_cp.supplier.name }}</span>
-        <span class="text-xs text-gray-400 flex-shrink-0">{{ item_cp.supplier.code }}</span>
-      </div>
-
-      <!-- 工艺 + 统计 -->
-      <div class="flex items-center gap-2 flex-wrap">
-        {% if item_cp.process_type %}
-        <span class="px-2 py-0.5 bg-blue-50 text-blue-600 text-[11px] font-medium rounded-md">
-          {{ item_cp.process_type }}
-        </span>
-        {% endif %}
-        <span class="text-[11px] text-gray-400">{{ item_cp.total_steps() }} 道工序</span>
-        {% if item_cp.key_steps() > 0 %}
-        <span class="text-[11px] text-orange-500 font-medium">{{ item_cp.key_steps() }} 关键</span>
-        {% endif %}
-        {% if item_cp.audit_date %}
-        <span class="text-[11px] text-gray-400 ml-auto">{{ item_cp.audit_date.strftime('%Y-%m-%d') }}</span>
-        {% endif %}
-      </div>
-
+  <div class="bg-white rounded-2xl border border-gray-100 shadow-sm overflow-hidden">
+    <div class="overflow-x-auto">
+      <table class="w-full">
+        <thead>
+          <tr class="border-b border-gray-100 bg-gray-50/50">
+            <th class="px-5 py-3 text-left text-[11px] font-bold text-gray-400 uppercase tracking-widest">零件号</th>
+            <th class="px-4 py-3 text-left text-[11px] font-bold text-gray-400 uppercase tracking-widest">描述</th>
+            <th class="px-4 py-3 text-left text-[11px] font-bold text-gray-400 uppercase tracking-widest">供应商</th>
+            <th class="px-3 py-3 text-center text-[11px] font-bold text-gray-400 uppercase tracking-widest">工艺</th>
+            <th class="px-3 py-3 text-center text-[11px] font-bold text-gray-400 uppercase tracking-widest">版本</th>
+            <th class="px-4 py-3 text-left text-[11px] font-bold text-gray-400 uppercase tracking-widest">文件</th>
+            <th class="px-3 py-3 text-center text-[11px] font-bold text-gray-400 uppercase tracking-widest">更新</th>
+            <th class="px-4 py-3 text-center text-[11px] font-bold text-gray-400 uppercase tracking-widest">操作</th>
+          </tr>
+        </thead>
+        <tbody class="divide-y divide-gray-50">
+          {% for cp in cps %}
+          <tr class="hover:bg-gray-50/70 transition">
+            <td class="px-5 py-4"><span class="font-mono font-bold text-xs px-2.5 py-1 rounded-lg bg-gray-900 text-white">{{ cp.part.pn }}</span></td>
+            <td class="px-4 py-4 text-sm text-gray-600"><div class="truncate max-w-[180px]" title="{{ cp.part.description or '' }}">{{ cp.part.description or '—' }}</div></td>
+            <td class="px-4 py-4">
+              <div class="text-sm font-semibold text-gray-900">{{ cp.supplier.chinese_name or cp.supplier.name }}</div>
+              <div class="text-xs text-gray-400 font-mono">{{ cp.supplier.code }}</div>
+            </td>
+            <td class="px-3 py-4 text-center">
+              <span class="text-[10px] font-bold px-2 py-1 rounded-md bg-indigo-50 text-indigo-700 border border-indigo-100 whitespace-nowrap">{{ process_labels.get(cp.process_type, cp.process_type or '—') }}</span>
+            </td>
+            <td class="px-3 py-4 text-center"><span class="text-xs font-mono font-semibold text-gray-700">{{ cp.revision or '—' }}</span></td>
+            <td class="px-4 py-4">
+              {% if cp.rel_path %}
+              <div class="flex items-center gap-2 text-xs text-gray-500">
+                <svg class="w-4 h-4 text-red-500 shrink-0" fill="none" stroke="currentColor" viewBox="0 0 24 24" stroke-width="2"><path stroke-linecap="round" stroke-linejoin="round" d="M7 21h10a2 2 0 002-2V9.414a1 1 0 00-.293-.707l-5.414-5.414A1 1 0 0012.586 3H7a2 2 0 00-2 2v14a2 2 0 002 2z"/></svg>
+                <span class="truncate max-w-[150px]" title="{{ cp.original_name }}">{{ cp.original_name }}</span>
+              </div>
+              {% else %}<span class="text-gray-300 text-xs">无文件</span>{% endif %}
+            </td>
+            <td class="px-3 py-4 text-center text-xs text-gray-400 whitespace-nowrap">{{ cp.updated_at.strftime('%Y-%m-%d') if cp.updated_at else '—' }}</td>
+            <td class="px-4 py-4">
+              <div class="flex items-center justify-center gap-1.5">
+                {% if cp.rel_path %}
+                <button type="button" onclick="previewCP({{ cp.id }}, '{{ cp.cp_no }}')" class="w-8 h-8 rounded-lg bg-blue-50 text-blue-600 hover:bg-blue-100 inline-flex items-center justify-center" title="预览"><svg class="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24" stroke-width="2"><path stroke-linecap="round" stroke-linejoin="round" d="M15 12a3 3 0 11-6 0 3 3 0 016 0z"/><path stroke-linecap="round" stroke-linejoin="round" d="M2.458 12C3.732 7.943 7.523 5 12 5c4.478 0 8.268 2.943 9.542 7-1.274 4.057-5.064 7-9.542 7-4.477 0-8.268-2.943-9.542-7z"/></svg></button>
+                <a href="{{ url_for('cp.download', cp_id=cp.id) }}" class="w-8 h-8 rounded-lg bg-green-50 text-green-600 hover:bg-green-100 inline-flex items-center justify-center" title="下载"><svg class="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24" stroke-width="2"><path stroke-linecap="round" stroke-linejoin="round" d="M4 16v1a3 3 0 003 3h10a3 3 0 003-3v-1m-4-4l-4 4m0 0l-4-4m4 4V4"/></svg></a>
+                {% endif %}
+                <button type="button"
+                        onclick="openEdit({{ cp.id }}, '{{ cp.part.pn }}', '{{ cp.process_type }}', '{{ cp.revision|default('', true) }}', this.dataset.notes)"
+                        data-notes="{{ cp.notes|default('', true)|e }}"
+                        class="w-8 h-8 rounded-lg bg-gray-50 text-gray-500 hover:bg-blue-50 hover:text-blue-600 inline-flex items-center justify-center" title="编辑"><svg class="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24" stroke-width="2"><path stroke-linecap="round" stroke-linejoin="round" d="M11 5H6a2 2 0 00-2 2v11a2 2 0 002 2h11a2 2 0 002-2v-5m-1.414-9.414a2 2 0 112.828 2.828L11.828 15H9v-2.828l8.586-8.586z"/></svg></button>
+                <form method="post" action="{{ url_for('cp.delete', cp_id=cp.id) }}" onsubmit="return confirm('删除控制计划 {{ cp.part.pn }}（{{ cp.cp_no }}）？');" class="inline">
+                  <button type="submit" class="w-8 h-8 rounded-lg bg-gray-50 text-gray-400 hover:bg-red-50 hover:text-red-600 inline-flex items-center justify-center" title="删除"><svg class="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24" stroke-width="2"><path stroke-linecap="round" stroke-linejoin="round" d="M19 7l-.867 12.142A2 2 0 0116.138 21H7.862a2 2 0 01-1.995-1.858L5 7m5 4v6m4-6v6m1-10V4a1 1 0 00-1-1h-4a1 1 0 00-1 1v3M4 7h16"/></svg></button>
+                </form>
+              </div>
+            </td>
+          </tr>
+          {% endfor %}
+        </tbody>
+      </table>
     </div>
-
-      <!-- 操作栏 -->
-      <div class="flex items-center justify-between mt-3 pt-3 border-t border-gray-100">
-        <a href="{{ url_for('cp.detail', cp_id=item_cp.id) }}"
-           class="text-xs text-gray-500 hover:text-gray-900 font-medium">查看详情 →</a>
-        <div class="flex gap-2">
-          <a href="{{ url_for('cp.edit', cp_id=item_cp.id) }}"
-             class="text-xs px-2.5 py-1 bg-gray-100 text-gray-600 rounded-lg hover:bg-gray-200">编辑</a>
-          <form method="POST" action="{{ url_for('cp.delete', cp_id=item_cp.id) }}"
-                onsubmit="return confirm('确认删除？此操作不可恢复。')">
-            <button type="submit"
-                    class="text-xs px-2.5 py-1 bg-red-50 text-red-500 rounded-lg hover:bg-red-100">删除</button>
-          </form>
-        </div>
-      </div>
-
-    </div>
-    {% endfor %}
   </div>
-
   {% else %}
-  <div class="bg-white rounded-2xl border border-gray-100 py-20 text-center">
-    <svg class="w-10 h-10 mx-auto text-gray-200 mb-3" fill="none" stroke="currentColor" viewBox="0 0 24 24" stroke-width="1.5">
-      <path stroke-linecap="round" stroke-linejoin="round" d="M9 12h6m-6 4h6m2 5H7a2 2 0 01-2-2V5a2 2 0 012-2h5.586a1 1 0 01.707.293l5.414 5.414a1 1 0 01.293.707V19a2 2 0 01-2 2z"/>
-    </svg>
-    <p class="text-sm text-gray-400 mb-4">暂无控制计划记录</p>
-    <a href="{{ url_for('cp.new') }}"
-       class="inline-flex items-center gap-2 px-5 py-2.5 text-sm font-semibold text-white bg-gray-900 rounded-xl hover:bg-gray-700 transition-colors">
-      新建第一份 CP
-    </a>
+  <div class="bg-white rounded-2xl border border-gray-100 shadow-sm py-20 text-center">
+    <div class="text-5xl mb-4 opacity-30">📋</div>
+    {% if q or selected_type or selected_supplier %}
+    <p class="text-gray-600 font-semibold mb-1">没有匹配的控制计划</p>
+    <p class="text-gray-400 text-sm">试试其他关键词，或 <a href="{{ url_for('cp.index') }}" class="text-blue-600 font-semibold">清除筛选</a></p>
+    {% else %}
+    <p class="text-gray-600 font-semibold mb-1">还没有上传任何控制计划</p>
+    <p class="text-gray-400 text-sm">点击右上角"上传控制计划"开始</p>
+    {% endif %}
   </div>
   {% endif %}
-
 </div>
+
+<!-- ════════ Upload Modal ════════ -->
+<div id="uploadModal" class="fixed inset-0 z-50 hidden">
+  <div class="absolute inset-0 bg-black/40" onclick="closeUpload()"></div>
+  <div class="absolute left-1/2 top-1/2 w-[92vw] max-w-lg -translate-x-1/2 -translate-y-1/2">
+    <div class="rounded-2xl bg-white shadow-2xl overflow-hidden">
+      <div class="flex items-center justify-between px-6 py-4 border-b border-gray-100">
+        <div class="font-bold text-gray-900">上传控制计划</div>
+        <button onclick="closeUpload()" class="text-gray-400 hover:text-gray-700 text-xl leading-none">×</button>
+      </div>
+      <form method="post" action="{{ url_for('cp.upload') }}" enctype="multipart/form-data" class="p-6 space-y-4">
+        <div>
+          <label class="block text-xs font-bold text-gray-600 mb-1.5">供应商 <span class="text-red-500">*</span></label>
+          <select name="supplier_id" id="up_supplier" required onchange="loadParts(this.value)"
+                  class="w-full rounded-xl border border-gray-200 px-3 py-2.5 text-sm focus:outline-none focus:border-gray-900 cursor-pointer">
+            <option value="">选择供应商</option>
+            {% for s in suppliers %}
+            <option value="{{ s.id }}">{{ s.code }} · {{ s.chinese_name or s.name }}</option>
+            {% endfor %}
+          </select>
+        </div>
+        <div>
+          <label class="block text-xs font-bold text-gray-600 mb-1.5">零件 <span class="text-red-500">*</span></label>
+          <select name="part_id" id="up_part" required disabled
+                  class="w-full rounded-xl border border-gray-200 px-3 py-2.5 text-sm focus:outline-none focus:border-gray-900 cursor-pointer disabled:bg-gray-50 disabled:text-gray-400">
+            <option value="">请先选择供应商</option>
+          </select>
+        </div>
+        <div class="grid grid-cols-2 gap-4">
+          <div>
+            <label class="block text-xs font-bold text-gray-600 mb-1.5">工艺类型</label>
+            <select name="process_type" class="w-full rounded-xl border border-gray-200 px-3 py-2.5 text-sm focus:outline-none focus:border-gray-900 cursor-pointer">
+              {% for val, label in process_types %}<option value="{{ val }}">{{ label }}</option>{% endfor %}
+            </select>
+          </div>
+          <div>
+            <label class="block text-xs font-bold text-gray-600 mb-1.5">版本</label>
+            <input name="revision" value="A0" class="w-full rounded-xl border border-gray-200 px-3 py-2.5 text-sm font-mono focus:outline-none focus:border-gray-900">
+          </div>
+        </div>
+        <div>
+          <label class="block text-xs font-bold text-gray-600 mb-1.5">控制计划文件 <span class="text-red-500">*</span></label>
+          <input type="file" name="file" required accept=".pdf,.doc,.docx,.xls,.xlsx,.ppt,.pptx"
+                 class="w-full text-sm border border-gray-200 rounded-xl px-3 py-2 bg-white file:mr-3 file:py-1.5 file:px-3 file:rounded-lg file:border-0 file:text-xs file:font-bold file:bg-gray-100 file:text-gray-700 cursor-pointer">
+          <p class="text-[11px] text-gray-400 mt-1">支持 PDF / Word / Excel / PPT</p>
+        </div>
+        <div>
+          <label class="block text-xs font-bold text-gray-600 mb-1.5">备注（可选）</label>
+          <input name="notes" placeholder="审核记录、来源等" class="w-full rounded-xl border border-gray-200 px-3 py-2.5 text-sm focus:outline-none focus:border-gray-900">
+        </div>
+        <div class="flex items-center gap-3 pt-2">
+          <button type="submit" class="flex-1 px-5 py-2.5 rounded-xl bg-gray-900 text-white font-bold text-sm hover:bg-gray-800 transition-all">上传</button>
+          <button type="button" onclick="closeUpload()" class="px-5 py-2.5 rounded-xl border border-gray-200 text-gray-600 font-semibold text-sm hover:bg-gray-50">取消</button>
+        </div>
+        <p class="text-[11px] text-gray-400 text-center">若该零件+工艺已有控制计划，将替换原文件。</p>
+      </form>
+    </div>
+  </div>
+</div>
+
+<!-- ════════ Edit Modal ════════ -->
+<div id="editModal" class="fixed inset-0 z-50 hidden">
+  <div class="absolute inset-0 bg-black/40" onclick="closeEdit()"></div>
+  <div class="absolute left-1/2 top-1/2 w-[92vw] max-w-lg -translate-x-1/2 -translate-y-1/2">
+    <div class="rounded-2xl bg-white shadow-2xl overflow-hidden">
+      <div class="flex items-center justify-between px-6 py-4 border-b border-gray-100">
+        <div class="font-bold text-gray-900">编辑控制计划 · <span id="edit_pn" class="font-mono text-sm text-gray-500"></span></div>
+        <button onclick="closeEdit()" class="text-gray-400 hover:text-gray-700 text-xl leading-none">×</button>
+      </div>
+      <form method="post" id="editForm" enctype="multipart/form-data" class="p-6 space-y-4">
+        <div class="grid grid-cols-2 gap-4">
+          <div>
+            <label class="block text-xs font-bold text-gray-600 mb-1.5">工艺类型</label>
+            <select name="process_type" id="edit_process" class="w-full rounded-xl border border-gray-200 px-3 py-2.5 text-sm focus:outline-none focus:border-gray-900 cursor-pointer">
+              {% for val, label in process_types %}<option value="{{ val }}">{{ label }}</option>{% endfor %}
+            </select>
+          </div>
+          <div>
+            <label class="block text-xs font-bold text-gray-600 mb-1.5">版本</label>
+            <input name="revision" id="edit_revision" class="w-full rounded-xl border border-gray-200 px-3 py-2.5 text-sm font-mono focus:outline-none focus:border-gray-900">
+          </div>
+        </div>
+        <div>
+          <label class="block text-xs font-bold text-gray-600 mb-1.5">备注</label>
+          <input name="notes" id="edit_notes" placeholder="审核记录、来源等" class="w-full rounded-xl border border-gray-200 px-3 py-2.5 text-sm focus:outline-none focus:border-gray-900">
+        </div>
+        <div>
+          <label class="block text-xs font-bold text-gray-600 mb-1.5">替换文件（可选，留空则保留原文件）</label>
+          <input type="file" name="file" accept=".pdf,.doc,.docx,.xls,.xlsx,.ppt,.pptx"
+                 class="w-full text-sm border border-gray-200 rounded-xl px-3 py-2 bg-white file:mr-3 file:py-1.5 file:px-3 file:rounded-lg file:border-0 file:text-xs file:font-bold file:bg-gray-100 file:text-gray-700 cursor-pointer">
+        </div>
+        <div class="flex items-center gap-3 pt-2">
+          <button type="submit" class="flex-1 px-5 py-2.5 rounded-xl bg-gray-900 text-white font-bold text-sm hover:bg-gray-800 transition-all">保存</button>
+          <button type="button" onclick="closeEdit()" class="px-5 py-2.5 rounded-xl border border-gray-200 text-gray-600 font-semibold text-sm hover:bg-gray-50">取消</button>
+        </div>
+      </form>
+    </div>
+  </div>
+</div>
+
+<!-- ════════ Preview Modal ════════ -->
+<div id="previewModal" class="fixed inset-0 z-50 hidden">
+  <div class="absolute inset-0 bg-black/50" onclick="closePreview()"></div>
+  <div class="absolute inset-2 md:inset-8">
+    <div class="rounded-2xl bg-white shadow-2xl overflow-hidden h-full flex flex-col">
+      <div class="flex items-center justify-between px-5 py-3 border-b border-gray-100">
+        <div class="font-semibold text-gray-900 text-sm" id="previewTitle">预览</div>
+        <button onclick="closePreview()" class="text-gray-400 hover:text-gray-700 text-2xl leading-none">×</button>
+      </div>
+      <iframe id="previewFrame" class="w-full flex-1 bg-gray-100" src=""></iframe>
+    </div>
+  </div>
+</div>
+
+<script>
+// Upload modal
+function openUpload(){document.getElementById('uploadModal').classList.remove('hidden');document.body.style.overflow='hidden';}
+function closeUpload(){document.getElementById('uploadModal').classList.add('hidden');document.body.style.overflow='';}
+
+// Edit modal
+function openEdit(cpId, pn, processType, revision, notes){
+  document.getElementById('editForm').action = `/cp/${cpId}/edit`;
+  document.getElementById('edit_pn').textContent = pn;
+  document.getElementById('edit_process').value = processType || 'other';
+  document.getElementById('edit_revision').value = revision || '';
+  document.getElementById('edit_notes').value = notes || '';
+  document.getElementById('editModal').classList.remove('hidden');
+  document.body.style.overflow='hidden';
+}
+function closeEdit(){document.getElementById('editModal').classList.add('hidden');document.body.style.overflow='';}
+
+// Supplier → parts AJAX
+function loadParts(supplierId){
+  const sel=document.getElementById('up_part');
+  if(!supplierId){sel.disabled=true;sel.innerHTML='<option value="">请先选择供应商</option>';return;}
+  sel.disabled=true;sel.innerHTML='<option value="">加载中...</option>';
+  fetch(`/cp/api/parts/${supplierId}`).then(r=>r.json()).then(parts=>{
+    if(!parts.length){sel.innerHTML='<option value="">该供应商暂无零件</option>';return;}
+    sel.innerHTML='<option value="">选择零件</option>'+parts.map(p=>`<option value="${p.id}">${p.pn}${p.description?' · '+p.description:''}</option>`).join('');
+    sel.disabled=false;
+  }).catch(()=>{sel.innerHTML='<option value="">加载失败</option>';});
+}
+
+// Preview modal
+function previewCP(cpId, cpNo){
+  document.getElementById('previewTitle').textContent=cpNo;
+  document.getElementById('previewFrame').src=`/cp/${cpId}/view`;
+  document.getElementById('previewModal').classList.remove('hidden');
+  document.body.style.overflow='hidden';
+}
+function closePreview(){
+  document.getElementById('previewFrame').src='';
+  document.getElementById('previewModal').classList.add('hidden');
+  document.body.style.overflow='';
+}
+</script>
 {% endblock %}

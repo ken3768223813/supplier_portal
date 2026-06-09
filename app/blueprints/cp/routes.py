@@ -1,6 +1,13 @@
-from flask import render_template, request, redirect, url_for, flash, jsonify
+from flask import (
+    render_template, request, redirect, url_for, flash, jsonify,
+    send_file, abort, current_app, make_response
+)
+from werkzeug.utils import secure_filename
+import os
+import uuid
+
 from app.extensions import db
-from app.models import ControlPlan, ProcessStep, ControlCharacteristic, Supplier, Part
+from app.models import ControlPlan, Supplier, Part
 from datetime import date, datetime
 from . import cp_bp
 
@@ -20,200 +27,261 @@ PROCESS_TYPES = [
     ('extrusion', '挤压 Extrusion'),
     ('other',     '其他 Other'),
 ]
+PROCESS_LABELS = dict(PROCESS_TYPES)
 
-UNIT_OPTIONS = ['°C', 'MPa', 'bar', 'mm', 'μm', 's', 'min', 'h', 'rpm', 'N', 'kN', '%', 'kg', 'g', '—']
-FREQUENCY_OPTIONS = ['每件', '每批次', '首件', '每小时', '每班', '连续', '抽检']
+ALLOWED_EXTENSIONS = {"pdf", "doc", "docx", "xls", "xlsx", "ppt", "pptx"}
+OFFICE_EXTS = {"doc", "docx", "xls", "xlsx", "ppt", "pptx"}
+
+
+def _allowed(filename):
+    return "." in filename and filename.rsplit(".", 1)[1].lower() in ALLOWED_EXTENSIONS
 
 
 # ─────────────────────────────────────────────
-# 列表页
+# 列表页（带搜索 / 筛选）
 # ─────────────────────────────────────────────
 @cp_bp.route('/')
 def index():
     process_type = request.args.get('process_type', '')
     supplier_id  = request.args.get('supplier_id', '')
-    q            = request.args.get('q', '')
+    q            = request.args.get('q', '').strip()
 
-    query = ControlPlan.query.join(Part).join(Supplier)
+    query = ControlPlan.query.join(Part).join(Supplier, ControlPlan.supplier_id == Supplier.id)
 
     if process_type:
         query = query.filter(ControlPlan.process_type == process_type)
     if supplier_id:
         query = query.filter(ControlPlan.supplier_id == int(supplier_id))
     if q:
+        like = f'%{q}%'
         query = query.filter(
-            Part.pn.ilike(f'%{q}%') |
-            Part.description.ilike(f'%{q}%') |
-            Supplier.name.ilike(f'%{q}%')
+            Part.pn.ilike(like) |
+            Part.description.ilike(like) |
+            Supplier.name.ilike(like) |
+            Supplier.chinese_name.ilike(like) |
+            Supplier.code.ilike(like) |
+            ControlPlan.cp_no.ilike(like)
         )
 
     cps       = query.order_by(ControlPlan.updated_at.desc()).all()
-    suppliers = Supplier.query.order_by(Supplier.name).all()
+    suppliers = Supplier.query.order_by(Supplier.code).all()
 
     return render_template('cp/index.html',
                            cps=cps,
                            suppliers=suppliers,
                            process_types=PROCESS_TYPES,
+                           process_labels=PROCESS_LABELS,
                            selected_type=process_type,
                            selected_supplier=supplier_id,
                            q=q)
 
 
 # ─────────────────────────────────────────────
-# 新建 CP
+# 上传控制计划（新建 / 替换）
 # ─────────────────────────────────────────────
-@cp_bp.route('/new', methods=['GET', 'POST'])
-def new():
-    suppliers = Supplier.query.order_by(Supplier.name).all()
+@cp_bp.route('/upload', methods=['POST'])
+def upload():
+    supplier_id  = request.form.get('supplier_id', type=int)
+    part_id      = request.form.get('part_id', type=int)
+    process_type = (request.form.get('process_type') or 'other').strip()
+    revision     = (request.form.get('revision') or 'A0').strip()
+    notes        = (request.form.get('notes') or '').strip()
+    audit_date   = request.form.get('audit_date') or None
 
-    if request.method == 'POST':
-        supplier_id  = int(request.form['supplier_id'])
-        part_id      = int(request.form['part_id'])
-        process_type = request.form['process_type']
-        audit_date   = request.form.get('audit_date') or None
-        auditor      = request.form.get('auditor', '')
-        notes        = request.form.get('notes', '')
+    if not supplier_id or not part_id:
+        flash('请选择供应商和零件', 'error')
+        return redirect(url_for('cp.index'))
 
-        existing = ControlPlan.query.filter_by(
-            supplier_id=supplier_id,
-            part_id=part_id,
-            process_type=process_type
-        ).first()
-        if existing:
-            flash(f'该供应商/零件已存在控制计划 {existing.cp_no}，请直接编辑。', 'warning')
-            return redirect(url_for('cp.edit', cp_id=existing.id))
+    file = request.files.get('file')
+    if not file or file.filename == '':
+        flash('请选择要上传的控制计划文件', 'error')
+        return redirect(url_for('cp.index'))
+    if not _allowed(file.filename):
+        flash('仅支持 PDF / Office 文档', 'error')
+        return redirect(url_for('cp.index'))
 
-        supplier = Supplier.query.get(supplier_id)
-        part     = Part.query.get(part_id)
+    supplier = Supplier.query.get_or_404(supplier_id)
+    part     = Part.query.get_or_404(part_id)
+
+    # 保存文件
+    ext = file.filename.rsplit('.', 1)[1].lower()
+    stored_name = f'{uuid.uuid4().hex}.{ext}'
+    rel_dir = os.path.join('control_plans', secure_filename(supplier.code))
+    full_dir = os.path.join(current_app.config['UPLOAD_DIR'], rel_dir)
+    os.makedirs(full_dir, exist_ok=True)
+    file_path = os.path.join(full_dir, stored_name)
+    file.save(file_path)
+    rel_path = os.path.join(rel_dir, stored_name)
+
+    # 已存在同供应商+零件+工艺 → 替换文件，否则新建
+    cp = ControlPlan.query.filter_by(
+        supplier_id=supplier_id, part_id=part_id, process_type=process_type
+    ).first()
+
+    if cp:
+        # 删除旧文件
+        if cp.rel_path:
+            old = os.path.join(current_app.config['UPLOAD_DIR'], cp.rel_path)
+            if os.path.exists(old):
+                try:
+                    os.remove(old)
+                except OSError:
+                    pass
+        cp.original_name = file.filename
+        cp.stored_name   = stored_name
+        cp.rel_path      = rel_path
+        cp.mime          = file.mimetype
+        cp.size          = os.path.getsize(file_path)
+        cp.revision      = revision
+        cp.notes         = notes
+        cp.audit_date    = date.fromisoformat(audit_date) if audit_date else cp.audit_date
+        cp.updated_at    = datetime.utcnow()
+        flash(f'已更新 {part.pn} 的控制计划', 'success')
+    else:
         cp_no = f'CP-{supplier.code}-{part.pn}-{process_type}'.upper()[:50]
-
         cp = ControlPlan(
-            supplier_id  = supplier_id,
-            part_id      = part_id,
-            cp_no        = cp_no,
-            process_type = process_type,
-            audit_date   = date.fromisoformat(audit_date) if audit_date else None,
-            auditor      = auditor,
-            notes        = notes,
-            status       = 'active',
+            supplier_id=supplier_id, part_id=part_id, cp_no=cp_no,
+            process_type=process_type, revision=revision, status='active',
+            notes=notes,
+            audit_date=date.fromisoformat(audit_date) if audit_date else None,
+            original_name=file.filename, stored_name=stored_name,
+            rel_path=rel_path, mime=file.mimetype, size=os.path.getsize(file_path),
         )
         db.session.add(cp)
-        db.session.flush()
+        flash(f'已上传 {part.pn} 的控制计划', 'success')
 
-        _save_steps_from_form(cp.id, request.form)
-
-        db.session.commit()
-        flash(f'控制计划 {cp.cp_no} 创建成功！', 'success')
-        return redirect(url_for('cp.detail', cp_id=cp.id))
-
-    return render_template('cp/form.html',
-                           cp=None,
-                           suppliers=suppliers,
-                           process_types=PROCESS_TYPES,
-                           unit_options=UNIT_OPTIONS,
-                           frequency_options=FREQUENCY_OPTIONS)
-
-
-# ─────────────────────────────────────────────
-# 详情页
-# ─────────────────────────────────────────────
-@cp_bp.route('/<int:cp_id>')
-def detail(cp_id):
-    cp    = ControlPlan.query.get_or_404(cp_id)
-    steps = cp.steps.all()
-    for step in steps:
-        step._chars = step.characteristics.all()
-    return render_template('cp/detail.html', cp=cp, steps=steps)
-
-
-# ─────────────────────────────────────────────
-# 编辑 CP
-# ─────────────────────────────────────────────
-@cp_bp.route('/<int:cp_id>/edit', methods=['GET', 'POST'])
-def edit(cp_id):
-    cp        = ControlPlan.query.get_or_404(cp_id)
-    suppliers = Supplier.query.order_by(Supplier.name).all()
-
-    if request.method == 'POST':
-        cp.process_type = request.form['process_type']
-        cp.auditor      = request.form.get('auditor', cp.auditor)
-        cp.notes        = request.form.get('notes', '')
-        audit_date      = request.form.get('audit_date')
-        if audit_date:
-            cp.audit_date = date.fromisoformat(audit_date)
-        cp.updated_at   = datetime.utcnow()
-
-        # ── 先明确删除旧特性，再删工序，防止级联残留 ──
-        old_step_ids = [s.id for s in cp.steps.all()]
-        if old_step_ids:
-            ControlCharacteristic.query.filter(
-                ControlCharacteristic.step_id.in_(old_step_ids)
-            ).delete(synchronize_session=False)
-
-        ProcessStep.query.filter_by(cp_id=cp.id).delete(synchronize_session=False)
-        db.session.flush()
-
-        _save_steps_from_form(cp.id, request.form)
-
-        db.session.commit()
-        flash('控制计划已更新', 'success')
-        return redirect(url_for('cp.detail', cp_id=cp.id))
-
-    steps = cp.steps.all()
-    for step in steps:
-        step._chars = step.characteristics.all()
-
-    return render_template('cp/form.html',
-                           cp=cp,
-                           steps=steps,
-                           suppliers=suppliers,
-                           process_types=PROCESS_TYPES,
-                           unit_options=UNIT_OPTIONS,
-                           frequency_options=FREQUENCY_OPTIONS)
-
-
-# ─────────────────────────────────────────────
-# 删除 CP
-# ─────────────────────────────────────────────
-@cp_bp.route('/<int:cp_id>/delete', methods=['POST'])
-def delete(cp_id):
-    cp = ControlPlan.query.get_or_404(cp_id)
-    db.session.delete(cp)
     db.session.commit()
-    flash(f'控制计划 {cp.cp_no} 已删除', 'info')
     return redirect(url_for('cp.index'))
 
 
 # ─────────────────────────────────────────────
-# 对比页
+# 在线预览（PDF 内联；Office 转 PDF）
 # ─────────────────────────────────────────────
-@cp_bp.route('/compare')
-def compare():
-    pn           = request.args.get('pn', '').strip()
-    selected_ids = request.args.getlist('cp_ids', type=int)
+@cp_bp.route('/<int:cp_id>/view')
+def view(cp_id):
+    cp = ControlPlan.query.get_or_404(cp_id)
+    if not cp.rel_path:
+        abort(404)
+    file_path = os.path.join(current_app.config['UPLOAD_DIR'], cp.rel_path)
+    if not os.path.exists(file_path):
+        abort(404)
 
-    matching_cps = []
+    ext = (cp.original_name or '').rsplit('.', 1)[-1].lower() if cp.original_name and '.' in cp.original_name else ''
 
-    if pn:
-        parts    = Part.query.filter(Part.pn.ilike(f'%{pn}%')).all()
-        part_ids = [p.id for p in parts]
-        matching_cps = ControlPlan.query.filter(
-            ControlPlan.part_id.in_(part_ids),
-            ControlPlan.status == 'active'
-        ).order_by(ControlPlan.supplier_id).all()
+    if ext in OFFICE_EXTS:
+        # 借用 TR 模块已有的 Office→PDF 转换
+        try:
+            from app.blueprints.tr.routes import _convert_to_pdf, PREVIEW_CACHE_DIR
+            cache_dir = os.path.join(current_app.config['UPLOAD_DIR'], PREVIEW_CACHE_DIR)
+            pdf_path = _convert_to_pdf(file_path, cache_dir, current_app.logger)
+            if pdf_path:
+                resp = make_response(send_file(pdf_path, mimetype='application/pdf'))
+                resp.headers['Content-Disposition'] = f'inline; filename="{cp.cp_no}.pdf"'
+                return resp
+        except Exception:
+            pass
+        return send_file(file_path, as_attachment=True, download_name=cp.original_name, mimetype=cp.mime)
 
-    compare_cps = []
-    if selected_ids:
-        compare_cps = ControlPlan.query.filter(ControlPlan.id.in_(selected_ids)).all()
+    resp = make_response(send_file(file_path, mimetype=cp.mime or 'application/octet-stream'))
+    resp.headers['Content-Disposition'] = f'inline; filename="{cp.original_name}"'
+    return resp
 
-    comparison = _build_comparison(compare_cps) if len(compare_cps) >= 2 else None
 
-    return render_template('cp/compare.html',
-                           pn=pn,
-                           matching_cps=matching_cps,
-                           selected_ids=selected_ids,
-                           compare_cps=compare_cps,
-                           comparison=comparison)
+# ─────────────────────────────────────────────
+# 下载
+# ─────────────────────────────────────────────
+@cp_bp.route('/<int:cp_id>/download')
+def download(cp_id):
+    cp = ControlPlan.query.get_or_404(cp_id)
+    if not cp.rel_path:
+        abort(404)
+    file_path = os.path.join(current_app.config['UPLOAD_DIR'], cp.rel_path)
+    if not os.path.exists(file_path):
+        abort(404)
+    return send_file(file_path, as_attachment=True,
+                     download_name=cp.original_name or f'{cp.cp_no}.pdf',
+                     mimetype=cp.mime)
+
+
+# ─────────────────────────────────────────────
+# 删除
+# ─────────────────────────────────────────────
+@cp_bp.route('/<int:cp_id>/delete', methods=['POST'])
+def delete(cp_id):
+    cp = ControlPlan.query.get_or_404(cp_id)
+    if cp.rel_path:
+        fp = os.path.join(current_app.config['UPLOAD_DIR'], cp.rel_path)
+        if os.path.exists(fp):
+            try:
+                os.remove(fp)
+            except OSError:
+                pass
+    cp_no = cp.cp_no
+    db.session.delete(cp)
+    db.session.commit()
+    flash(f'控制计划 {cp_no} 已删除', 'info')
+    return redirect(url_for('cp.index'))
+
+
+# ─────────────────────────────────────────────
+# 编辑（改元数据，可选替换文件）
+# ─────────────────────────────────────────────
+@cp_bp.route('/<int:cp_id>/edit', methods=['POST'])
+def edit(cp_id):
+    cp = ControlPlan.query.get_or_404(cp_id)
+
+    new_process = (request.form.get('process_type') or cp.process_type).strip()
+    # 改工艺类型时检查唯一约束（同供应商+零件+工艺只能有一份）
+    if new_process != cp.process_type:
+        clash = ControlPlan.query.filter(
+            ControlPlan.supplier_id == cp.supplier_id,
+            ControlPlan.part_id == cp.part_id,
+            ControlPlan.process_type == new_process,
+            ControlPlan.id != cp.id,
+        ).first()
+        if clash:
+            flash(f'该零件已存在「{new_process}」工艺的控制计划，无法重复', 'error')
+            return redirect(url_for('cp.index'))
+        cp.process_type = new_process
+
+    cp.revision = (request.form.get('revision') or cp.revision).strip()
+    cp.notes    = (request.form.get('notes') or '').strip()
+    audit_date  = request.form.get('audit_date')
+    if audit_date:
+        cp.audit_date = date.fromisoformat(audit_date)
+
+    # 可选：替换文件
+    file = request.files.get('file')
+    if file and file.filename:
+        if not _allowed(file.filename):
+            flash('仅支持 PDF / Office 文档', 'error')
+            return redirect(url_for('cp.index'))
+        supplier = cp.supplier
+        ext = file.filename.rsplit('.', 1)[1].lower()
+        stored_name = f'{uuid.uuid4().hex}.{ext}'
+        rel_dir = os.path.join('control_plans', secure_filename(supplier.code))
+        full_dir = os.path.join(current_app.config['UPLOAD_DIR'], rel_dir)
+        os.makedirs(full_dir, exist_ok=True)
+        file_path = os.path.join(full_dir, stored_name)
+        file.save(file_path)
+        # 删旧文件
+        if cp.rel_path:
+            old = os.path.join(current_app.config['UPLOAD_DIR'], cp.rel_path)
+            if os.path.exists(old):
+                try:
+                    os.remove(old)
+                except OSError:
+                    pass
+        cp.original_name = file.filename
+        cp.stored_name   = stored_name
+        cp.rel_path      = os.path.join(rel_dir, stored_name)
+        cp.mime          = file.mimetype
+        cp.size          = os.path.getsize(file_path)
+
+    cp.updated_at = datetime.utcnow()
+    db.session.commit()
+    flash(f'已更新 {cp.part.pn} 的控制计划', 'success')
+    return redirect(url_for('cp.index'))
 
 
 # ─────────────────────────────────────────────
@@ -223,112 +291,3 @@ def compare():
 def api_parts(supplier_id):
     parts = Part.query.filter_by(supplier_id=supplier_id).order_by(Part.pn).all()
     return jsonify([{'id': p.id, 'pn': p.pn, 'description': p.description or ''} for p in parts])
-
-
-# ─────────────────────────────────────────────
-# 私有辅助函数
-# ─────────────────────────────────────────────
-def _save_steps_from_form(cp_id, form):
-    step_idx = 0
-    while f'step_name_{step_idx}' in form:
-        name = form.get(f'step_name_{step_idx}', '').strip()
-        if not name:
-            step_idx += 1
-            continue
-
-        seq  = int(form.get(f'step_seq_{step_idx}', (step_idx + 1) * 10))
-        step = ProcessStep(
-            cp_id          = cp_id,
-            seq            = seq,
-            process_name   = name,
-            process_code   = form.get(f'step_code_{step_idx}', '').strip(),
-            machine        = form.get(f'step_machine_{step_idx}', '').strip(),
-            is_key_process = f'step_kp_{step_idx}' in form,
-            notes          = form.get(f'step_notes_{step_idx}', '').strip(),
-        )
-        db.session.add(step)
-        db.session.flush()
-
-        char_idx = 0
-        while f'char_name_{step_idx}_{char_idx}' in form:
-            cname = form.get(f'char_name_{step_idx}_{char_idx}', '').strip()
-            if cname:
-                char = ControlCharacteristic(
-                    step_id        = step.id,
-                    char_name      = cname,
-                    spec_value     = form.get(f'char_spec_{step_idx}_{char_idx}', '').strip(),
-                    spec_unit      = form.get(f'char_unit_{step_idx}_{char_idx}', '').strip(),
-                    tolerance      = form.get(f'char_tol_{step_idx}_{char_idx}',  '').strip(),
-                    control_method = form.get(f'char_method_{step_idx}_{char_idx}', '').strip(),
-                    sample_size    = form.get(f'char_size_{step_idx}_{char_idx}', '').strip(),
-                    frequency      = form.get(f'char_freq_{step_idx}_{char_idx}', '').strip(),
-                    reaction_plan  = form.get(f'char_reaction_{step_idx}_{char_idx}', '').strip(),
-                    is_key_char    = f'char_kcc_{step_idx}_{char_idx}' in form,
-                )
-                db.session.add(char)
-            char_idx += 1
-
-        step_idx += 1
-
-
-def _build_comparison(cps):
-    all_process_names = []
-    seen = set()
-    for cp in cps:
-        for step in cp.steps.order_by(ProcessStep.seq).all():
-            if step.process_name not in seen:
-                all_process_names.append(step.process_name)
-                seen.add(step.process_name)
-
-    rows = []
-    for pname in all_process_names:
-        steps_per_cp = []
-        for cp in cps:
-            step = cp.steps.filter_by(process_name=pname).first()
-            steps_per_cp.append(step)
-
-        is_key = any(s.is_key_process for s in steps_per_cp if s)
-
-        all_char_names = []
-        seen_c = set()
-        for step in steps_per_cp:
-            if step:
-                for c in step.characteristics.all():
-                    if c.char_name not in seen_c:
-                        all_char_names.append(c.char_name)
-                        seen_c.add(c.char_name)
-
-        chars = {}
-        for cname in all_char_names:
-            cell_data = []
-            specs = []
-            for step in steps_per_cp:
-                if step:
-                    char = step.characteristics.filter_by(char_name=cname).first()
-                    if char:
-                        spec_str = char.spec_display()
-                        cell_data.append({'spec': spec_str, 'method': char.control_method or '—', 'freq': char.frequency or '—'})
-                        specs.append(spec_str)
-                    else:
-                        cell_data.append(None)
-                        specs.append(None)
-                else:
-                    cell_data.append(None)
-                    specs.append(None)
-
-            filled   = [s for s in specs if s]
-            has_diff = len(set(filled)) > 1
-
-            for cell in cell_data:
-                if cell:
-                    cell['diff'] = has_diff
-
-            chars[cname] = cell_data
-
-        rows.append({
-            'process_name': pname,
-            'is_key': is_key,
-            'chars': chars,
-        })
-
-    return {'headers': cps, 'rows': rows}

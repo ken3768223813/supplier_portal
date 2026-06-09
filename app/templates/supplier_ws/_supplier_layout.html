@@ -38,6 +38,7 @@
            {% if active=='docs' %}text-blue-700 bg-blue-50 font-semibold{% else %}text-slate-600 hover:bg-slate-50{% endif %}">
           📁 文档
         </a>
+          <a href="{{ url_for('supplier_ws.report', supplier_code=supplier.code) }}" target="_blank" class="text-sm text-gray-600 font-semibold hover:text-gray-900">📄 报告</a>
       </nav>
 
       <!-- Right: Supplier Identity -->

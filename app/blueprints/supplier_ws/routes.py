@@ -247,3 +247,163 @@ def audits(supplier_code):
         active="audits",
         audits=audit_list,
     )
+
+# ──────────────────────────────────────────────────────────
+# 单供应商质量报告（打印 / 导出 PDF）
+#   用法：把这段加到 supplier_ws/routes.py 末尾
+#   依赖文件顶部已 import 的：render_template, request(需补), Supplier, TroubleReport
+#   若顶部没 import request，请加上： from flask import request
+# ──────────────────────────────────────────────────────────
+from datetime import date as _date, datetime as _datetime
+from collections import Counter, OrderedDict
+from flask import request
+
+
+def _tr_effective_date(tr):
+    """TR 的有效日期：优先取 remark 末段的 dd.mm.yyyy，否则用 created_at"""
+    if tr.remark and "|" in tr.remark:
+        seg = tr.remark.split("|")[-1].strip()
+        for fmt in ("%d.%m.%Y", "%Y-%m-%d", "%d/%m/%Y"):
+            try:
+                return _datetime.strptime(seg, fmt).date()
+            except ValueError:
+                continue
+    if tr.created_at:
+        return tr.created_at.date()
+    return None
+
+
+def _resolve_period(period, custom_start, custom_end):
+    """返回 (start_date, end_date, 中文标签)；start/end 为 None 表示不限"""
+    today = _date.today()
+    if period == "this_month":
+        start = today.replace(day=1)
+        return start, today, f"{start.year}年{start.month}月"
+    if period == "this_quarter":
+        q = (today.month - 1) // 3
+        start = _date(today.year, q * 3 + 1, 1)
+        return start, today, f"{start.year}年 Q{q + 1}"
+    if period == "this_half":
+        if today.month <= 6:
+            return _date(today.year, 1, 1), today, f"{today.year}年 上半年"
+        return _date(today.year, 7, 1), today, f"{today.year}年 下半年"
+    if period == "this_year":
+        return _date(today.year, 1, 1), today, f"{today.year}年"
+    if period == "custom" and custom_start and custom_end:
+        try:
+            s = _datetime.strptime(custom_start, "%Y-%m-%d").date()
+            e = _datetime.strptime(custom_end, "%Y-%m-%d").date()
+            return s, e, f"{s.strftime('%Y/%m/%d')} – {e.strftime('%Y/%m/%d')}"
+        except ValueError:
+            pass
+    return None, None, "全部时间"
+
+
+@supplier_ws_bp.route("/<supplier_code>/report")
+def report(supplier_code):
+    supplier = get_supplier_or_404(supplier_code)
+    period = request.args.get("period", "this_year")
+    custom_start = request.args.get("start", "")
+    custom_end = request.args.get("end", "")
+
+    start, end, period_label = _resolve_period(period, custom_start, custom_end)
+
+    all_trs = _get_trs(supplier)  # 已按 created_at 倒序
+
+    # 按周期过滤
+    def in_period(tr):
+        if start is None:
+            return True
+        d = _tr_effective_date(tr)
+        return d is not None and start <= d <= end
+
+    trs = [t for t in all_trs if in_period(t)]
+
+    # ── KPI ──
+    total = len(trs)
+    closed = sum(1 for t in trs if (t.status or "").lower() in ("closed", "done", "completed"))
+    open_cnt = total - closed
+    pending_8d = sum(1 for t in trs if t.eight_d_status == "NOT_RECEIVED")
+    debit_total = sum(t.debit_amount for t in trs if t.debit_amount) or 0
+
+    # ── 环比（仅固定周期）──
+    prev_total = None
+    if start is not None and period != "custom":
+        span = (end - start).days
+        prev_end = start.replace(day=1) if False else (start - __import__("datetime").timedelta(days=1))
+        prev_start = prev_end - __import__("datetime").timedelta(days=span)
+        prev_total = sum(1 for t in all_trs
+                         if (_tr_effective_date(t) or _date(1900, 1, 1)) >= prev_start
+                         and (_tr_effective_date(t) or _date(1900, 1, 1)) <= prev_end)
+
+    # ── 月度趋势 ──
+    month_counter = Counter()
+    for t in trs:
+        d = _tr_effective_date(t)
+        if d:
+            month_counter[(d.year, d.month)] += 1
+    if month_counter:
+        keys = sorted(month_counter.keys())
+        # 补齐区间内空月
+        months = OrderedDict()
+        y, m = keys[0]
+        ey, em = keys[-1]
+        while (y, m) <= (ey, em):
+            months[(y, m)] = month_counter.get((y, m), 0)
+            m += 1
+            if m > 12:
+                m = 1; y += 1
+        monthly = [{"label": f"{k[1]}月", "count": v} for k, v in months.items()]
+    else:
+        monthly = []
+    month_max = max([x["count"] for x in monthly], default=1) or 1
+
+    # ── 8D 状态分布 ──
+    d8_map = {"NOT_REQUIRED": "不要求", "NOT_RECEIVED": "未收到", "RECEIVED_REJECT": "已收到(拒收)", "RECEIVED_PASS": "已收到(通过)"}
+    d8_counter = Counter((t.eight_d_status or "NOT_REQUIRED") for t in trs)
+    eight_d = [{"key": k, "label": d8_map.get(k, k), "count": d8_counter.get(k, 0)}
+               for k in ["NOT_RECEIVED", "RECEIVED_REJECT", "RECEIVED_PASS", "NOT_REQUIRED"]]
+
+    # ── Top 问题零件 ──
+    part_counter = Counter()
+    part_name_map = {}
+    for t in trs:
+        pn = t.part_number or "（未填零件号）"
+        part_counter[pn] += 1
+        if pn not in part_name_map and t.part_name:
+            part_name_map[pn] = t.part_name
+    top_parts = [{"pn": pn, "name": part_name_map.get(pn, ""), "count": c}
+                 for pn, c in part_counter.most_common(8)]
+    top_max = max([p["count"] for p in top_parts], default=1) or 1
+
+    # ── 评级 ──
+    if open_cnt >= 4:
+        rating = {"label": "需重点关注", "color": "red"}
+    elif open_cnt >= 1:
+        rating = {"label": "持续跟进", "color": "amber"}
+    else:
+        rating = {"label": "表现良好", "color": "green"}
+
+    # TR 列表（按日期倒序，未闭环优先）
+    trs_sorted = sorted(
+        trs,
+        key=lambda t: ((t.status or "").lower() in ("closed", "done", "completed"),
+                       -(( _tr_effective_date(t) or _date(1900, 1, 1)).toordinal())),
+    )
+
+    return render_template(
+        "supplier_ws/report.html",
+        supplier=supplier,
+        period=period, period_label=period_label,
+        custom_start=custom_start, custom_end=custom_end,
+        total=total, open_cnt=open_cnt, closed=closed,
+        pending_8d=pending_8d, debit_total=debit_total,
+        prev_total=prev_total,
+        monthly=monthly, month_max=month_max,
+        eight_d=eight_d,
+        top_parts=top_parts, top_max=top_max,
+        rating=rating,
+        trs=trs_sorted,
+        tr_date=_tr_effective_date,
+        generated_at=_datetime.now(),
+    )

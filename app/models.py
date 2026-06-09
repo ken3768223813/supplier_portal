@@ -113,9 +113,22 @@ class TroubleReport(db.Model):
     debit_date = db.Column(db.String(20), nullable=True)
 
     issue_summary = db.Column(db.Text, nullable=True)
+    investigation_note = db.Column(db.Text)
 
     eight_d_root_cause = db.Column(db.Text)
     eight_d_action = db.Column(db.Text)
+    eight_d_root_cause_en = db.Column(db.Text)
+    eight_d_escape_cause = db.Column(db.Text)
+    eight_d_escape_cause_en = db.Column(db.Text)
+    eight_d_action_en = db.Column(db.Text)
+    eight_d_escape_action = db.Column(db.Text)
+    eight_d_escape_action_en = db.Column(db.Text)
+    is_pinned = db.Column(db.Boolean, nullable=False, default=False, index=True)
+    lot_number = db.Column(db.String(100), nullable=True)
+    # models.py - TroubleReport
+    case_no = db.Column(db.String(32), index=True, nullable=True)
+    # 格式建议 CASE-YYYY-NNN，例如 CASE-2026-001
+    # NULL = 独立 TR，没和任何 TR 关联
 
     __table_args__ = (
         CheckConstraint(
@@ -900,6 +913,12 @@ class ControlPlan(db.Model):
 
     def key_steps(self):
         return self.steps.filter_by(is_key_process=True).count()
+
+    original_name = db.Column(db.String(255))
+    stored_name = db.Column(db.String(255))
+    rel_path = db.Column(db.String(500))
+    mime = db.Column(db.String(100))
+    size = db.Column(db.Integer)
 
 
 class ProcessStep(db.Model):

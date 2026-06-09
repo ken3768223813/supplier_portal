@@ -36,7 +36,7 @@ def _call_ollama(prompt, timeout=120, num_predict=300, logger=None):
                 "prompt": prompt,
                 "stream": False,
                 "think": False,
-                "options": {"temperature": 0.2, "num_predict": num_predict},
+                "options": {"temperature": 0.0, "num_predict": 1500},
             },
             timeout=timeout,
         )
@@ -203,57 +203,89 @@ def extract_text_from_file(file_path, logger=None):
 # 3) 8D 根因 + 纠正措施提取
 # ──────────────────────────────────────────────────────────
 
-_8D_PROMPT = {
-    "zh": """你是汽车质量工程师，正在分析一份 8D 报告。下面是从 8D 报告提取的文本内容（可能含中英意文、用 | 分隔的表格数据）。
+# ──────────────────────────────────────────────────────────
+# 3) 8D 根因（发生 + 流出）+ 纠正措施提取（中英双语）
+# ──────────────────────────────────────────────────────────
 
-请提取两项关键信息：
-1. root_cause（根本原因 / D4）：问题产生的根本原因
-2. corrective_action（纠正措施 / D5/D6）：采取的永久纠正和预防措施
+_8D_PROMPT = """You are analyzing an 8D report from an automotive supplier. 
+The text below was extracted from Excel/PDF and contains Chinese + English bilingual labels.
 
-严格按以下 JSON 格式输出（值用中文），不要任何其他文字：
-{{"root_cause": "...", "corrective_action": "..."}}
+The report has TWO PARALLEL 5-Why analyses. You MUST find BOTH:
 
-找不到的字段填空字符串。措施如有多条，用分号或换行分隔，保持简洁。
+【A. OCCURRENCE 发生原因】Why did the defect HAPPEN?
+   Anchors to search for: "根本原因", "Root Cause", "5 Why Analysis —— Root Cause",
+   "发生原因", "D4 Root Cause"
+   The LAST "Reason|因为" in this section is the deepest root cause.
 
-8D 报告文本：
-{raw}""",
-    "en": """You are a quality engineer analyzing an 8D report. Below is text extracted from an 8D report (may contain Chinese/English/Italian, table data with | separators).
+【B. ESCAPE 流出原因 / 未检出原因】Why was the defect NOT DETECTED before shipping?
+   Anchors to search for: "未检出原因", "Reason for Non-detection", "Non-detection",
+   "Detection Root Cause", "流出原因", "Escape", "为什么没有检出"
+   This section is SEPARATE from occurrence. Even if it only has Why1+Reason1, extract it.
+   ⚠ Do NOT copy the occurrence cause here. They are different questions.
 
-Extract two key items:
-1. root_cause (D4): the fundamental cause of the problem
-2. corrective_action (D5/D6): permanent corrective and preventive actions taken
+For each, also extract its CORRECTIVE ACTION (D5/D6 永久措施/纠正措施):
+   - occurrence_action → action that fixes the root cause (training, jig change, process change)
+   - escape_action → action that fixes the inspection gap (added check, gauge upgrade, operator training on measurement)
 
-Output STRICTLY in this JSON format (values in English), nothing else:
-{{"root_cause": "...", "corrective_action": "..."}}
+Output STRICT JSON, no preamble, no markdown, no comments:
+{{"occurrence_cause":"<中文>","occurrence_cause_en":"<English translation>","occurrence_action":"<中文>","occurrence_action_en":"<English>","escape_cause":"<中文>","escape_cause_en":"<English>","escape_action":"<中文>","escape_action_en":"<English>"}}
 
-Use empty string if a field is not found. Keep concise; separate multiple actions with semicolons.
+RULES:
+- If a field is genuinely absent in the report, use "" (empty string). Do NOT fabricate.
+- escape_cause and occurrence_cause MUST be different. If you find only one, the other is "".
+- Translate Chinese to natural English, not literal word-by-word.
+- Keep each field 1-3 sentences.
 
 8D report text:
-{raw}""",
-}
+{raw}"""
 
 
-def extract_8d(file_path, timeout=150, logger=None):
-    """从 8D 报告文件提取根因和纠正措施。返回 (root_cause, action) 或 (None, None)。"""
+def extract_8d(file_path, timeout=180, logger=None):
+    """
+    从 8D 报告文件提取：发生根因、流出原因、纠正措施（中英双语）。
+    返回 dict:
+      {
+        "root_cause": str,       # 发生根因（中文）
+        "root_cause_en": str,    # 发生根因（英文）
+        "escape_cause": str,     # 流出原因（中文）
+        "escape_cause_en": str,  # 流出原因（英文）
+        "action": str,           # 纠正措施（中文）
+        "action_en": str,        # 纠正措施（英文）
+      }
+    提取失败返回 None。
+    """
     raw = extract_text_from_file(file_path, logger=logger)
     if not raw or len(raw.strip()) < 20:
         if logger:
             logger.info(f"[AI] 8D text too short: {file_path}")
-        return None, None
+        return None
 
-    prompt = _8D_PROMPT[OUTPUT_LANG].format(raw=raw.strip()[:4000])
-    out = _call_ollama(prompt, timeout=timeout, num_predict=500, logger=logger)
+    prompt = _8D_PROMPT.format(raw=raw.strip()[:12000])
+    out = _call_ollama(prompt, timeout=timeout, num_predict=1500, logger=logger)
     if not out:
-        return None, None
+        return None
 
     data = _parse_json(out)
     if not data:
         if logger:
-            logger.warning(f"[AI] 8D JSON parse failed: {out[:100]}")
-        return None, None
+            logger.warning(f"[AI] 8D JSON parse failed: {out[:200]}")
+        return None
 
-    rc = (data.get("root_cause") or "").strip()
-    ac = (data.get("corrective_action") or "").strip()
+    result = {
+        "root_cause":    (data.get("occurrence_cause") or "").strip(),
+        "root_cause_en": (data.get("occurrence_cause_en") or "").strip(),
+        "escape_cause":    (data.get("escape_cause") or "").strip(),
+        "escape_cause_en": (data.get("escape_cause_en") or "").strip(),
+        "action":    (data.get("occurrence_action") or "").strip(),
+        "action_en": (data.get("occurrence_action_en") or "").strip(),
+        "escape_action": (data.get("escape_action") or "").strip(),
+        "escape_action_en": (data.get("escape_action_en") or "").strip(),
+    }
+
     if logger:
-        logger.info(f"[AI] 8D extracted: cause={rc[:30]}... action={ac[:30]}...")
-    return (rc or None), (ac or None)
+        logger.info(f"[AI] 8D extracted: cause={result['root_cause_en'][:40]}... escape={result['escape_cause_en'][:40]}...")
+
+    # 至少要有一个有效字段
+    if any(v for v in result.values()):
+        return result
+    return None
