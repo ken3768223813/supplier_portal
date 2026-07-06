@@ -1,0 +1,333 @@
+<!doctype html>
+<html lang="zh-CN">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1, maximum-scale=1, user-scalable=no">
+<meta name="theme-color" content="#111827">
+<title>默译冲刺 · 离线</title>
+<style>
+  :root{
+    --bg:#f3f4f6; --card:#ffffff; --ink:#111827; --ink2:#6b7280; --ink3:#9ca3af;
+    --line:#e5e7eb; --accent:#111827; --chip:#f3f4f6;
+    --again:#dc2626; --good:#111827; --easy:#059669;
+    --hl:#fef3c7; --hl-ink:#92400e;
+  }
+  @media (prefers-color-scheme: dark){
+    :root{
+      --bg:#0b0f17; --card:#161b26; --ink:#f3f4f6; --ink2:#9aa3b2; --ink3:#6b7280;
+      --line:#252b38; --accent:#e5e7eb; --chip:#1f2633;
+      --again:#f87171; --good:#e5e7eb; --easy:#34d399;
+      --hl:#3a2f12; --hl-ink:#fcd34d;
+    }
+  }
+  *{box-sizing:border-box; -webkit-tap-highlight-color:transparent;}
+  html,body{margin:0; padding:0; height:100%;}
+  body{
+    background:var(--bg); color:var(--ink);
+    font-family:-apple-system,BlinkMacSystemFont,"Segoe UI",Roboto,"PingFang SC","Microsoft YaHei",sans-serif;
+    display:flex; flex-direction:column;
+    max-width:560px; margin:0 auto; padding:env(safe-area-inset-top) 0 env(safe-area-inset-bottom);
+  }
+  header{padding:14px 18px 8px;}
+  .top{display:flex; align-items:center; justify-content:space-between; gap:10px;}
+  .title{font-size:15px; font-weight:700;}
+  .progress{font-size:12px; color:var(--ink2);}
+  .bar{height:3px; background:var(--line); border-radius:2px; margin-top:10px; overflow:hidden;}
+  .bar > div{height:100%; width:0%; background:var(--accent); transition:width .3s;}
+  .filters{display:flex; gap:6px; overflow-x:auto; padding:10px 18px 4px; scrollbar-width:none;}
+  .filters::-webkit-scrollbar{display:none;}
+  .pill{flex:0 0 auto; font-size:12px; font-weight:600; padding:6px 12px; border-radius:999px;
+        border:1.5px solid var(--line); color:var(--ink2); background:var(--card); white-space:nowrap;}
+  .pill.on{background:var(--accent); color:var(--bg); border-color:var(--accent);}
+
+  main{flex:1; display:flex; flex-direction:column; padding:8px 18px 0; min-height:0;}
+
+  .card{
+    background:var(--card); border:1px solid var(--line); border-radius:18px;
+    padding:22px 20px; flex:1; display:flex; flex-direction:column;
+    min-height:300px; cursor:pointer; user-select:none;
+  }
+  .card-head{display:flex; align-items:center; justify-content:space-between; margin-bottom:18px;}
+  .cat{font-size:11px; font-weight:600; padding:4px 11px; border-radius:999px; background:var(--chip); color:var(--ink2);}
+  .side{font-size:11px; color:var(--ink3);}
+  .body{flex:1; display:flex; flex-direction:column; justify-content:center;}
+  .cn{font-size:23px; font-weight:600; line-height:1.5; letter-spacing:.01em;}
+  .hint{font-size:12px; color:var(--ink3); margin-top:14px;}
+  .en{font-size:20px; font-weight:600; line-height:1.55;}
+  .en mark{background:var(--hl); color:var(--hl-ink); padding:0 2px; border-radius:3px;}
+  .note{font-size:13px; color:var(--ink2); margin-top:16px; padding-top:14px; border-top:1px solid var(--line); line-height:1.6;}
+  .src{font-size:11px; color:var(--ink3); margin-top:10px;}
+
+  .controls{padding:14px 18px calc(18px + env(safe-area-inset-bottom));}
+  .reveal{
+    width:100%; padding:15px; border:none; border-radius:14px;
+    background:var(--accent); color:var(--bg); font-size:16px; font-weight:600;
+  }
+  .rates{display:grid; grid-template-columns:repeat(3,1fr); gap:8px;}
+  .rate{
+    padding:14px 6px; border-radius:14px; border:1.5px solid var(--line);
+    background:var(--card); display:flex; flex-direction:column; gap:3px; align-items:center;
+  }
+  .rate b{font-size:15px; font-weight:600;}
+  .rate small{font-size:10px; color:var(--ink3);}
+  .rate.again b{color:var(--again);} .rate.again{border-color:var(--again);}
+  .rate.good  b{color:var(--good);}
+  .rate.easy  b{color:var(--easy);}  .rate.easy{border-color:var(--easy);}
+
+  .done{flex:1; display:flex; flex-direction:column; align-items:center; justify-content:center; text-align:center; gap:14px; padding:30px;}
+  .done .big{font-size:19px; font-weight:700; color:var(--easy);}
+  .done p{font-size:13px; color:var(--ink2); line-height:1.7; margin:0;}
+  .ghost{margin-top:6px; padding:11px 20px; border-radius:12px; border:1.5px solid var(--line);
+          background:var(--card); color:var(--ink); font-size:14px; font-weight:600;}
+  .footer{text-align:center; font-size:11px; color:var(--ink3); padding:10px 0 16px;}
+</style>
+</head>
+<body>
+
+<header>
+  <div class="top">
+    <span class="title">默译冲刺</span>
+    <span class="progress" id="prog">—</span>
+  </div>
+  <div class="bar"><div id="barfill"></div></div>
+</header>
+
+<div class="filters" id="filters"></div>
+
+<main>
+  <div class="card" id="card" onclick="onCardTap()">
+    <div class="card-head">
+      <span class="cat" id="cat">—</span>
+      <span class="side" id="side">正面 · 先默译</span>
+    </div>
+    <div class="body">
+      <div id="front">
+        <div class="cn" id="cn">加载中…</div>
+        <div class="hint">看着中文，在脑子里 / 用气声把英文说出来，再翻面对答案</div>
+      </div>
+      <div id="back" style="display:none;">
+        <div class="en" id="en"></div>
+        <div class="note" id="note" style="display:none;"></div>
+        <div class="src" id="src" style="display:none;"></div>
+      </div>
+    </div>
+  </div>
+</main>
+
+<div class="controls" id="controls">
+  <button class="reveal" id="reveal" onclick="flip()">显示参考答案</button>
+  <div class="rates" id="rates" style="display:none;">
+    <button class="rate again" onclick="rate('again')"><b>没说出来</b><small id="ta">再来</small></button>
+    <button class="rate good"  onclick="rate('good')"><b>说出来了</b><small id="tg">—</small></button>
+    <button class="rate easy"  onclick="rate('easy')"><b>很流利</b><small id="te">—</small></button>
+  </div>
+</div>
+
+<div class="footer" id="footer"></div>
+
+<script>
+  // ── 数据由 portal 导出时注入 ──────────────────────────────
+  const PHRASES = {{ phrases_json | safe }};
+  const CATS = {{ cat_json | safe }};
+  const GENERATED = "{{ generated }}";
+  const STORE_KEY = "drill_srs_v1";
+
+  // ── SRS 状态（存手机本地）──────────────────────────────────
+  function loadSrs(){ try{ return JSON.parse(localStorage.getItem(STORE_KEY)) || {}; }catch(e){ return {}; } }
+  function saveSrs(s){ try{ localStorage.setItem(STORE_KEY, JSON.stringify(s)); }catch(e){} }
+  let SRS = loadSrs();
+
+  const today = () => new Date().toISOString().slice(0,10);
+  function addDays(n){ const d=new Date(); d.setDate(d.getDate()+n); return d.toISOString().slice(0,10); }
+
+  function fmt(days){
+    if(days <= 0) return "稍后";
+    if(days < 30) return days + "天后";
+    return (days/30).toFixed(days<60?1:0) + "个月后";
+  }
+
+  // SM-2 精简版（三档）
+  function schedule(st, rating){
+    let ef = st.ef || 2.5, interval = st.interval || 0, reps = st.reps || 0;
+    if(rating === 'again'){ reps = 0; interval = 0; ef = Math.max(1.3, ef - 0.2); }
+    else if(rating === 'good'){
+      reps += 1;
+      if(reps === 1) interval = 1;
+      else if(reps === 2) interval = 3;
+      else interval = Math.round(interval * ef);
+    } else { // easy
+      reps += 1; ef = Math.min(3.2, ef + 0.15);
+      if(reps === 1) interval = 4;
+      else interval = Math.round(interval * ef * 1.3);
+    }
+    return { ef, interval, reps, due: addDays(interval) };
+  }
+  function preview(st, rating){ return schedule(st, rating).interval; }
+
+  // ── 队列 ───────────────────────────────────────────────────
+  let activeCat = "";       // "" = 全部
+  let queue = [];
+  let idx = 0;
+  let total = 0;
+  let doneCount = 0;
+
+  function buildFilters(){
+    const f = document.getElementById('filters');
+    const mk = (val,label,n)=>{
+      const b=document.createElement('button');
+      b.className='pill'+(activeCat===val?' on':'');
+      b.textContent = label+' '+n;
+      b.onclick=()=>{ activeCat=val; startSession(); };
+      return b;
+    };
+    f.innerHTML='';
+    f.appendChild(mk("","全部",PHRASES.length));
+    CATS.forEach(([val,label])=>{
+      const n = PHRASES.filter(p=>p.cat===val).length;
+      if(n>0) f.appendChild(mk(val,label,n));
+    });
+  }
+
+  function dueList(){
+    const t = today();
+    return PHRASES
+      .filter(p => activeCat==="" || p.cat===activeCat)
+      .filter(p => { const st=SRS[p.id]; return !st || !st.due || st.due <= t; });
+  }
+
+  function shuffle(a){ for(let i=a.length-1;i>0;i--){ const j=Math.floor(Math.random()*(i+1)); [a[i],a[j]]=[a[j],a[i]]; } return a; }
+
+  function startSession(){
+    buildFilters();
+    queue = shuffle(dueList().slice());
+    idx = 0; doneCount = 0; total = queue.length;
+    document.getElementById('footer').textContent = "导出于 "+GENERATED+" · 进度存于本机";
+    if(total === 0){ showEmpty(); return; }
+    render();
+  }
+
+  const catLabel = v => { const f=CATS.find(c=>c[0]===v); return f?f[1]:v; };
+
+  function highlight(en, terms){
+    if(!terms || !terms.length) return escapeHtml(en);
+    let out = escapeHtml(en);
+    terms.forEach(t=>{
+      const tt = escapeHtml(t).trim(); if(!tt) return;
+      out = out.replace(new RegExp('('+tt.replace(/[.*+?^${}()|[\]\\]/g,'\\$&')+')','i'),'<mark>$1</mark>');
+    });
+    return out;
+  }
+  function escapeHtml(s){ return (s||'').replace(/[&<>]/g,c=>({'&':'&amp;','<':'&lt;','>':'&gt;'}[c])); }
+
+  function render(){
+    const p = queue[idx];
+    document.getElementById('cat').textContent = catLabel(p.cat);
+    document.getElementById('cn').textContent = p.cn;
+    document.getElementById('en').innerHTML = highlight(p.en, p.terms);
+
+    const noteEl = document.getElementById('note');
+    if(p.note){ noteEl.textContent = "💡 "+p.note; noteEl.style.display='block'; }
+    else noteEl.style.display='none';
+
+    // 正面
+    document.getElementById('front').style.display='block';
+    document.getElementById('back').style.display='none';
+    document.getElementById('side').textContent='正面 · 先默译';
+    document.getElementById('reveal').style.display='block';
+    document.getElementById('rates').style.display='none';
+
+    // 自评按钮上的“下次时间”预览
+    const st = SRS[p.id] || {};
+    document.getElementById('ta').textContent = "再来一遍";
+    document.getElementById('tg').textContent = fmt(preview(st,'good'));
+    document.getElementById('te').textContent = fmt(preview(st,'easy'));
+
+    document.getElementById('prog').textContent = "第 "+(doneCount+1)+" / "+total+" 句";
+    document.getElementById('barfill').style.width = (doneCount/total*100)+"%";
+  }
+
+  let flipped = false;
+  function flip(){
+    flipped = true;
+    document.getElementById('front').style.display='none';
+    document.getElementById('back').style.display='block';
+    document.getElementById('side').textContent='背面 · 对答案';
+    document.getElementById('reveal').style.display='none';
+    document.getElementById('rates').style.display='grid';
+  }
+  function onCardTap(){ if(!flipped) flip(); }
+
+  function rate(level){
+    const p = queue[idx];
+    const next = schedule(SRS[p.id] || {}, level);
+    SRS[p.id] = next;
+    saveSrs(SRS);
+
+    flipped = false;
+    if(level === 'again'){
+      // 没说出来：本轮稍后再出现一次
+      queue.push(p);
+      total = queue.length;
+    } else {
+      doneCount++;
+    }
+    idx++;
+    document.getElementById('barfill').style.width = (doneCount/total*100)+"%";
+
+    if(idx >= queue.length){ showDone(); }
+    else render();
+  }
+
+  function showDone(){
+    document.getElementById('controls').style.display='none';
+    document.getElementById('card').onclick=null;
+    document.getElementById('prog').textContent="完成";
+    document.getElementById('barfill').style.width="100%";
+    document.getElementById('card').innerHTML =
+      '<div class="done">'+
+        '<div class="big">今日队列完成 ✓</div>'+
+        '<p>记不住的会反复出现<br>记得牢的会推到几天 / 几周后<br>每天打开都只有“到期”的一小撮</p>'+
+        '<button class="ghost" onclick="reviewAll()">再练一遍全部（不影响进度）</button>'+
+      '</div>';
+  }
+
+  function showEmpty(){
+    document.getElementById('controls').style.display='none';
+    document.getElementById('card').onclick=null;
+    document.getElementById('prog').textContent="今日无到期";
+    document.getElementById('barfill').style.width="100%";
+    const label = activeCat ? catLabel(activeCat) : "全部";
+    document.getElementById('card').innerHTML =
+      '<div class="done">'+
+        '<div class="big">「'+label+'」今天没有到期的卡</div>'+
+        '<p>说明你都记得不错<br>可以换个分类，或手动复习全部</p>'+
+        '<button class="ghost" onclick="reviewAll()">复习全部</button>'+
+      '</div>';
+  }
+
+  // 临时复习模式：练全部但不写回 SRS（不打乱排程）
+  let reviewMode = false;
+  function reviewAll(){
+    reviewMode = true;
+    document.getElementById('controls').style.display='block';
+    document.getElementById('card').onclick = onCardTap;
+    queue = shuffle(PHRASES.filter(p=>activeCat===""||p.cat===activeCat).slice());
+    idx=0; doneCount=0; total=queue.length;
+    // 复习模式下 rate 不写回
+    render();
+  }
+  // 复习模式覆盖 rate 行为
+  const _rate = rate;
+  rate = function(level){
+    if(!reviewMode){ return _rate(level); }
+    flipped=false;
+    if(level==='again'){ queue.push(queue[idx]); total=queue.length; } else { doneCount++; }
+    idx++;
+    if(idx>=queue.length){ reviewMode=false; showDone(); } else render();
+  };
+
+  // 启动
+  startSession();
+</script>
+</body>
+</html>

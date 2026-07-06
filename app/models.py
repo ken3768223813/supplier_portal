@@ -986,3 +986,44 @@ class ControlCharacteristic(db.Model):
         if self.tolerance:
             parts.append(self.tolerance)
         return ' '.join(parts)
+
+# ── 追加到 app/models.py 末尾 ──────────────────────────────────────────────
+# 默译冲刺 / 口语句库  Drill Phrase
+#
+# 说明：
+#   - SRS 复习状态（ef / interval / due）不存数据库，存在手机端 localStorage。
+#     这样离线 HTML 自包含、不依赖回传，符合“生产在本地、消费离线化”的分工。
+#   - 数据库只负责“句库内容”：中文、英文参考、分类、重点术语、来源。
+
+class DrillPhrase(db.Model):
+    __tablename__ = 'drill_phrases'
+
+    id = db.Column(db.Integer, primary_key=True)
+
+    # 分类：决定离线文件里的筛选 pill
+    # meeting(会议胶水语) / audit(审核) / metallurgy(金相材料)
+    # surface(表面处理) / electrical(电气) / measurement(测量)
+    category = db.Column(db.String(50), nullable=False, default='meeting', index=True)
+
+    cn = db.Column(db.Text, nullable=False)      # 中文（正面，默译用）
+    en = db.Column(db.Text, nullable=False)      # 英文参考（背面）
+
+    key_terms = db.Column(db.String(255))        # 可选：重点术语，逗号分隔，背面高亮
+    note = db.Column(db.Text)                    # 可选：用法提示 / 易错点
+    source = db.Column(db.String(100))           # 可选：来源（TR 编号 / 审核编号 / 文档）
+
+    active = db.Column(db.Boolean, default=True, nullable=False, index=True)
+    created_at = db.Column(db.DateTime, default=datetime.utcnow, nullable=False, index=True)
+
+    def __repr__(self):
+        return f'<DrillPhrase {self.id}: {self.cn[:20]}>'
+
+    def to_dict(self):
+        return {
+            'id': self.id,
+            'cat': self.category,
+            'cn': self.cn,
+            'en': self.en,
+            'terms': [t.strip() for t in (self.key_terms or '').split(',') if t.strip()],
+            'note': self.note or '',
+        }

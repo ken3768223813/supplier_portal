@@ -66,6 +66,9 @@ def create_app(test_config=None):
     from app.blueprints.cp import cp_bp
     app.register_blueprint(cp_bp)
 
+    from .blueprints.drill import drill_bp
+    app.register_blueprint(drill_bp)
+
     # CLI：初始化数据库 + 导入种子数据
     from .seed import seed_suppliers
 
@@ -85,4 +88,7 @@ def create_app(test_config=None):
     print("=" * 60)
 
     return app
+
+
+
 

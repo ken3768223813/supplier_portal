@@ -358,12 +358,17 @@ def _auto_import_edc_attachments(app, tr_id, _retry_count=0):
                     with open(file_path, "wb") as f: f.write(data)
                 except Exception: failed += 1; continue
                 doc_type = EXT_TO_DOC_TYPE.get(ext, "other")
-                if ext == "pdf":
-                    nl = src.name.lower()
-                    if "8d" in nl: doc_type = "8d_report"
-                    elif "test" in nl or "report" in nl: doc_type = "test_report"
-                    elif "capa" in nl: doc_type = "capa"
-                    else: doc_type = "test_report"
+                nl = src.name.lower()
+                # 任何格式，文件名含 "8d" 都识别为 8D 报告
+                if "8d" in nl:
+                    doc_type = "8d_report"
+                elif ext == "pdf":
+                    if "test" in nl or "report" in nl:
+                        doc_type = "test_report"
+                    elif "capa" in nl:
+                        doc_type = "capa"
+                    else:
+                        doc_type = "test_report"
                 db.session.add(TRDocument(
                     tr_id=tr.id, doc_type=doc_type, title=src.stem,
                     original_name=src.name, stored_name=stored_name,
