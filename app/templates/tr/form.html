@@ -106,13 +106,39 @@
             </select>
             <p class="mt-2 text-xs text-gray-500">Don't see your supplier? <a href="{{ url_for('suppliers.new_supplier') }}" target="_blank" class="text-blue-600 font-semibold">Add new supplier</a></p>
           </div>
-          <div class="col-span-12 md:col-span-6">
+          <div class="col-span-12 md:col-span-4">
+            <label class="text-sm font-bold text-gray-700 mb-2 block">Issue Date</label>
+            <input name="issue_date" type="date" value="{{ issue_date_value or '' }}" class="form-input w-full px-4 py-3 border-2 border-gray-200 rounded-xl text-sm focus:outline-none focus:border-gray-900 font-mono">
+          </div>
+          <div class="col-span-12 md:col-span-4">
             <label class="text-sm font-bold text-gray-700 mb-2 block">Part Number</label>
             <input name="part_number" value="{{ tr.part_number if tr and tr.part_number else '' }}" placeholder="Part P/N" class="form-input w-full px-4 py-3 border-2 border-gray-200 rounded-xl text-sm focus:outline-none focus:border-gray-900 font-mono">
           </div>
-          <div class="col-span-12 md:col-span-6">
+          <div class="col-span-12 md:col-span-4">
             <label class="text-sm font-bold text-gray-700 mb-2 block">Part Name</label>
             <input name="part_name" value="{{ tr.part_name if tr and tr.part_name else '' }}" placeholder="Part name or description" class="form-input w-full px-4 py-3 border-2 border-gray-200 rounded-xl text-sm focus:outline-none focus:border-gray-900">
+          </div>
+          <div class="col-span-12 md:col-span-4">
+            <label class="text-sm font-bold text-gray-700 mb-2 block">Case No.</label>
+            <div class="flex gap-2">
+              <input id="case_no" name="case_no" list="caseNoOptions" value="{{ tr.case_no if tr and tr.case_no else '' }}" placeholder="Auto or select" class="form-input min-w-0 flex-1 px-4 py-3 border-2 border-gray-200 rounded-xl text-sm focus:outline-none focus:border-gray-900 font-mono">
+              <button type="button" onclick="generateCaseNo()" class="px-3 py-3 rounded-xl bg-violet-50 text-violet-700 border-2 border-violet-200 text-xs font-bold hover:bg-violet-100 whitespace-nowrap">Auto</button>
+            </div>
+            <select id="case_no_select" onchange="selectCaseNo(this.value)" class="mt-2 w-full px-3 py-2 border-2 border-gray-200 rounded-lg text-xs text-gray-600 bg-white focus:outline-none focus:border-gray-900">
+              <option value="">Join existing case...</option>
+              {% for case_no in case_options or [] %}
+              <option value="{{ case_no }}">{{ case_no }}</option>
+              {% endfor %}
+            </select>
+            <datalist id="caseNoOptions">
+              {% for case_no in case_options or [] %}
+              <option value="{{ case_no }}">
+              {% endfor %}
+            </datalist>
+            <div class="mt-2 flex items-center justify-between gap-2">
+              <p class="text-xs text-gray-500">同一问题选择同一个 Case。</p>
+              <button type="button" onclick="selectCaseNo('')" class="text-xs text-gray-400 hover:text-red-500 font-semibold">Clear</button>
+            </div>
           </div>
         </div>
       </div>
@@ -170,7 +196,7 @@
             <label class="text-sm font-bold text-gray-700 mb-2 block">Debit Ref. No.</label>
             <input name="debit_ref" value="{{ tr.debit_ref if tr and tr.debit_ref else '' }}" placeholder="P&C-2026-93 / MT01" class="form-input w-full px-4 py-3 border-2 border-gray-200 rounded-xl text-sm focus:outline-none focus:border-gray-900 font-mono bg-white">
           </div>
-          <div class="col-span-12 md:col-span-3">
+          <div class="col-span-12 md:col-span-2">
             <label class="text-sm font-bold text-gray-700 mb-2 block">Amount</label>
             <input name="debit_amount" type="number" step="0.01" value="{{ tr.debit_amount if tr and tr.debit_amount else '' }}" placeholder="17280.00" class="form-input w-full px-4 py-3 border-2 border-gray-200 rounded-xl text-sm focus:outline-none focus:border-gray-900 font-mono bg-white">
           </div>
@@ -184,9 +210,16 @@
               <option value="VND" {% if cur=="VND" %}selected{% endif %}>VND ₫</option>
             </select>
           </div>
-          <div class="col-span-12 md:col-span-3">
+          <div class="col-span-12 md:col-span-2">
             <label class="text-sm font-bold text-gray-700 mb-2 block">Debit Date</label>
             <input name="debit_date" value="{{ tr.debit_date if tr and tr.debit_date else '' }}" placeholder="03/06/2026" class="form-input w-full px-4 py-3 border-2 border-gray-200 rounded-xl text-sm focus:outline-none focus:border-gray-900 font-mono bg-white">
+          </div>
+          <div class="col-span-12 md:col-span-2">
+            <label class="text-sm font-bold text-gray-700 mb-2 block">Signed</label>
+            <label class="h-[46px] px-3 rounded-xl border-2 border-emerald-200 bg-white flex items-center gap-2 cursor-pointer hover:border-emerald-400">
+              <input type="checkbox" name="debit_signed" value="1" {% if tr and tr.debit_signed %}checked{% endif %} class="w-4 h-4 rounded border-emerald-300 text-emerald-600 focus:ring-emerald-500">
+              <span class="text-xs font-bold text-gray-700 leading-tight">Supplier accepted</span>
+            </label>
           </div>
         </div>
       </div>
@@ -194,16 +227,22 @@
       <!-- Remarks -->
       <div class="mb-8">
         <h2 class="text-lg font-bold text-gray-900 mb-4">Remarks</h2>
-        <input name="remark" value="{{ tr.remark if tr and tr.remark else '' }}" placeholder="Any other information to record..." class="form-input w-full px-4 py-3 border-2 border-gray-200 rounded-xl text-sm focus:outline-none focus:border-gray-900">
+        <input name="remark" value="{{ remark_value if remark_value is defined else (tr.remark if tr and tr.remark else '') }}" placeholder="Any other information to record..." class="form-input w-full px-4 py-3 border-2 border-gray-200 rounded-xl text-sm focus:outline-none focus:border-gray-900">
       </div>
 
       <!-- Action Buttons -->
       <div class="flex items-center gap-3 pt-6 border-t-2 border-gray-100">
+        {% if mode == "edit" %}
+        <label class="inline-flex items-center gap-2 px-4 py-3 rounded-xl bg-violet-50 text-violet-700 border-2 border-violet-100 text-sm font-semibold">
+          <input type="checkbox" name="sync_case" value="1" {% if tr and tr.case_no %}checked{% endif %} class="w-4 h-4 rounded border-violet-300 text-violet-600">
+          <span>Sync same Case</span>
+        </label>
+        {% endif %}
         <button type="submit" class="inline-flex items-center gap-2 px-6 py-3 rounded-xl bg-gray-900 text-white font-bold hover:bg-gray-800 transition-all">
           <svg class="w-5 h-5" fill="none" stroke="currentColor" viewBox="0 0 24 24" stroke-width="2"><path stroke-linecap="round" stroke-linejoin="round" d="M5 13l4 4L19 7"/></svg>
           {% if mode == "edit" %}Save Changes{% else %}Create TR{% endif %}
         </button>
-        <a href="{{ url_for('tr.index') }}" class="inline-flex items-center gap-2 px-6 py-3 rounded-xl border-2 border-gray-300 bg-white text-gray-700 font-semibold hover:bg-gray-50 transition-all">Back to List</a>
+        <a href="{{ next_url or url_for('tr.index') }}" class="inline-flex items-center gap-2 px-6 py-3 rounded-xl border-2 border-gray-300 bg-white text-gray-700 font-semibold hover:bg-gray-50 transition-all">Back to List</a>
       </div>
     </form>
 
@@ -230,6 +269,7 @@
         <div class="bg-indigo-50 rounded-xl p-6 border-2 border-indigo-200 mb-6">
           <h3 class="text-sm font-bold text-gray-900 mb-4">Upload New Document</h3>
           <form method="post" action="{{ url_for('tr.upload_document', tr_id=tr.id) }}" enctype="multipart/form-data" class="grid grid-cols-12 gap-4">
+            {% if next_url %}<input type="hidden" name="next" value="{{ next_url }}">{% endif %}
             <div class="col-span-12 md:col-span-3">
               <label class="text-xs font-bold text-gray-700 mb-1.5 block">Document Type</label>
               <select name="doc_type" required class="w-full px-3 py-2 border-2 border-gray-200 rounded-lg text-sm focus:outline-none focus:border-gray-900 bg-white cursor-pointer">
@@ -257,6 +297,12 @@
             </div>
             <div class="col-span-12">
               <input type="text" name="remark" placeholder="Remarks (optional)" class="w-full px-3 py-2 border-2 border-gray-200 rounded-lg text-sm focus:outline-none focus:border-gray-900">
+            </div>
+            <div class="col-span-12">
+              <label class="inline-flex items-center gap-2 text-xs font-semibold text-violet-700 bg-white/70 border border-violet-200 rounded-lg px-3 py-2">
+                <input type="checkbox" name="sync_case_doc" value="1" {% if tr.case_no %}checked{% endif %} class="w-4 h-4 rounded border-violet-300">
+                <span>Sync this document to same Case</span>
+              </label>
             </div>
           </form>
         </div>
@@ -344,12 +390,29 @@
 })();
 
 let _edcFields=null;
+function selectCaseNo(value){
+  const input=document.getElementById('case_no');
+  const sel=document.getElementById('case_no_select');
+  if(input) input.value=value||'';
+  if(sel) sel.value=value||'';
+}
+async function generateCaseNo(){
+  const input=document.getElementById('case_no');
+  if(!input)return;
+  try{
+    const r=await fetch('/tr/cases/next-no');
+    const data=await r.json();
+    if(data.ok&&data.case_no) input.value=data.case_no;
+  }catch(e){
+    alert('Failed to generate Case No.');
+  }
+}
 function toggleEDC(){const b=document.getElementById('edcBody'),c=document.getElementById('edcChevron');if(!b)return;const h=b.classList.toggle('hidden');c.style.transform=h?'':'rotate(180deg)';}
 async function scanOutlook(){const btn=document.getElementById('scanBtn'),area=document.getElementById('emailListArea');btn.disabled=true;area.innerHTML=miniSpinner('Reading Outlook...');try{const r=await fetch('/tr/edc-inbox',{method:'POST'});const data=await r.json();if(!data.ok){area.innerHTML=errorBox(data.error);return;}if(data.emails.length===0){area.innerHTML='<p class="text-xs text-center text-blue-400 py-6">No EDC emails</p>';return;}renderEmailList(data.emails);}catch(e){area.innerHTML=errorBox(e.message);}finally{btn.disabled=false;}}
 function renderEmailList(emails){const area=document.getElementById('emailListArea');area.innerHTML=`<div class="space-y-1.5 max-h-52 overflow-y-auto pr-1">${emails.map(e=>{const rc=(e.result||'').toLowerCase().includes('not approved')?'text-red-600 bg-red-50 border-red-200':'text-green-700 bg-green-50 border-green-200';const done=e.already_has_tr;return`<div class="flex items-center gap-2 px-3 py-2 rounded-lg border cursor-pointer transition-all ${done?'border-gray-200 bg-gray-50 opacity-50 cursor-not-allowed':'border-blue-100 bg-white hover:border-blue-400 hover:bg-blue-50'}" onclick="${done?'':`selectEDC('${e.edc_no}',this)`}"><span class="font-mono font-bold text-xs bg-blue-100 text-blue-800 px-2 py-0.5 rounded flex-shrink-0">${e.edc_no}</span><div class="flex-1 min-w-0"><p class="text-xs text-gray-600 truncate font-medium">${e.supplier||'—'}</p><p class="text-[10px] text-gray-400 truncate">${e.material||''} · ${e.received_at||''}</p></div><div class="flex-shrink-0 flex flex-col items-end gap-1"><span class="text-[10px] font-bold px-1.5 py-0.5 rounded border ${rc}">${(e.result||'Unknown').replace('Not Approved','N/A')}</span>${done?`<a href="/tr/${e.tr_id}/edit" class="text-[10px] text-blue-500 hover:underline font-semibold">TR exists →</a>`:''}</div></div>`;}).join('')}</div><p class="text-[10px] text-blue-400 mt-2 text-right">${emails.length} email(s)</p>`;}
 async function selectEDC(edcNo,rowEl){document.querySelectorAll('[id^="erow-"]').forEach(r=>r.classList.remove('border-blue-500','bg-blue-100','ring-2','ring-blue-300'));rowEl.classList.add('border-blue-500','bg-blue-100','ring-2','ring-blue-300');_edcFields=null;document.getElementById('applyBtnWrap').classList.add('hidden');showPDFStatus('loading',`Searching OneDrive for ${edcNo}...`);document.getElementById('pdfPreviewArea').innerHTML='';try{const r=await fetch('/tr/import-edc-no',{method:'POST',headers:{'Content-Type':'application/json'},body:JSON.stringify({edc_no:edcNo})});const data=await r.json();if(!data.ok){showPDFStatus('error',data.error);return;}_edcFields=data.fields;showPDFStatus('success',`✓ ${data.pdf_name}`);renderPDFPreview(data.fields);document.getElementById('applyBtnWrap').classList.remove('hidden');}catch(e){showPDFStatus('error',e.message);}}
 function renderPDFPreview(f){const area=document.getElementById('pdfPreviewArea');const rows=[['TR No.',f.tr_no],['Supplier Code',f.supplier_code],['Supplier Name',f.supplier_name],['Drawing',f.part_number],['Part Name',f.part_name],['Report Date',f.report_date],['Rejected',`${f.rejected_parts} / ${f.received_parts} pcs`]];area.innerHTML=`<div class="space-y-1 mb-3">${rows.map(([k,v])=>`<div class="flex gap-2 text-xs"><span class="text-gray-400 min-w-[90px]">${k}</span><span class="text-gray-800 font-semibold font-mono truncate">${v||'—'}</span></div>`).join('')}</div>${f.issue_description?`<details class="text-xs"><summary class="text-gray-400 cursor-pointer font-semibold">Issue ▸</summary><pre class="mt-1.5 text-gray-700 whitespace-pre-wrap text-[11px] bg-gray-50 p-2 rounded border max-h-28 overflow-y-auto">${f.issue_description.slice(0,500)}</pre></details>`:''}`;}
-function applyToForm(){if(!_edcFields)return;const f=_edcFields;const set=(sel,val)=>{const el=document.querySelector(sel);if(el&&!el.value)el.value=val||'';};set('[name="tr_no"]',f.tr_no);set('[name="part_number"]',f.part_number);set('[name="part_name"]',f.part_name);set('[name="issue_description"]',f.issue_description);set('[name="remark"]',`EDC ${f.report_no} | Rejected: ${f.rejected_parts}/${f.received_parts} pcs | ${f.report_date}`);const sel=document.querySelector('[name="supplier_name"]');if(sel&&f.supplier_code){for(const opt of sel.options){if(opt.dataset.code===f.supplier_code){opt.selected=true;break;}}if(!sel.value&&f.supplier_name){const key=f.supplier_name.slice(0,12).toUpperCase();for(const opt of sel.options){if(key&&opt.text.toUpperCase().includes(key)){opt.selected=true;break;}}}}set('#lot_number',f.lot_number);if(d8){d8.value='NOT_RECEIVED';d8.dispatchEvent(new Event('change'));}toggleEDC();document.querySelector('form[method="post"]')?.scrollIntoView({behavior:'smooth',block:'start'});}
+function applyToForm(){if(!_edcFields)return;const f=_edcFields;const set=(sel,val)=>{const el=document.querySelector(sel);if(el&&!el.value)el.value=val||'';};const toDateInput=(val)=>{const m=(val||'').match(/^(\d{2})\.(\d{2})\.(\d{4})$/);return m?`${m[3]}-${m[2]}-${m[1]}`:(val||'');};set('[name="tr_no"]',f.tr_no);set('[name="part_number"]',f.part_number);set('[name="part_name"]',f.part_name);set('[name="issue_date"]',toDateInput(f.report_date));set('[name="issue_description"]',f.issue_description);set('[name="remark"]',`EDC ${f.report_no} | Rejected: ${f.rejected_parts}/${f.received_parts} pcs`);const sel=document.querySelector('[name="supplier_name"]');if(sel&&f.supplier_code){for(const opt of sel.options){if(opt.dataset.code===f.supplier_code){opt.selected=true;break;}}if(!sel.value&&f.supplier_name){const key=f.supplier_name.slice(0,12).toUpperCase();for(const opt of sel.options){if(key&&opt.text.toUpperCase().includes(key)){opt.selected=true;break;}}}}set('#lot_number',f.lot_number);if(d8){d8.value='NOT_RECEIVED';d8.dispatchEvent(new Event('change'));}toggleEDC();document.querySelector('form[method="post"]')?.scrollIntoView({behavior:'smooth',block:'start'});}
 function miniSpinner(msg){return`<div class="flex items-center gap-2 py-6 justify-center text-xs text-blue-500 font-medium"><span style="display:inline-block;width:14px;height:14px;border:2px solid #bfdbfe;border-top-color:#3b82f6;border-radius:50%;animation:spin .7s linear infinite;"></span>${msg}</div>`;}
 function errorBox(msg){return`<div style="background:#fef2f2;color:#dc2626;border:1px solid #fecaca;padding:10px 14px;border-radius:8px;font-size:11px;white-space:pre-wrap;">${msg}</div>`;}
 function showPDFStatus(type,html){const el=document.getElementById('pdfStatus');if(!el)return;el.classList.remove('hidden');const s={loading:'background:#eff6ff;color:#1d4ed8;border:1px solid #bfdbfe',success:'background:#f0fdf4;color:#15803d;border:1px solid #bbf7d0',error:'background:#fef2f2;color:#dc2626;border:1px solid #fecaca'}[type];const spin=type==='loading'?'<span style="display:inline-block;width:11px;height:11px;border:2px solid #93c5fd;border-top-color:#1d4ed8;border-radius:50%;animation:spin .7s linear infinite;margin-right:7px;"></span>':'';el.innerHTML=`<div style="padding:7px 12px;border-radius:7px;font-size:11px;font-weight:600;display:flex;align-items:center;${s}">${spin}${html}</div>`;}

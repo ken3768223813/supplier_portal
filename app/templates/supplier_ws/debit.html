@@ -24,6 +24,7 @@
           <th class="px-4 py-3 text-left text-[11px] font-bold text-gray-400 uppercase">Part No.</th>
           <th class="px-4 py-3 text-left text-[11px] font-bold text-gray-400 uppercase">Issue</th>
           <th class="px-4 py-3 text-right text-[11px] font-bold text-gray-400 uppercase">金额</th>
+          <th class="px-4 py-3 text-center text-[11px] font-bold text-gray-400 uppercase">Signed</th>
           <th class="px-4 py-3 text-center text-[11px] font-bold text-gray-400 uppercase">日期</th>
           <th class="px-3 py-3 text-center text-[11px] font-bold text-gray-400 uppercase"></th>
         </tr>
@@ -44,9 +45,17 @@
           </td>
           <td class="px-4 py-3"><div class="text-xs text-gray-500 truncate max-w-[200px]">{{ tr.issue_description or '—' }}</div></td>
           <td class="px-4 py-3 text-right">
-            <span class="text-sm font-bold text-emerald-700">
+            {% set amount_cls = 'text-emerald-700' if tr.debit_signed else 'text-red-700' %}
+            <span class="text-sm font-bold {{ amount_cls }}">
               {{ {'EUR':'€','USD':'$','CNY':'¥','VND':'₫'}.get(tr.debit_currency or 'EUR', '') }}{{ '{:,.2f}'.format(tr.debit_amount) }}
             </span>
+          </td>
+          <td class="px-4 py-3 text-center">
+            {% if tr.debit_signed %}
+              <span class="inline-flex items-center h-6 px-2 rounded-md text-[10px] font-bold bg-emerald-50 text-emerald-700 border border-emerald-200">Signed</span>
+            {% else %}
+              <span class="inline-flex items-center h-6 px-2 rounded-md text-[10px] font-bold bg-red-50 text-red-700 border border-red-200">Unsigned</span>
+            {% endif %}
           </td>
           <td class="px-4 py-3 text-center text-xs text-gray-500">{{ tr.debit_date or '—' }}</td>
           <td class="px-3 py-3 text-center">
@@ -59,7 +68,7 @@
         <tr class="border-t-2 border-gray-200 bg-gray-50">
           <td colspan="4" class="px-5 py-3 text-right text-sm font-bold text-gray-700">合计</td>
           <td class="px-4 py-3 text-right text-lg font-bold text-emerald-700">€{{ '{:,.2f}'.format(total_debit) }}</td>
-          <td colspan="2"></td>
+          <td colspan="3"></td>
         </tr>
       </tfoot>
     </table>

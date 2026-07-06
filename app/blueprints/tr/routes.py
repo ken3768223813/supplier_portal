@@ -1,6 +1,6 @@
 from flask import render_template, request, redirect, url_for, flash, send_file, abort, current_app, jsonify
 from werkzeug.utils import secure_filename
-from sqlalchemy import or_
+from sqlalchemy import func, or_
 from concurrent.futures import ThreadPoolExecutor, as_completed
 import os
 import uuid
@@ -8,7 +8,10 @@ import time
 import threading
 import subprocess
 import hashlib
+import shutil
 from pathlib import Path
+from datetime import datetime
+from urllib.parse import urlsplit
 
 from . import tr_bp
 from ...extensions import db
@@ -303,26 +306,34 @@ def _auto_import_edc_attachments(app, tr_id, _retry_count=0):
             root = Path(onedrive_path)
             if not root.exists(): return
 
+            main_pdf_paths = []
+            for p in root.rglob(f"*{edc_no}*.pdf"):
+                if p.is_file():
+                    main_pdf_paths.append(p.resolve())
+            main_pdf_set = set(main_pdf_paths)
+
             edc_folder = None
             for d in root.rglob(f"*{edc_no}*"):
                 if d.is_dir(): edc_folder = d.resolve(); break
-            if not edc_folder: return
-
-            main_pdf_names = set()
-            for p in root.rglob(f"*{edc_no}*.pdf"):
-                if p.resolve().parent != edc_folder:
-                    main_pdf_names.add(p.name.lower())
 
             seen_paths = set(); candidates = []
-            for f in edc_folder.rglob("*"):
-                if not f.is_file(): continue
-                f_resolved = f.resolve()
-                if f_resolved in seen_paths: continue
+
+            def _add_candidate(path):
+                if not path.is_file(): return
+                f_resolved = path.resolve()
+                if f_resolved in seen_paths: return
+                ext = f_resolved.suffix.lower().lstrip(".")
+                if ext not in ALLOWED_EXTENSIONS: return
                 seen_paths.add(f_resolved)
-                ext = f.suffix.lower().lstrip(".")
-                if ext not in ALLOWED_EXTENSIONS: continue
-                if ext == "pdf" and f.name.lower() in main_pdf_names: continue
                 candidates.append(f_resolved)
+
+            if edc_folder:
+                for f in edc_folder.rglob("*"):
+                    _add_candidate(f)
+
+            # Also sync the main EDC report PDF, which may live outside the attachment folder.
+            for p in main_pdf_paths:
+                _add_candidate(p)
 
             if not candidates: return
 
@@ -357,12 +368,15 @@ def _auto_import_edc_attachments(app, tr_id, _retry_count=0):
                 try:
                     with open(file_path, "wb") as f: f.write(data)
                 except Exception: failed += 1; continue
-                doc_type = EXT_TO_DOC_TYPE.get(ext, "other")
+                is_main_edc_pdf = src in main_pdf_set
+                doc_type = "quality_report" if is_main_edc_pdf else EXT_TO_DOC_TYPE.get(ext, "other")
+                title = f"EDC Report {edc_no}" if is_main_edc_pdf else src.stem
+                remark = "Auto-imported EDC report PDF" if is_main_edc_pdf else "Auto-imported from EDC folder"
                 nl = src.name.lower()
                 # 任何格式，文件名含 "8d" 都识别为 8D 报告
-                if "8d" in nl:
+                if not is_main_edc_pdf and "8d" in nl:
                     doc_type = "8d_report"
-                elif ext == "pdf":
+                elif not is_main_edc_pdf and ext == "pdf":
                     if "test" in nl or "report" in nl:
                         doc_type = "test_report"
                     elif "capa" in nl:
@@ -370,11 +384,11 @@ def _auto_import_edc_attachments(app, tr_id, _retry_count=0):
                     else:
                         doc_type = "test_report"
                 db.session.add(TRDocument(
-                    tr_id=tr.id, doc_type=doc_type, title=src.stem,
+                    tr_id=tr.id, doc_type=doc_type, title=title,
                     original_name=src.name, stored_name=stored_name,
                     rel_path=os.path.join(tr_dir, stored_name),
                     mime=EXT_TO_MIME.get(ext, "application/octet-stream"),
-                    size=len(data), remark="Auto-imported from EDC folder",
+                    size=len(data), remark=remark,
                 ))
                 imported += 1
             db.session.commit()
@@ -394,6 +408,7 @@ def _auto_import_edc_attachments(app, tr_id, _retry_count=0):
                     _attach_syncing_trs.discard(tr_id)
 
 
+
 # ──────────────────────────────────────────────────────────
 # 辅助：从表单读取 debit 字段
 # ──────────────────────────────────────────────────────────
@@ -401,6 +416,7 @@ def _read_debit_from_form():
     debit_ref = (request.form.get("debit_ref") or "").strip() or None
     debit_date = (request.form.get("debit_date") or "").strip() or None
     debit_currency = (request.form.get("debit_currency") or "EUR").strip()
+    debit_signed = request.form.get("debit_signed") == "1"
     raw_amount = (request.form.get("debit_amount") or "").strip()
     debit_amount = None
     if raw_amount:
@@ -408,7 +424,182 @@ def _read_debit_from_form():
             debit_amount = float(raw_amount.replace(",", ""))
         except (ValueError, TypeError):
             pass
-    return debit_ref, debit_amount, debit_currency, debit_date
+    return debit_ref, debit_amount, debit_currency, debit_date, debit_signed
+
+
+def _parse_issue_date(raw):
+    raw = (raw or "").strip()
+    if not raw:
+        return None
+    for fmt in ("%Y-%m-%d", "%d.%m.%Y", "%d/%m/%Y"):
+        try:
+            return datetime.strptime(raw, fmt).date()
+        except ValueError:
+            continue
+    return None
+
+
+def _issue_date_input_from_remark(remark):
+    if not remark or "|" not in remark:
+        return ""
+    issue_date = _parse_issue_date(remark.split("|")[-1].strip())
+    return issue_date.strftime("%Y-%m-%d") if issue_date else ""
+
+
+def _remark_without_issue_date(remark):
+    remark = (remark or "").strip()
+    if not remark or "|" not in remark:
+        return remark
+    parts = [p.strip() for p in remark.split("|")]
+    if _parse_issue_date(parts[-1]):
+        return " | ".join(p for p in parts[:-1] if p).strip()
+    return remark
+
+
+def _merge_remark_issue_date(remark, issue_date_raw):
+    base = _remark_without_issue_date(remark)
+    issue_date = _parse_issue_date(issue_date_raw)
+    if not issue_date:
+        return base or None
+    display_date = issue_date.strftime("%d.%m.%Y")
+    if not base:
+        base = "Issue Date"
+    return f"{base} | {display_date}"
+
+
+def _normalize_case_no(raw):
+    case_no = (raw or "").strip().upper()
+    return case_no or None
+
+
+def _case_options():
+    rows = (
+        db.session.query(TroubleReport.case_no)
+        .filter(TroubleReport.case_no.isnot(None), TroubleReport.case_no != "")
+        .distinct()
+        .order_by(TroubleReport.case_no.desc())
+        .all()
+    )
+    return [row[0] for row in rows]
+
+
+def _next_case_no():
+    year = datetime.now().year
+    prefix = f"CASE-{year}-"
+    rows = (
+        db.session.query(TroubleReport.case_no)
+        .filter(TroubleReport.case_no.like(f"{prefix}%"))
+        .all()
+    )
+    max_num = 0
+    for row in rows:
+        case_no = row[0] or ""
+        try:
+            max_num = max(max_num, int(case_no.rsplit("-", 1)[-1]))
+        except ValueError:
+            continue
+    return f"{prefix}{max_num + 1:03d}"
+
+
+CASE_SYNC_FIELDS = (
+    "status",
+    "eight_d",
+    "eight_d_status",
+    "investigation_note",
+    "eight_d_root_cause",
+    "eight_d_root_cause_en",
+    "eight_d_escape_cause",
+    "eight_d_escape_cause_en",
+    "eight_d_action",
+    "eight_d_action_en",
+    "eight_d_escape_action",
+    "eight_d_escape_action_en",
+)
+
+
+def _case_sibling_trs(tr):
+    if not tr.case_no:
+        return []
+    return (
+        TroubleReport.query
+        .filter(TroubleReport.case_no == tr.case_no, TroubleReport.id != tr.id)
+        .all()
+    )
+
+
+def _sync_case_fields_from_tr(tr):
+    siblings = _case_sibling_trs(tr)
+    for sibling in siblings:
+        for field in CASE_SYNC_FIELDS:
+            setattr(sibling, field, getattr(tr, field))
+    return len(siblings)
+
+
+def _sync_case_document_from_doc(app, source_tr, source_doc):
+    siblings = _case_sibling_trs(source_tr)
+    if not siblings:
+        return 0
+
+    src_path = os.path.join(app.config["UPLOAD_DIR"], source_doc.rel_path)
+    if not os.path.exists(src_path):
+        return 0
+
+    imported = 0
+    ext = source_doc.stored_name.rsplit(".", 1)[-1].lower() if "." in source_doc.stored_name else ""
+    for sibling in siblings:
+        exists = TRDocument.query.filter_by(
+            tr_id=sibling.id,
+            original_name=source_doc.original_name,
+            doc_type=source_doc.doc_type,
+        ).first()
+        if exists:
+            continue
+
+        stored_name = f"{uuid.uuid4().hex}.{ext}" if ext else uuid.uuid4().hex
+        tr_dir = os.path.join("tr_docs", secure_filename(sibling.tr_no))
+        full_dir = os.path.join(app.config["UPLOAD_DIR"], tr_dir)
+        os.makedirs(full_dir, exist_ok=True)
+        dst_path = os.path.join(full_dir, stored_name)
+        shutil.copy2(src_path, dst_path)
+
+        db.session.add(TRDocument(
+            tr_id=sibling.id,
+            doc_type=source_doc.doc_type,
+            title=source_doc.title,
+            original_name=source_doc.original_name,
+            stored_name=stored_name,
+            rel_path=os.path.join(tr_dir, stored_name),
+            mime=source_doc.mime,
+            size=os.path.getsize(dst_path),
+            remark=(source_doc.remark or f"Synced from {source_tr.tr_no}"),
+        ))
+        imported += 1
+    return imported
+
+
+def _is_safe_return_url(target):
+    if not target:
+        return False
+    parsed = urlsplit(target)
+    return not parsed.scheme and not parsed.netloc and target.startswith("/") and not target.startswith("//")
+
+
+def _return_url_from_request(default=None):
+    for candidate in (request.form.get("next"), request.args.get("next")):
+        if _is_safe_return_url(candidate):
+            return candidate
+
+    referrer = request.referrer or ""
+    if referrer:
+        parsed = urlsplit(referrer)
+        if not parsed.netloc or parsed.netloc == request.host:
+            path = parsed.path or "/"
+            if parsed.query:
+                path = f"{path}?{parsed.query}"
+            if parsed.path != request.path and _is_safe_return_url(path):
+                return path
+
+    return default or url_for("tr.index")
 
 
 # ──────────────────────────────────────────────────────────
@@ -446,6 +637,7 @@ def index():
                 TroubleReport.status.ilike(like),
                 TroubleReport.remark.ilike(like),
                 TroubleReport.debit_ref.ilike(like),
+                TroubleReport.case_no.ilike(like),
             )
         )
 
@@ -470,8 +662,52 @@ def index():
                            stat_ongoing=ongoing, stat_closed=closed, stat_8d=pending_8d)
 
 
+@tr_bp.route("/cases/next-no", methods=["GET"])
+def next_case_no():
+    return jsonify({"ok": True, "case_no": _next_case_no()})
+
+
+@tr_bp.route("/cases/<case_no>", methods=["GET"])
+def case_detail(case_no):
+    case_no = _normalize_case_no(case_no)
+    if not case_no:
+        abort(404)
+
+    trs = (
+        TroubleReport.query
+        .filter(TroubleReport.case_no == case_no)
+        .order_by(TroubleReport.created_at.desc(), TroubleReport.id.desc())
+        .all()
+    )
+    if not trs:
+        abort(404)
+
+    closed_statuses = {"closed", "done", "complete", "completed"}
+    open_count = sum(1 for tr in trs if (tr.status or "").lower() not in closed_statuses)
+    closed_count = len(trs) - open_count
+    pending_8d = sum(1 for tr in trs if tr.eight_d_status == "NOT_RECEIVED")
+    debit_total = sum((tr.debit_amount or 0) for tr in trs)
+
+    suppliers = sorted({tr.supplier_name for tr in trs if tr.supplier_name})
+    parts = sorted({tr.part_number for tr in trs if tr.part_number})
+
+    return render_template(
+        "tr/case_detail.html",
+        case_no=case_no,
+        trs=trs,
+        open_count=open_count,
+        closed_count=closed_count,
+        pending_8d=pending_8d,
+        debit_total=debit_total,
+        suppliers=suppliers,
+        parts=parts,
+        back_url=_return_url_from_request(),
+    )
+
+
 @tr_bp.route("/new", methods=["GET", "POST"])
 def new_tr():
+    next_url = _return_url_from_request()
     if request.method == "POST":
         tr_no = (request.form.get("tr_no") or "").strip()
         supplier_name = (request.form.get("supplier_name") or "").strip()
@@ -483,23 +719,29 @@ def new_tr():
         eight_d_status = (request.form.get("eight_d_status") or "NOT_REQUIRED").strip()
         if eight_d_status not in ALLOWED_8D_STATUS: eight_d_status = "NOT_REQUIRED"
         status = (request.form.get("status") or "Open").strip() or "Open"
-        remark = (request.form.get("remark") or "").strip() or None
-        debit_ref, debit_amount, debit_currency, debit_date = _read_debit_from_form()
+        remark = _merge_remark_issue_date(
+            request.form.get("remark"),
+            request.form.get("issue_date"),
+        )
+        debit_ref, debit_amount, debit_currency, debit_date, debit_signed = _read_debit_from_form()
+        issue_date_value = (request.form.get("issue_date") or "").strip()
+        case_no = _normalize_case_no(request.form.get("case_no"))
 
         suppliers = Supplier.query.order_by(Supplier.code).all()
+        case_options = _case_options()
 
         if not tr_no:
             flash("TR No. cannot be empty", "error")
-            return render_template("tr/form.html", mode="new", tr=None, suppliers=suppliers)
+            return render_template("tr/form.html", mode="new", tr=None, suppliers=suppliers, next_url=next_url, issue_date_value=issue_date_value, remark_value=request.form.get("remark", ""), case_options=case_options)
         if not supplier_name:
             flash("Supplier Name cannot be empty", "error")
-            return render_template("tr/form.html", mode="new", tr=None, suppliers=suppliers)
+            return render_template("tr/form.html", mode="new", tr=None, suppliers=suppliers, next_url=next_url, issue_date_value=issue_date_value, remark_value=request.form.get("remark", ""), case_options=case_options)
         if not issue_description:
             flash("Issue Description cannot be empty", "error")
-            return render_template("tr/form.html", mode="new", tr=None, suppliers=suppliers)
+            return render_template("tr/form.html", mode="new", tr=None, suppliers=suppliers, next_url=next_url, issue_date_value=issue_date_value, remark_value=request.form.get("remark", ""), case_options=case_options)
         if TroubleReport.query.filter_by(tr_no=tr_no).first():
             flash(f"TR No. already exists: {tr_no}", "error")
-            return render_template("tr/form.html", mode="new", tr=None, suppliers=suppliers)
+            return render_template("tr/form.html", mode="new", tr=None, suppliers=suppliers, next_url=next_url, issue_date_value=issue_date_value, remark_value=request.form.get("remark", ""), case_options=case_options)
 
         tr = TroubleReport(
             tr_no=tr_no, supplier_code="N/A", supplier_name=supplier_name,
@@ -509,6 +751,8 @@ def new_tr():
             status=status, remark=remark,
             debit_ref=debit_ref, debit_amount=debit_amount,
             debit_currency=debit_currency, debit_date=debit_date,
+            debit_signed=debit_signed,
+            case_no=case_no,
             lot_number=(request.form.get("lot_number") or "").strip() or None,
         )
         db.session.add(tr)
@@ -524,17 +768,16 @@ def new_tr():
             flash("✅ TR created. Importing attachments + generating AI summary...", "success")
         else:
             flash("✅ TR created successfully", "success")
-            next_url = request.form.get("next") or request.args.get("next") or url_for("tr.index")
-            return redirect(next_url)
+        return redirect(next_url)
 
     suppliers = Supplier.query.order_by(Supplier.code).all()
-    next_url = request.args.get("next", "")
-    return render_template("tr/form.html", mode="new", tr=None, suppliers=suppliers, next_url=next_url)
+    return render_template("tr/form.html", mode="new", tr=None, suppliers=suppliers, next_url=next_url, issue_date_value="", remark_value="", case_options=_case_options())
 
 
 @tr_bp.route("/<int:tr_id>/edit", methods=["GET", "POST"])
 def edit_tr(tr_id):
     tr = TroubleReport.query.get_or_404(tr_id)
+    next_url = _return_url_from_request()
 
     if request.method == "POST":
         tr_no = (request.form.get("tr_no") or "").strip()
@@ -547,24 +790,30 @@ def edit_tr(tr_id):
         eight_d_status = (request.form.get("eight_d_status") or "NOT_REQUIRED").strip()
         if eight_d_status not in ALLOWED_8D_STATUS: eight_d_status = "NOT_REQUIRED"
         status = (request.form.get("status") or "Open").strip() or "Open"
-        remark = (request.form.get("remark") or "").strip() or None
-        debit_ref, debit_amount, debit_currency, debit_date = _read_debit_from_form()
+        remark = _merge_remark_issue_date(
+            request.form.get("remark"),
+            request.form.get("issue_date"),
+        )
+        debit_ref, debit_amount, debit_currency, debit_date, debit_signed = _read_debit_from_form()
+        issue_date_value = (request.form.get("issue_date") or "").strip()
+        case_no = _normalize_case_no(request.form.get("case_no"))
 
         documents = tr.documents.order_by(TRDocument.created_at.desc()).all()
         suppliers = Supplier.query.order_by(Supplier.code).all()
+        case_options = _case_options()
 
         if not tr_no:
             flash("TR No. cannot be empty", "error")
-            return render_template("tr/form.html", mode="edit", tr=tr, documents=documents, doc_types=DOC_TYPES, suppliers=suppliers)
+            return render_template("tr/form.html", mode="edit", tr=tr, documents=documents, doc_types=DOC_TYPES, suppliers=suppliers, next_url=next_url, issue_date_value=issue_date_value, remark_value=request.form.get("remark", ""), case_options=case_options)
         if not supplier_name:
             flash("Supplier Name cannot be empty", "error")
-            return render_template("tr/form.html", mode="edit", tr=tr, documents=documents, doc_types=DOC_TYPES, suppliers=suppliers)
+            return render_template("tr/form.html", mode="edit", tr=tr, documents=documents, doc_types=DOC_TYPES, suppliers=suppliers, next_url=next_url, issue_date_value=issue_date_value, remark_value=request.form.get("remark", ""), case_options=case_options)
         if not issue_description:
             flash("Issue Description cannot be empty", "error")
-            return render_template("tr/form.html", mode="edit", tr=tr, documents=documents, doc_types=DOC_TYPES, suppliers=suppliers)
+            return render_template("tr/form.html", mode="edit", tr=tr, documents=documents, doc_types=DOC_TYPES, suppliers=suppliers, next_url=next_url, issue_date_value=issue_date_value, remark_value=request.form.get("remark", ""), case_options=case_options)
         if tr_no != tr.tr_no and TroubleReport.query.filter_by(tr_no=tr_no).first():
             flash(f"TR No. already exists: {tr_no}", "error")
-            return render_template("tr/form.html", mode="edit", tr=tr, documents=documents, doc_types=DOC_TYPES, suppliers=suppliers)
+            return render_template("tr/form.html", mode="edit", tr=tr, documents=documents, doc_types=DOC_TYPES, suppliers=suppliers, next_url=next_url, issue_date_value=issue_date_value, remark_value=request.form.get("remark", ""), case_options=case_options)
 
         tr.tr_no = tr_no; tr.supplier_name = supplier_name
         tr.part_number = part_number; tr.part_name = part_name
@@ -573,19 +822,28 @@ def edit_tr(tr_id):
         tr.status = status; tr.remark = remark
         tr.debit_ref = debit_ref; tr.debit_amount = debit_amount
         tr.debit_currency = debit_currency; tr.debit_date = debit_date
+        tr.debit_signed = debit_signed
+        tr.case_no = case_no
+        synced_case_count = 0
+        if request.form.get("sync_case") == "1":
+            synced_case_count = _sync_case_fields_from_tr(tr)
 
         db.session.commit()
         threading.Thread(target=_generate_issue_summary,
                         args=(current_app._get_current_object(), tr.id), daemon=True).start()
-        flash("✅ TR updated successfully", "success")
-        next_url = request.form.get("next") or request.args.get("next") or url_for("tr.index")
+        if synced_case_count:
+            flash(f"✅ TR updated. Synced {synced_case_count} TR(s) in {tr.case_no}.", "success")
+        else:
+            flash("✅ TR updated successfully", "success")
         return redirect(next_url)
 
     documents = tr.documents.order_by(TRDocument.created_at.desc()).all()
     suppliers = Supplier.query.order_by(Supplier.code).all()
-    next_url = request.args.get("next", "")
     return render_template("tr/form.html", mode="edit", tr=tr, documents=documents, doc_types=DOC_TYPES,
-                           suppliers=suppliers, next_url=next_url)
+                           suppliers=suppliers, next_url=next_url,
+                           issue_date_value=_issue_date_input_from_remark(tr.remark),
+                           remark_value=_remark_without_issue_date(tr.remark),
+                           case_options=_case_options())
 
 
 @tr_bp.route("/<int:tr_id>/delete", methods=["POST"])
@@ -607,32 +865,39 @@ def delete_tr(tr_id):
 @tr_bp.route("/<int:tr_id>/documents/upload", methods=["POST"])
 def upload_document(tr_id):
     tr = TroubleReport.query.get_or_404(tr_id)
+    next_url = _return_url_from_request(url_for("tr.edit_tr", tr_id=tr_id))
+    edit_url = url_for("tr.edit_tr", tr_id=tr_id, next=next_url)
     if "file" not in request.files:
-        flash("❌ No file selected", "error"); return redirect(url_for("tr.edit_tr", tr_id=tr_id))
+        flash("❌ No file selected", "error"); return redirect(edit_url)
     file = request.files["file"]
     if not file or file.filename == "":
-        flash("❌ No file selected", "error"); return redirect(url_for("tr.edit_tr", tr_id=tr_id))
+        flash("❌ No file selected", "error"); return redirect(edit_url)
     raw_name = (file.filename or "").strip()
     if not allowed_file(raw_name):
-        flash(f"❌ Unsupported format", "error"); return redirect(url_for("tr.edit_tr", tr_id=tr_id))
+        flash(f"❌ Unsupported format", "error"); return redirect(edit_url)
     doc_type = request.form.get("doc_type", "other")
     title = (request.form.get("title") or "").strip() or raw_name
     remark = (request.form.get("remark") or "").strip() or None
     ext = guess_ext(raw_name, file.mimetype)
     if not ext:
-        flash("❌ Cannot recognize file extension", "error"); return redirect(url_for("tr.edit_tr", tr_id=tr_id))
+        flash("❌ Cannot recognize file extension", "error"); return redirect(edit_url)
     stored_name = f"{uuid.uuid4().hex}.{ext}"
     tr_dir = os.path.join("tr_docs", secure_filename(tr.tr_no))
     full_dir = os.path.join(current_app.config["UPLOAD_DIR"], tr_dir)
     os.makedirs(full_dir, exist_ok=True)
     file_path = os.path.join(full_dir, stored_name)
     file.save(file_path)
-    db.session.add(TRDocument(
+    doc = TRDocument(
         tr_id=tr.id, doc_type=doc_type, title=title,
         original_name=raw_name, stored_name=stored_name,
         rel_path=os.path.join(tr_dir, stored_name),
         mime=file.mimetype, size=os.path.getsize(file_path), remark=remark,
-    ))
+    )
+    db.session.add(doc)
+    db.session.flush()
+    synced_docs = 0
+    if request.form.get("sync_case_doc") == "1":
+        synced_docs = _sync_case_document_from_doc(current_app._get_current_object(), tr, doc)
     db.session.commit()
 
     if doc_type == "8d_report":
@@ -641,8 +906,11 @@ def upload_document(tr_id):
             args=(current_app._get_current_object(), tr.id),
             daemon=True
         ).start()
-    flash(f"✅ Document uploaded: {title}", "success")
-    return redirect(url_for("tr.edit_tr", tr_id=tr_id))
+    if synced_docs:
+        flash(f"✅ Document uploaded: {title}. Synced to {synced_docs} TR(s) in {tr.case_no}.", "success")
+    else:
+        flash(f"✅ Document uploaded: {title}", "success")
+    return redirect(edit_url)
 
 
 @tr_bp.route("/<int:tr_id>/documents/<int:doc_id>/view")
@@ -940,11 +1208,13 @@ def _extract_8d_for_tr(app, tr_id):
                 tr.eight_d_action_en = result.get("action_en", "")
                 tr.eight_d_escape_action = result.get("escape_action", "")
                 tr.eight_d_escape_action_en = result.get("escape_action_en", "")
+                synced_count = _sync_case_fields_from_tr(tr)
                 db.session.commit()
                 app.logger.info(
                     f"[AI 8D] TR {tr.tr_no} saved | "
                     f"occ_cn={len(tr.eight_d_root_cause)} occ_en={len(tr.eight_d_root_cause_en)} "
-                    f"esc_cn={len(tr.eight_d_escape_cause)} esc_en={len(tr.eight_d_escape_cause_en)}"
+                    f"esc_cn={len(tr.eight_d_escape_cause)} esc_en={len(tr.eight_d_escape_cause_en)} "
+                    f"synced_case={synced_count}"
                 )
         except Exception as e:
             app.logger.warning(f"[AI 8D] failed for TR {tr_id}: {e}")
@@ -975,5 +1245,6 @@ def save_investigation(tr_id):
     data = request.get_json(silent=True) or {}
     note = (data.get("note") or "").strip()
     tr.investigation_note = note or None
+    synced_count = _sync_case_fields_from_tr(tr)
     db.session.commit()
-    return jsonify({"ok": True, "note": tr.investigation_note or ""})
+    return jsonify({"ok": True, "note": tr.investigation_note or "", "synced": synced_count})

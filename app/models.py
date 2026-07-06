@@ -111,6 +111,7 @@ class TroubleReport(db.Model):
     debit_amount = db.Column(db.Float, nullable=True)
     debit_currency = db.Column(db.String(10), default='EUR')
     debit_date = db.Column(db.String(20), nullable=True)
+    debit_signed = db.Column(db.Boolean, nullable=False, default=False, index=True)
 
     issue_summary = db.Column(db.Text, nullable=True)
     investigation_note = db.Column(db.Text)

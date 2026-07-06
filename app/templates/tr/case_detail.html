@@ -1,0 +1,139 @@
+{% extends "layout/base.html" %}
+{% block content %}
+
+<style>
+  .line-clamp-2 {
+    display: -webkit-box;
+    -webkit-line-clamp: 2;
+    -webkit-box-orient: vertical;
+    overflow: hidden;
+  }
+</style>
+
+<div class="max-w-[1280px] mx-auto px-6 py-6">
+  <div class="mb-6 flex items-center justify-between gap-4">
+    <div>
+      <div class="flex items-center gap-2 text-sm text-gray-500 mb-2">
+        <a href="{{ back_url or url_for('tr.index') }}" class="hover:text-gray-900 font-medium">Back</a>
+        <span>/</span>
+        <span>Related Case</span>
+      </div>
+      <h1 class="text-3xl font-bold text-gray-900 font-mono">{{ case_no }}</h1>
+      <p class="text-sm text-gray-500 mt-1">同一问题组下的 Trouble Reports</p>
+    </div>
+    <a href="{{ back_url or url_for('tr.index') }}"
+       class="inline-flex items-center px-5 py-2.5 rounded-xl border-2 border-gray-200 text-gray-700 font-semibold hover:bg-gray-50">
+      Back
+    </a>
+  </div>
+
+  <div class="grid grid-cols-2 md:grid-cols-5 gap-4 mb-6">
+    <div class="bg-white rounded-2xl border border-gray-100 p-5 shadow-sm">
+      <div class="text-xs font-bold text-gray-400 uppercase mb-2">Total TR</div>
+      <div class="text-2xl font-bold text-gray-900">{{ trs|length }}</div>
+    </div>
+    <div class="bg-white rounded-2xl border border-gray-100 p-5 shadow-sm">
+      <div class="text-xs font-bold text-gray-400 uppercase mb-2">Open</div>
+      <div class="text-2xl font-bold text-orange-500">{{ open_count }}</div>
+    </div>
+    <div class="bg-white rounded-2xl border border-gray-100 p-5 shadow-sm">
+      <div class="text-xs font-bold text-gray-400 uppercase mb-2">Closed</div>
+      <div class="text-2xl font-bold text-green-600">{{ closed_count }}</div>
+    </div>
+    <div class="bg-white rounded-2xl border border-gray-100 p-5 shadow-sm">
+      <div class="text-xs font-bold text-gray-400 uppercase mb-2">8D Pending</div>
+      <div class="text-2xl font-bold text-yellow-500">{{ pending_8d }}</div>
+    </div>
+    <div class="bg-white rounded-2xl border border-gray-100 p-5 shadow-sm">
+      <div class="text-xs font-bold text-gray-400 uppercase mb-2">Debit</div>
+      <div class="text-2xl font-bold text-emerald-600">€{{ '{:,.0f}'.format(debit_total) }}</div>
+    </div>
+  </div>
+
+  <div class="grid grid-cols-1 md:grid-cols-2 gap-4 mb-6">
+    <div class="bg-white rounded-2xl border border-gray-100 p-5 shadow-sm">
+      <div class="text-xs font-bold text-gray-400 uppercase mb-3">Suppliers</div>
+      <div class="flex flex-wrap gap-2">
+        {% for supplier in suppliers %}
+        <span class="px-2.5 py-1 rounded-lg bg-gray-50 border border-gray-200 text-xs font-semibold text-gray-700">{{ supplier }}</span>
+        {% else %}
+        <span class="text-sm text-gray-400">—</span>
+        {% endfor %}
+      </div>
+    </div>
+    <div class="bg-white rounded-2xl border border-gray-100 p-5 shadow-sm">
+      <div class="text-xs font-bold text-gray-400 uppercase mb-3">Parts</div>
+      <div class="flex flex-wrap gap-2">
+        {% for part in parts %}
+        <span class="px-2.5 py-1 rounded-lg bg-blue-50 border border-blue-100 text-xs font-mono font-semibold text-blue-700">{{ part }}</span>
+        {% else %}
+        <span class="text-sm text-gray-400">—</span>
+        {% endfor %}
+      </div>
+    </div>
+  </div>
+
+  <div class="bg-white rounded-2xl border border-gray-100 overflow-hidden shadow-sm">
+    <div class="px-6 py-4 border-b border-gray-100 flex items-center justify-between">
+      <h2 class="text-lg font-bold text-gray-900">TR List</h2>
+      <span class="text-xs font-semibold text-gray-400">{{ trs|length }} records</span>
+    </div>
+
+    <div class="overflow-x-auto">
+      <table class="w-full">
+        <thead>
+          <tr class="border-b border-gray-100">
+            <th class="px-4 py-3 text-left text-[11px] font-bold text-gray-400 uppercase">Date</th>
+            <th class="px-4 py-3 text-left text-[11px] font-bold text-gray-400 uppercase">TR No.</th>
+            <th class="px-4 py-3 text-left text-[11px] font-bold text-gray-400 uppercase">Supplier</th>
+            <th class="px-4 py-3 text-left text-[11px] font-bold text-gray-400 uppercase">Part</th>
+            <th class="px-4 py-3 text-left text-[11px] font-bold text-gray-400 uppercase">Issue</th>
+            <th class="px-4 py-3 text-center text-[11px] font-bold text-gray-400 uppercase">Status</th>
+            <th class="px-4 py-3 text-center text-[11px] font-bold text-gray-400 uppercase">Action</th>
+          </tr>
+        </thead>
+        <tbody class="divide-y divide-gray-50">
+          {% for tr in trs %}
+          {% set parts = (tr.remark or '').split('|') %}
+          {% set date_str = parts[-1].strip() if parts|length > 1 else '' %}
+          {% set st = (tr.status or '')|lower %}
+          <tr class="hover:bg-gray-50">
+            <td class="px-4 py-4 text-xs font-medium text-gray-500 whitespace-nowrap">{{ date_str or '—' }}</td>
+            <td class="px-4 py-4">
+              <span class="font-mono font-bold text-xs px-2 py-1 rounded-lg bg-gray-900 text-white">{{ tr.tr_no }}</span>
+            </td>
+            <td class="px-4 py-4 text-sm font-semibold text-gray-700">{{ tr.supplier_name }}</td>
+            <td class="px-4 py-4">
+              {% if tr.part_number %}
+              <span class="font-mono text-xs px-2 py-1 rounded-md bg-blue-50 text-blue-700">{{ tr.part_number }}</span>
+              {% else %}
+              <span class="text-gray-300">—</span>
+              {% endif %}
+            </td>
+            <td class="px-4 py-4 text-sm text-gray-700 max-w-xl">
+              <div class="line-clamp-2">{{ tr.investigation_note or tr.issue_summary or tr.issue_description or '—' }}</div>
+            </td>
+            <td class="px-4 py-4 text-center">
+              {% if st in ['closed','done','completed'] %}
+              <span class="text-[10px] font-bold px-2 py-0.5 rounded bg-green-100 text-green-700">Closed</span>
+              {% elif st in ['in progress'] %}
+              <span class="text-[10px] font-bold px-2 py-0.5 rounded bg-blue-100 text-blue-700">WIP</span>
+              {% else %}
+              <span class="text-[10px] font-bold px-2 py-0.5 rounded bg-orange-100 text-orange-700">Open</span>
+              {% endif %}
+            </td>
+            <td class="px-4 py-4 text-center">
+              <a href="{{ url_for('tr.edit_tr', tr_id=tr.id, next=request.full_path) }}"
+                 class="inline-flex items-center justify-center px-3 py-1.5 rounded-lg bg-gray-50 text-gray-600 text-xs font-semibold hover:bg-blue-50 hover:text-blue-600">
+                Edit
+              </a>
+            </td>
+          </tr>
+          {% endfor %}
+        </tbody>
+      </table>
+    </div>
+  </div>
+</div>
+
+{% endblock %}
