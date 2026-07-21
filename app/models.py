@@ -8,6 +8,8 @@ class Supplier(db.Model):
     code = db.Column(db.String(64), unique=True, index=True, nullable=False)
     name = db.Column(db.String(255), nullable=False)
     chinese_name = db.Column(db.String(255))
+    reminder_emails = db.Column(db.Text)
+    reminder_cc_emails = db.Column(db.Text)
     created_at = db.Column(db.DateTime, default=datetime.utcnow)
 
     parts = db.relationship("Part", backref="supplier", lazy=True, cascade="all, delete-orphan")
@@ -115,6 +117,7 @@ class TroubleReport(db.Model):
 
     issue_summary = db.Column(db.Text, nullable=True)
     investigation_note = db.Column(db.Text)
+    eight_d_reminder_count = db.Column(db.Integer, nullable=False, default=0)
 
     eight_d_root_cause = db.Column(db.Text)
     eight_d_action = db.Column(db.Text)

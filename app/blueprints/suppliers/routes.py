@@ -2,6 +2,7 @@ from flask import render_template, request, redirect, url_for, flash
 from sqlalchemy.exc import IntegrityError
 from sqlalchemy import func, or_, case
 from datetime import datetime, timedelta
+import re
 
 from . import suppliers_bp
 from ...extensions import db
@@ -38,6 +39,21 @@ def _avatar_letter(supplier):
     if supplier.name:
         return supplier.name[0].upper()
     return supplier.code[0].upper() if supplier.code else "?"
+
+
+def _normalize_reminder_emails(raw):
+    emails = []
+    seen = set()
+    for item in re.split(r"[;,\n\r]+", raw or ""):
+        email = item.strip()
+        if not email:
+            continue
+        key = email.lower()
+        if key in seen:
+            continue
+        seen.add(key)
+        emails.append(email)
+    return "\n".join(emails) or None
 
 
 def _enrich_suppliers(suppliers):
@@ -199,7 +215,9 @@ def add():
         flash(f"供应商 {code} 已存在。", "warning")
         return redirect(url_for("suppliers.index"))
 
-    db.session.add(Supplier(code=code, name=name))
+    reminder_emails = _normalize_reminder_emails(request.form.get("reminder_emails"))
+    reminder_cc_emails = _normalize_reminder_emails(request.form.get("reminder_cc_emails"))
+    db.session.add(Supplier(code=code, name=name, reminder_emails=reminder_emails, reminder_cc_emails=reminder_cc_emails))
     db.session.commit()
     flash(f"已添加供应商：{code}", "success")
     return redirect(url_for("suppliers.index"))
@@ -211,6 +229,8 @@ def new_supplier():
         code = request.form.get("code", "").strip()
         name = request.form.get("name", "").strip()
         chinese_name = request.form.get("chinese_name", "").strip() or None
+        reminder_emails = _normalize_reminder_emails(request.form.get("reminder_emails"))
+        reminder_cc_emails = _normalize_reminder_emails(request.form.get("reminder_cc_emails"))
 
         if not code:
             flash("供应商代码不能为空", "error")
@@ -220,7 +240,7 @@ def new_supplier():
             flash(f"供应商代码已存在：{code}", "error")
             return render_template("suppliers/new.html")
 
-        s = Supplier(code=code, name=name, chinese_name=chinese_name)
+        s = Supplier(code=code, name=name, chinese_name=chinese_name, reminder_emails=reminder_emails, reminder_cc_emails=reminder_cc_emails)
         db.session.add(s)
         try:
             db.session.commit()
@@ -242,6 +262,8 @@ def edit_supplier(supplier_id):
         supplier.code = request.form.get("code", "").strip() or supplier.code
         supplier.name = request.form.get("name", "").strip() or supplier.name
         supplier.chinese_name = request.form.get("chinese_name", "").strip() or None
+        supplier.reminder_emails = _normalize_reminder_emails(request.form.get("reminder_emails"))
+        supplier.reminder_cc_emails = _normalize_reminder_emails(request.form.get("reminder_cc_emails"))
         db.session.commit()
         flash("已更新", "success")
         return redirect(url_for("suppliers.index"))

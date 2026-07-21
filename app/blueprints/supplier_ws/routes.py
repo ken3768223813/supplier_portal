@@ -6,7 +6,7 @@ from datetime import datetime, timedelta
 from collections import defaultdict, OrderedDict
 import json
 
-from flask import render_template, abort, redirect, url_for, jsonify
+from flask import render_template, abort, redirect, url_for, jsonify, request
 from sqlalchemy import func, or_
 
 from ...models import (
@@ -198,12 +198,75 @@ def overview(supplier_code):
 @supplier_ws_bp.route("/<supplier_code>/quality")
 def quality(supplier_code):
     supplier = get_supplier_or_404(supplier_code)
-    trs = _get_trs(supplier)
+    all_trs = _get_trs(supplier)
+
+    q = (request.args.get("q") or "").strip()
+    current_filter = (request.args.get("filter") or "all").strip().lower()
+    if current_filter not in {"all", "open", "closed", "investigation"}:
+        current_filter = "all"
+    page = max(request.args.get("page", 1, type=int) or 1, 1)
+    per_page = request.args.get("per_page", 12, type=int) or 12
+    per_page = min(max(per_page, 5), 50)
+
+    def needs_investigation(tr):
+        is_placeholder = tr.issue_summary and "No specific defect described" in (tr.issue_summary or "")
+        has_inv = bool(tr.investigation_note and tr.investigation_note.strip())
+        return bool(is_placeholder and not has_inv)
+
+    def include_tr(tr):
+        status = (tr.status or "").lower()
+        is_closed = status in {"closed", "done", "complete", "completed"}
+        if current_filter == "open" and is_closed:
+            return False
+        if current_filter == "closed" and not is_closed:
+            return False
+        if current_filter == "investigation" and not needs_investigation(tr):
+            return False
+        if q:
+            haystack = " ".join([
+                tr.tr_no or "",
+                tr.part_number or "",
+                tr.part_name or "",
+                tr.issue_summary or "",
+                tr.issue_description or "",
+                tr.case_no or "",
+                tr.eight_d or "",
+                tr.debit_ref or "",
+            ]).lower()
+            if q.lower() not in haystack:
+                return False
+        return True
+
+    filtered_trs = [tr for tr in all_trs if include_tr(tr)]
+    total = len(filtered_trs)
+    pages = max((total + per_page - 1) // per_page, 1)
+    page = min(page, pages)
+    start = (page - 1) * per_page
+    trs = filtered_trs[start:start + per_page]
+
+    class Pager:
+        pass
+
+    pagination = Pager()
+    pagination.page = page
+    pagination.per_page = per_page
+    pagination.total = total
+    pagination.pages = pages
+    pagination.has_prev = page > 1
+    pagination.has_next = page < pages
+    pagination.prev_num = page - 1
+    pagination.next_num = page + 1
+
     return render_template(
         "supplier_ws/quality.html",
         supplier=supplier,
         active="quality",
         trs=trs,
+        q=q,
+        current_filter=current_filter,
+        per_page=per_page,
+        pagination=pagination,
+        total_quality=len(all_trs),
     )
 
 

@@ -59,7 +59,7 @@
           </td>
           <td class="px-4 py-3 text-center text-xs text-gray-500">{{ tr.debit_date or '—' }}</td>
           <td class="px-3 py-3 text-center">
-            <a href="{{ url_for('tr.edit_tr', tr_id=tr.id) }}" class="text-blue-500 hover:text-blue-700 text-xs font-semibold">详情 →</a>
+            <a href="{{ url_for('tr.edit_tr', tr_id=tr.id, next=request.full_path) }}" class="text-blue-500 hover:text-blue-700 text-xs font-semibold">详情 →</a>
           </td>
         </tr>
         {% endfor %}

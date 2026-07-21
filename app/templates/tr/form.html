@@ -12,39 +12,63 @@
 
 <div class="max-w-6xl mx-auto px-6 py-6">
 
-  <!-- Breadcrumb -->
-  <div class="mb-6 flex items-center gap-2 text-sm text-gray-500">
-    <a href="{{ url_for('tr.index') }}" class="hover:text-gray-900 transition font-medium">Trouble Reports</a>
-    <svg class="w-4 h-4 text-gray-300" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M9 5l7 7-7 7"/></svg>
-    <span class="text-gray-900 font-semibold">{% if mode == "edit" %}Edit TR{% else %}New TR{% endif %}</span>
+  {% set back_url = next_url or url_for('tr.index') %}
+  {% set draft_tr_status = (tr.status if tr else '')|lower %}
+  {% set draft_8d_status = tr.eight_d_status if tr else '' %}
+  {% set can_create_8d_draft = mode == 'edit' and tr and draft_tr_status not in ['closed','done','completed'] and draft_8d_status in ['NOT_RECEIVED','RECEIVED_REJECT'] %}
+
+  <!-- Header -->
+  <div class="mb-5">
+    <a href="{{ back_url }}" class="inline-flex items-center gap-2 text-sm font-semibold text-gray-500 hover:text-gray-900 transition">
+      <svg class="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24" stroke-width="2"><path stroke-linecap="round" stroke-linejoin="round" d="M15 19l-7-7 7-7"/></svg>
+      Back
+    </a>
   </div>
 
-  <div class="bg-white rounded-2xl border-2 border-gray-200 overflow-hidden">
+  <div class="space-y-5">
 
-    <!-- Header -->
-    <div class="px-8 py-6 border-b-2 border-gray-100">
-      <div class="flex items-center justify-between">
-        <div class="flex items-center gap-4">
-          <div class="w-14 h-14 bg-red-500 rounded-xl flex items-center justify-center">
-            <svg class="w-7 h-7 text-white" fill="none" stroke="currentColor" viewBox="0 0 24 24" stroke-width="2">
-              {% if mode == "edit" %}
-              <path stroke-linecap="round" stroke-linejoin="round" d="M11 5H6a2 2 0 00-2 2v11a2 2 0 002 2h11a2 2 0 002-2v-5m-1.414-9.414a2 2 0 112.828 2.828L11.828 15H9v-2.828l8.586-8.586z"/>
-              {% else %}
-              <path stroke-linecap="round" stroke-linejoin="round" d="M12 9v2m0 4h.01m-6.938 4h13.856c1.54 0 2.502-1.667 1.732-3L13.732 4c-.77-1.333-2.694-1.333-3.464 0L3.34 16c-.77 1.333.192 3 1.732 3z"/>
-              {% endif %}
+    <div class="bg-white rounded-2xl border border-gray-200 shadow-sm px-6 py-5">
+      <div class="flex flex-col lg:flex-row lg:items-center lg:justify-between gap-5">
+        <div>
+          <div class="flex items-center gap-3 mb-2">
+            <div class="w-10 h-10 rounded-xl bg-gray-900 text-white inline-flex items-center justify-center">
+              <svg class="w-5 h-5" fill="none" stroke="currentColor" viewBox="0 0 24 24" stroke-width="2">
+                {% if mode == "edit" %}
+                <path stroke-linecap="round" stroke-linejoin="round" d="M11 5H6a2 2 0 00-2 2v11a2 2 0 002 2h11a2 2 0 002-2v-5m-1.414-9.414a2 2 0 112.828 2.828L11.828 15H9v-2.828l8.586-8.586z"/>
+                {% else %}
+                <path stroke-linecap="round" stroke-linejoin="round" d="M12 9v2m0 4h.01m-6.938 4h13.856c1.54 0 2.502-1.667 1.732-3L13.732 4c-.77-1.333-2.694-1.333-3.464 0L3.34 16c-.77 1.333.192 3 1.732 3z"/>
+                {% endif %}
+              </svg>
+            </div>
+            <div>
+              <h1 class="text-2xl font-bold text-gray-950 tracking-tight">{% if mode == "edit" %}Edit TR{% else %}New TR{% endif %}</h1>
+              <p class="text-sm text-gray-500">Core issue, status, documents and supplier follow-up in one place.</p>
+            </div>
+          </div>
+        </div>
+        <div class="flex flex-wrap items-center gap-2">
+          {% if mode == "edit" and tr %}
+          <span class="inline-flex items-center h-9 px-3 rounded-lg bg-gray-50 text-gray-900 border border-gray-200 font-mono text-sm font-bold">{{ tr.tr_no }}</span>
+          <span class="inline-flex items-center h-9 px-3 rounded-lg bg-orange-50 text-orange-700 border border-orange-100 text-xs font-bold">{{ tr.status or 'Open' }}</span>
+          {% endif %}
+          {% if can_create_8d_draft %}
+          <span class="inline-flex items-center h-9 px-3 rounded-lg bg-gray-50 text-gray-600 border border-gray-200 text-xs font-bold">Sent {{ tr.eight_d_reminder_count or 0 }}</span>
+          <button type="submit" form="draft8dReminderForm"
+                  class="inline-flex items-center gap-2 h-9 px-3 rounded-lg bg-amber-50 text-amber-700 border border-amber-200 text-xs font-bold hover:bg-amber-100 transition-all">
+            <svg class="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24" stroke-width="2">
+              <path stroke-linecap="round" stroke-linejoin="round" d="M3 8l7.89 5.26a2 2 0 002.22 0L21 8"/>
+              <path stroke-linecap="round" stroke-linejoin="round" d="M21 8v9a2 2 0 01-2 2H5a2 2 0 01-2-2V8"/>
             </svg>
-          </div>
-          <div>
-            <h1 class="text-3xl font-bold text-gray-900">{% if mode == "edit" %}Edit Trouble Report{% else %}New Trouble Report{% endif %}</h1>
-            <p class="text-sm text-gray-500 mt-1">Track quality issues and corrective actions</p>
-          </div>
+            Draft #{{ (tr.eight_d_reminder_count or 0) + 1 }}
+          </button>
+          <button type="submit" form="sent8dReminderForm"
+                  onclick="return confirm('Mark this 8D reminder as sent? This will increase the reminder count.');"
+                  class="inline-flex items-center gap-2 h-9 px-3 rounded-lg bg-emerald-50 text-emerald-700 border border-emerald-200 text-xs font-bold hover:bg-emerald-100 transition-all">
+            <svg class="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24" stroke-width="2"><path stroke-linecap="round" stroke-linejoin="round" d="M5 13l4 4L19 7"/></svg>
+            Mark Sent
+          </button>
+          {% endif %}
         </div>
-        {% if mode == "edit" and tr %}
-        <div class="bg-gray-100 rounded-xl px-4 py-2 border-2 border-gray-200">
-          <div class="text-xs text-gray-500 mb-0.5 font-semibold">TR Number</div>
-          <div class="font-mono font-bold text-gray-900">{{ tr.tr_no }}</div>
-        </div>
-        {% endif %}
       </div>
     </div>
 
@@ -84,172 +108,189 @@
     {% endif %}
 
     <!-- Form -->
-    <form method="post" action="{% if mode=='edit' %}{{ url_for('tr.edit_tr', tr_id=tr.id) }}{% else %}{{ url_for('tr.new_tr') }}{% endif %}" class="p-8">
-        {% if next_url %}<input type="hidden" name="next" value="{{ next_url }}">{% endif %}
-        <input type="hidden" name="lot_number" id="lot_number" value="{{ tr.lot_number or '' if tr else '' }}">
+    <form method="post" action="{% if mode=='edit' %}{{ url_for('tr.edit_tr', tr_id=tr.id) }}{% else %}{{ url_for('tr.new_tr') }}{% endif %}" class="space-y-5">
+      <input type="hidden" name="next" value="{{ back_url }}">
+      <input type="hidden" name="lot_number" id="lot_number" value="{{ tr.lot_number or '' if tr else '' }}">
 
-      <!-- Basic Information -->
-      <div class="mb-8">
-        <h2 class="text-lg font-bold text-gray-900 mb-4">Basic Information</h2>
-        <div class="grid grid-cols-12 gap-4">
-          <div class="col-span-12 md:col-span-4">
-            <label class="text-sm font-bold text-gray-700 mb-2 block">TR Number <span class="text-red-500">*</span></label>
-            <input name="tr_no" required value="{{ tr.tr_no if tr else '' }}" placeholder="TR-2024-001" class="form-input w-full px-4 py-3 border-2 border-gray-200 rounded-xl text-sm focus:outline-none focus:border-gray-900 font-mono font-semibold">
-          </div>
-          <div class="col-span-12 md:col-span-8">
-            <label class="text-sm font-bold text-gray-700 mb-2 block">Supplier Name <span class="text-red-500">*</span></label>
-            <select name="supplier_name" required class="form-select w-full px-4 py-3 border-2 border-gray-200 rounded-xl text-sm focus:outline-none focus:border-gray-900 cursor-pointer">
-              <option value="">Select a supplier</option>
-              {% for supplier in suppliers %}
-              <option value="{{ supplier.chinese_name or supplier.name }}" data-code="{{ supplier.code }}" {% if tr and tr.supplier_name == (supplier.chinese_name or supplier.name) %}selected{% endif %}>{{ supplier.code }} - {{ supplier.chinese_name or supplier.name }}</option>
-              {% endfor %}
-            </select>
-            <p class="mt-2 text-xs text-gray-500">Don't see your supplier? <a href="{{ url_for('suppliers.new_supplier') }}" target="_blank" class="text-blue-600 font-semibold">Add new supplier</a></p>
-          </div>
-          <div class="col-span-12 md:col-span-4">
-            <label class="text-sm font-bold text-gray-700 mb-2 block">Issue Date</label>
-            <input name="issue_date" type="date" value="{{ issue_date_value or '' }}" class="form-input w-full px-4 py-3 border-2 border-gray-200 rounded-xl text-sm focus:outline-none focus:border-gray-900 font-mono">
-          </div>
-          <div class="col-span-12 md:col-span-4">
-            <label class="text-sm font-bold text-gray-700 mb-2 block">Part Number</label>
-            <input name="part_number" value="{{ tr.part_number if tr and tr.part_number else '' }}" placeholder="Part P/N" class="form-input w-full px-4 py-3 border-2 border-gray-200 rounded-xl text-sm focus:outline-none focus:border-gray-900 font-mono">
-          </div>
-          <div class="col-span-12 md:col-span-4">
-            <label class="text-sm font-bold text-gray-700 mb-2 block">Part Name</label>
-            <input name="part_name" value="{{ tr.part_name if tr and tr.part_name else '' }}" placeholder="Part name or description" class="form-input w-full px-4 py-3 border-2 border-gray-200 rounded-xl text-sm focus:outline-none focus:border-gray-900">
-          </div>
-          <div class="col-span-12 md:col-span-4">
-            <label class="text-sm font-bold text-gray-700 mb-2 block">Case No.</label>
-            <div class="flex gap-2">
-              <input id="case_no" name="case_no" list="caseNoOptions" value="{{ tr.case_no if tr and tr.case_no else '' }}" placeholder="Auto or select" class="form-input min-w-0 flex-1 px-4 py-3 border-2 border-gray-200 rounded-xl text-sm focus:outline-none focus:border-gray-900 font-mono">
-              <button type="button" onclick="generateCaseNo()" class="px-3 py-3 rounded-xl bg-violet-50 text-violet-700 border-2 border-violet-200 text-xs font-bold hover:bg-violet-100 whitespace-nowrap">Auto</button>
+      <div class="grid grid-cols-12 gap-5">
+        <div class="col-span-12 lg:col-span-8 space-y-5">
+          <section class="bg-white rounded-2xl border border-gray-200 shadow-sm p-5">
+            <div class="flex items-center justify-between gap-3 mb-4">
+              <h2 class="text-base font-bold text-gray-950">Report</h2>
+              <span class="text-xs font-semibold text-gray-400">Required fields marked *</span>
             </div>
-            <select id="case_no_select" onchange="selectCaseNo(this.value)" class="mt-2 w-full px-3 py-2 border-2 border-gray-200 rounded-lg text-xs text-gray-600 bg-white focus:outline-none focus:border-gray-900">
-              <option value="">Join existing case...</option>
-              {% for case_no in case_options or [] %}
-              <option value="{{ case_no }}">{{ case_no }}</option>
-              {% endfor %}
-            </select>
-            <datalist id="caseNoOptions">
-              {% for case_no in case_options or [] %}
-              <option value="{{ case_no }}">
-              {% endfor %}
-            </datalist>
-            <div class="mt-2 flex items-center justify-between gap-2">
-              <p class="text-xs text-gray-500">同一问题选择同一个 Case。</p>
-              <button type="button" onclick="selectCaseNo('')" class="text-xs text-gray-400 hover:text-red-500 font-semibold">Clear</button>
+            <div class="grid grid-cols-12 gap-4">
+              <div class="col-span-12 md:col-span-4">
+                <label class="text-xs font-bold text-gray-500 mb-1.5 block uppercase tracking-wide">TR Number <span class="text-red-500">*</span></label>
+                <input name="tr_no" required value="{{ tr.tr_no if tr else '' }}" placeholder="TR-2024-001" class="form-input w-full px-3.5 py-2.5 border border-gray-200 rounded-lg text-sm focus:outline-none focus:border-gray-900 font-mono font-semibold">
+              </div>
+              <div class="col-span-12 md:col-span-4">
+                <label class="text-xs font-bold text-gray-500 mb-1.5 block uppercase tracking-wide">Issue Date</label>
+                <input name="issue_date" type="date" value="{{ issue_date_value or '' }}" class="form-input w-full px-3.5 py-2.5 border border-gray-200 rounded-lg text-sm focus:outline-none focus:border-gray-900 font-mono">
+              </div>
+              <div class="col-span-12 md:col-span-4">
+                <label class="text-xs font-bold text-gray-500 mb-1.5 block uppercase tracking-wide">Severity</label>
+                <input name="severity" value="{{ tr.severity if tr and tr.severity else '' }}" placeholder="S0/S1/40/100..." class="form-input w-full px-3.5 py-2.5 border border-gray-200 rounded-lg text-sm focus:outline-none focus:border-gray-900 font-mono">
+              </div>
+              <div class="col-span-12">
+                <label class="text-xs font-bold text-gray-500 mb-1.5 block uppercase tracking-wide">Supplier <span class="text-red-500">*</span></label>
+                <select name="supplier_name" required class="form-select w-full px-3.5 py-2.5 border border-gray-200 rounded-lg text-sm focus:outline-none focus:border-gray-900 cursor-pointer">
+                  <option value="">Select a supplier</option>
+                  {% for supplier in suppliers %}
+                  {% set supplier_value = supplier.chinese_name or supplier.name %}
+                  {% set supplier_label = supplier.name if not supplier.chinese_name or supplier.name == supplier.chinese_name else supplier.name ~ ' / ' ~ supplier.chinese_name %}
+                  <option value="{{ supplier_value }}" data-code="{{ supplier.code }}" {% if tr and tr.supplier_name in [supplier.chinese_name, supplier.name] %}selected{% endif %}>{{ supplier.code }} - {{ supplier_label }}</option>
+                  {% endfor %}
+                </select>
+                <p class="mt-2 text-xs text-gray-500">Don't see your supplier? <a href="{{ url_for('suppliers.new_supplier') }}" target="_blank" class="text-blue-600 font-semibold">Add new supplier</a></p>
+              </div>
+              <div class="col-span-12 md:col-span-4">
+                <label class="text-xs font-bold text-gray-500 mb-1.5 block uppercase tracking-wide">Part Number</label>
+                <input name="part_number" value="{{ tr.part_number if tr and tr.part_number else '' }}" placeholder="Part P/N" class="form-input w-full px-3.5 py-2.5 border border-gray-200 rounded-lg text-sm focus:outline-none focus:border-gray-900 font-mono">
+              </div>
+              <div class="col-span-12 md:col-span-8">
+                <label class="text-xs font-bold text-gray-500 mb-1.5 block uppercase tracking-wide">Part Name</label>
+                <input name="part_name" value="{{ tr.part_name if tr and tr.part_name else '' }}" placeholder="Part name or description" class="form-input w-full px-3.5 py-2.5 border border-gray-200 rounded-lg text-sm focus:outline-none focus:border-gray-900">
+              </div>
             </div>
-          </div>
+          </section>
+
+          <section class="bg-white rounded-2xl border border-gray-200 shadow-sm p-5">
+            <h2 class="text-base font-bold text-gray-950 mb-3">Issue</h2>
+            <textarea name="issue_description" rows="8" required placeholder="Describe the issue in detail..." class="form-input w-full px-3.5 py-3 border border-gray-200 rounded-xl text-sm focus:outline-none focus:border-gray-900 resize-y leading-6">{{ tr.issue_description if tr else "" }}</textarea>
+          </section>
+
+          <section class="bg-white rounded-2xl border border-gray-200 shadow-sm p-5">
+            <h2 class="text-base font-bold text-gray-950 mb-4">Case & Remarks</h2>
+            <div class="grid grid-cols-12 gap-4">
+              <div class="col-span-12 md:col-span-5">
+                <label class="text-xs font-bold text-gray-500 mb-1.5 block uppercase tracking-wide">Case No.</label>
+                <div class="flex gap-2">
+                  <input id="case_no" name="case_no" list="caseNoOptions" value="{{ tr.case_no if tr and tr.case_no else '' }}" placeholder="Auto or select" class="form-input min-w-0 flex-1 px-3.5 py-2.5 border border-gray-200 rounded-lg text-sm focus:outline-none focus:border-gray-900 font-mono">
+                  <button type="button" onclick="generateCaseNo()" class="px-3 py-2.5 rounded-lg bg-violet-50 text-violet-700 border border-violet-200 text-xs font-bold hover:bg-violet-100 whitespace-nowrap">Auto</button>
+                </div>
+                <select id="case_no_select" onchange="selectCaseNo(this.value)" class="mt-2 w-full px-3 py-2 border border-gray-200 rounded-lg text-xs text-gray-600 bg-white focus:outline-none focus:border-gray-900">
+                  <option value="">Join existing case...</option>
+                  {% for case_no in case_options or [] %}
+                  <option value="{{ case_no }}">{{ case_no }}</option>
+                  {% endfor %}
+                </select>
+                <datalist id="caseNoOptions">
+                  {% for case_no in case_options or [] %}
+                  <option value="{{ case_no }}">
+                  {% endfor %}
+                </datalist>
+                <div class="mt-2 flex items-center justify-between gap-2">
+                  <p class="text-xs text-gray-500">同一问题选择同一个 Case。</p>
+                  <button type="button" onclick="selectCaseNo('')" class="text-xs text-gray-400 hover:text-red-500 font-semibold">Clear</button>
+                </div>
+              </div>
+              <div class="col-span-12 md:col-span-7">
+                <label class="text-xs font-bold text-gray-500 mb-1.5 block uppercase tracking-wide">Remarks</label>
+                <input name="remark" value="{{ remark_value if remark_value is defined else (tr.remark if tr and tr.remark else '') }}" placeholder="Any other information to record..." class="form-input w-full px-3.5 py-2.5 border border-gray-200 rounded-lg text-sm focus:outline-none focus:border-gray-900">
+              </div>
+            </div>
+          </section>
+        </div>
+
+        <div class="col-span-12 lg:col-span-4 space-y-5">
+          <section class="bg-white rounded-2xl border border-gray-200 shadow-sm p-5">
+            <h2 class="text-base font-bold text-gray-950 mb-4">Status</h2>
+            <div class="space-y-4">
+              <div>
+                <label class="text-xs font-bold text-gray-500 mb-1.5 block uppercase tracking-wide">Processing</label>
+                <select name="status" class="form-select w-full px-3.5 py-2.5 border border-gray-200 rounded-lg text-sm focus:outline-none focus:border-gray-900 cursor-pointer">
+                  {% set current = (tr.status if tr and tr.status else "Open") %}
+                  <option value="Open" {% if current=="Open" %}selected{% endif %}>Open</option>
+                  <option value="In Progress" {% if current=="In Progress" %}selected{% endif %}>In Progress</option>
+                  <option value="Closed" {% if current=="Closed" %}selected{% endif %}>Closed</option>
+                </select>
+              </div>
+              <div>
+                <label class="text-xs font-bold text-gray-500 mb-1.5 block uppercase tracking-wide">8D Status</label>
+                <select id="eight_d_status" name="eight_d_status" class="form-select w-full px-3.5 py-2.5 border border-gray-200 rounded-lg text-sm focus:outline-none focus:border-gray-900 cursor-pointer">
+                  {% set d8 = (tr.eight_d_status if tr and tr.eight_d_status else "NOT_REQUIRED") %}
+                  <option value="NOT_REQUIRED" {% if d8=="NOT_REQUIRED" %}selected{% endif %}>Not Required</option>
+                  <option value="NOT_RECEIVED" {% if d8=="NOT_RECEIVED" %}selected{% endif %}>Required but Not Received</option>
+                  <option value="RECEIVED_REJECT" {% if d8=="RECEIVED_REJECT" %}selected{% endif %}>Received (Reject)</option>
+                  <option value="RECEIVED_PASS" {% if d8=="RECEIVED_PASS" %}selected{% endif %}>Received (Pass)</option>
+                </select>
+              </div>
+              <div>
+                <label class="text-xs font-bold text-gray-500 mb-1.5 block uppercase tracking-wide">8D Reference</label>
+                <input id="eight_d" name="eight_d" value="{{ tr.eight_d if tr and tr.eight_d else '' }}" placeholder="8D number/filename/link..." class="form-input w-full px-3.5 py-2.5 border border-gray-200 rounded-lg text-sm focus:outline-none focus:border-gray-900 font-mono">
+              </div>
+            </div>
+          </section>
+
+          <section class="bg-white rounded-2xl border border-gray-200 shadow-sm p-5">
+            <h2 class="text-base font-bold text-gray-950 mb-4">Debit Note</h2>
+            <div class="space-y-4">
+              <div>
+                <label class="text-xs font-bold text-gray-500 mb-1.5 block uppercase tracking-wide">Debit Ref. No.</label>
+                <input name="debit_ref" value="{{ tr.debit_ref if tr and tr.debit_ref else '' }}" placeholder="P&C-2026-93 / MT01" class="form-input w-full px-3.5 py-2.5 border border-gray-200 rounded-lg text-sm focus:outline-none focus:border-gray-900 font-mono">
+              </div>
+              <div class="grid grid-cols-2 gap-3">
+                <div>
+                  <label class="text-xs font-bold text-gray-500 mb-1.5 block uppercase tracking-wide">Amount</label>
+                  <input name="debit_amount" type="number" step="0.01" value="{{ tr.debit_amount if tr and tr.debit_amount else '' }}" placeholder="17280.00" class="form-input w-full px-3.5 py-2.5 border border-gray-200 rounded-lg text-sm focus:outline-none focus:border-gray-900 font-mono">
+                </div>
+                <div>
+                  <label class="text-xs font-bold text-gray-500 mb-1.5 block uppercase tracking-wide">Currency</label>
+                  <select name="debit_currency" class="form-select w-full px-3.5 py-2.5 border border-gray-200 rounded-lg text-sm focus:outline-none focus:border-gray-900 cursor-pointer bg-white">
+                    {% set cur = (tr.debit_currency if tr and tr.debit_currency else "EUR") %}
+                    <option value="EUR" {% if cur=="EUR" %}selected{% endif %}>EUR €</option>
+                    <option value="USD" {% if cur=="USD" %}selected{% endif %}>USD $</option>
+                    <option value="CNY" {% if cur=="CNY" %}selected{% endif %}>CNY ¥</option>
+                    <option value="VND" {% if cur=="VND" %}selected{% endif %}>VND ₫</option>
+                  </select>
+                </div>
+              </div>
+              <div>
+                <label class="text-xs font-bold text-gray-500 mb-1.5 block uppercase tracking-wide">Debit Date</label>
+                <input name="debit_date" value="{{ tr.debit_date if tr and tr.debit_date else '' }}" placeholder="03/06/2026" class="form-input w-full px-3.5 py-2.5 border border-gray-200 rounded-lg text-sm focus:outline-none focus:border-gray-900 font-mono">
+              </div>
+              <label class="px-3.5 py-3 rounded-xl border border-emerald-200 bg-emerald-50 flex items-center gap-2 cursor-pointer hover:border-emerald-400">
+                <input type="checkbox" name="debit_signed" value="1" {% if tr and tr.debit_signed %}checked{% endif %} class="w-4 h-4 rounded border-emerald-300 text-emerald-600 focus:ring-emerald-500">
+                <span class="text-xs font-bold text-emerald-800 leading-tight">Signed / Supplier accepted</span>
+              </label>
+            </div>
+          </section>
         </div>
       </div>
 
-      <!-- Issue Description -->
-      <div class="mb-8">
-        <h2 class="text-lg font-bold text-gray-900 mb-4">Issue Description</h2>
-        <textarea name="issue_description" rows="5" required placeholder="Describe the issue in detail..." class="form-input w-full px-4 py-3 border-2 border-gray-200 rounded-xl text-sm focus:outline-none focus:border-gray-900 resize-y leading-6">{{ tr.issue_description if tr else "" }}</textarea>
-      </div>
-
-      <!-- Status Management -->
-      <div class="mb-8">
-        <h2 class="text-lg font-bold text-gray-900 mb-4">Status Management</h2>
-        <div class="grid grid-cols-12 gap-4">
-          <div class="col-span-12 md:col-span-3">
-            <label class="text-sm font-bold text-gray-700 mb-2 block">Severity</label>
-            <input name="severity" value="{{ tr.severity if tr and tr.severity else '' }}" placeholder="S0/S1/40/100..." class="form-input w-full px-4 py-3 border-2 border-gray-200 rounded-xl text-sm focus:outline-none focus:border-gray-900 font-mono">
-          </div>
-          <div class="col-span-12 md:col-span-3">
-            <label class="text-sm font-bold text-gray-700 mb-2 block">8D Status</label>
-            <select id="eight_d_status" name="eight_d_status" class="form-select w-full px-4 py-3 border-2 border-gray-200 rounded-xl text-sm focus:outline-none focus:border-gray-900 cursor-pointer">
-              {% set d8 = (tr.eight_d_status if tr and tr.eight_d_status else "NOT_REQUIRED") %}
-              <option value="NOT_REQUIRED" {% if d8=="NOT_REQUIRED" %}selected{% endif %}>⚪ Not Required</option>
-              <option value="NOT_RECEIVED" {% if d8=="NOT_RECEIVED" %}selected{% endif %}>🟡 Required but Not Received</option>
-              <option value="RECEIVED_REJECT" {% if d8=="RECEIVED_REJECT" %}selected{% endif %}>🔴 Received (Reject)</option>
-              <option value="RECEIVED_PASS" {% if d8=="RECEIVED_PASS" %}selected{% endif %}>🟢 Received (Pass)</option>
-            </select>
-          </div>
-          <div class="col-span-12 md:col-span-3">
-            <label class="text-sm font-bold text-gray-700 mb-2 block">8D Reference</label>
-            <input id="eight_d" name="eight_d" value="{{ tr.eight_d if tr and tr.eight_d else '' }}" placeholder="8D number/filename/link..." class="form-input w-full px-4 py-3 border-2 border-gray-200 rounded-xl text-sm focus:outline-none focus:border-gray-900 font-mono">
-          </div>
-          <div class="col-span-12 md:col-span-3">
-            <label class="text-sm font-bold text-gray-700 mb-2 block">Processing Status</label>
-            <select name="status" class="form-select w-full px-4 py-3 border-2 border-gray-200 rounded-xl text-sm focus:outline-none focus:border-gray-900 cursor-pointer">
-              {% set current = (tr.status if tr and tr.status else "Open") %}
-              <option value="Open" {% if current=="Open" %}selected{% endif %}>🔵 Open</option>
-              <option value="In Progress" {% if current=="In Progress" %}selected{% endif %}>🟡 In Progress</option>
-              <option value="Closed" {% if current=="Closed" %}selected{% endif %}>🟢 Closed</option>
-            </select>
-          </div>
-        </div>
-      </div>
-
-      <!-- Debit Note -->
-      <div class="mb-8">
-        <h2 class="text-lg font-bold text-gray-900 mb-4 flex items-center gap-2">
-          <svg class="w-5 h-5 text-emerald-600" fill="none" stroke="currentColor" viewBox="0 0 24 24" stroke-width="2">
-            <path stroke-linecap="round" stroke-linejoin="round" d="M12 8c-1.657 0-3 .895-3 2s1.343 2 3 2 3 .895 3 2-1.343 2-3 2m0-8c1.11 0 2.08.402 2.599 1M12 8V7m0 1v8m0 0v1m0-1c-1.11 0-2.08-.402-2.599-1M21 12a9 9 0 11-18 0 9 9 0 0118 0z"/>
-          </svg>
-          Debit Note
-        </h2>
-        <div class="grid grid-cols-12 gap-4 bg-emerald-50 rounded-xl p-5 border-2 border-emerald-200">
-          <div class="col-span-12 md:col-span-4">
-            <label class="text-sm font-bold text-gray-700 mb-2 block">Debit Ref. No.</label>
-            <input name="debit_ref" value="{{ tr.debit_ref if tr and tr.debit_ref else '' }}" placeholder="P&C-2026-93 / MT01" class="form-input w-full px-4 py-3 border-2 border-gray-200 rounded-xl text-sm focus:outline-none focus:border-gray-900 font-mono bg-white">
-          </div>
-          <div class="col-span-12 md:col-span-2">
-            <label class="text-sm font-bold text-gray-700 mb-2 block">Amount</label>
-            <input name="debit_amount" type="number" step="0.01" value="{{ tr.debit_amount if tr and tr.debit_amount else '' }}" placeholder="17280.00" class="form-input w-full px-4 py-3 border-2 border-gray-200 rounded-xl text-sm focus:outline-none focus:border-gray-900 font-mono bg-white">
-          </div>
-          <div class="col-span-12 md:col-span-2">
-            <label class="text-sm font-bold text-gray-700 mb-2 block">Currency</label>
-            <select name="debit_currency" class="form-select w-full px-4 py-3 border-2 border-gray-200 rounded-xl text-sm focus:outline-none focus:border-gray-900 cursor-pointer bg-white">
-              {% set cur = (tr.debit_currency if tr and tr.debit_currency else "EUR") %}
-              <option value="EUR" {% if cur=="EUR" %}selected{% endif %}>EUR €</option>
-              <option value="USD" {% if cur=="USD" %}selected{% endif %}>USD $</option>
-              <option value="CNY" {% if cur=="CNY" %}selected{% endif %}>CNY ¥</option>
-              <option value="VND" {% if cur=="VND" %}selected{% endif %}>VND ₫</option>
-            </select>
-          </div>
-          <div class="col-span-12 md:col-span-2">
-            <label class="text-sm font-bold text-gray-700 mb-2 block">Debit Date</label>
-            <input name="debit_date" value="{{ tr.debit_date if tr and tr.debit_date else '' }}" placeholder="03/06/2026" class="form-input w-full px-4 py-3 border-2 border-gray-200 rounded-xl text-sm focus:outline-none focus:border-gray-900 font-mono bg-white">
-          </div>
-          <div class="col-span-12 md:col-span-2">
-            <label class="text-sm font-bold text-gray-700 mb-2 block">Signed</label>
-            <label class="h-[46px] px-3 rounded-xl border-2 border-emerald-200 bg-white flex items-center gap-2 cursor-pointer hover:border-emerald-400">
-              <input type="checkbox" name="debit_signed" value="1" {% if tr and tr.debit_signed %}checked{% endif %} class="w-4 h-4 rounded border-emerald-300 text-emerald-600 focus:ring-emerald-500">
-              <span class="text-xs font-bold text-gray-700 leading-tight">Supplier accepted</span>
-            </label>
-          </div>
-        </div>
-      </div>
-
-      <!-- Remarks -->
-      <div class="mb-8">
-        <h2 class="text-lg font-bold text-gray-900 mb-4">Remarks</h2>
-        <input name="remark" value="{{ remark_value if remark_value is defined else (tr.remark if tr and tr.remark else '') }}" placeholder="Any other information to record..." class="form-input w-full px-4 py-3 border-2 border-gray-200 rounded-xl text-sm focus:outline-none focus:border-gray-900">
-      </div>
-
-      <!-- Action Buttons -->
-      <div class="flex items-center gap-3 pt-6 border-t-2 border-gray-100">
+      <div class="sticky bottom-0 z-10 -mx-6 px-6 py-4 bg-white/95 backdrop-blur border-t border-gray-200 flex flex-wrap items-center justify-between gap-3">
         {% if mode == "edit" %}
-        <label class="inline-flex items-center gap-2 px-4 py-3 rounded-xl bg-violet-50 text-violet-700 border-2 border-violet-100 text-sm font-semibold">
+        <label class="inline-flex items-center gap-2 px-3 py-2 rounded-lg bg-violet-50 text-violet-700 border border-violet-100 text-sm font-semibold">
           <input type="checkbox" name="sync_case" value="1" {% if tr and tr.case_no %}checked{% endif %} class="w-4 h-4 rounded border-violet-300 text-violet-600">
           <span>Sync same Case</span>
         </label>
+        {% else %}
+        <span></span>
         {% endif %}
-        <button type="submit" class="inline-flex items-center gap-2 px-6 py-3 rounded-xl bg-gray-900 text-white font-bold hover:bg-gray-800 transition-all">
-          <svg class="w-5 h-5" fill="none" stroke="currentColor" viewBox="0 0 24 24" stroke-width="2"><path stroke-linecap="round" stroke-linejoin="round" d="M5 13l4 4L19 7"/></svg>
-          {% if mode == "edit" %}Save Changes{% else %}Create TR{% endif %}
-        </button>
-        <a href="{{ next_url or url_for('tr.index') }}" class="inline-flex items-center gap-2 px-6 py-3 rounded-xl border-2 border-gray-300 bg-white text-gray-700 font-semibold hover:bg-gray-50 transition-all">Back to List</a>
+        <div class="flex items-center gap-2">
+          <a href="{{ back_url }}" class="inline-flex items-center gap-2 px-5 py-2.5 rounded-lg border border-gray-300 bg-white text-gray-700 font-semibold hover:bg-gray-50 transition-all">Back</a>
+          <button type="submit" class="inline-flex items-center gap-2 px-5 py-2.5 rounded-lg bg-gray-900 text-white font-bold hover:bg-gray-800 transition-all">
+            <svg class="w-5 h-5" fill="none" stroke="currentColor" viewBox="0 0 24 24" stroke-width="2"><path stroke-linecap="round" stroke-linejoin="round" d="M5 13l4 4L19 7"/></svg>
+            {% if mode == "edit" %}Save Changes{% else %}Create TR{% endif %}
+          </button>
+        </div>
       </div>
     </form>
 
+    {% if mode == "edit" and tr %}
+    <form id="draft8dReminderForm" method="post" action="{{ url_for('tr.create_8d_reminder_draft', tr_id=tr.id) }}" class="hidden">
+      <input type="hidden" name="next" value="{{ url_for('tr.edit_tr', tr_id=tr.id, next=back_url) }}">
+    </form>
+    <form id="sent8dReminderForm" method="post" action="{{ url_for('tr.mark_8d_reminder_sent', tr_id=tr.id) }}" class="hidden">
+      <input type="hidden" name="next" value="{{ url_for('tr.edit_tr', tr_id=tr.id, next=back_url) }}">
+    </form>
+    {% endif %}
+
     <!-- Document Management (Edit Mode Only) -->
     {% if mode == "edit" and tr %}
-    <div class="px-8 pb-8">
-      <div class="border-t-2 border-gray-100 pt-8">
+    <div class="bg-white rounded-2xl border border-gray-200 shadow-sm p-5">
+      <div>
         <div class="flex items-center justify-between mb-4">
           <h2 class="text-lg font-bold text-gray-900 flex items-center gap-2">
             <svg class="w-5 h-5 text-indigo-600" fill="none" stroke="currentColor" viewBox="0 0 24 24" stroke-width="2"><path stroke-linecap="round" stroke-linejoin="round" d="M7 21h10a2 2 0 002-2V9.414a1 1 0 00-.293-.707l-5.414-5.414A1 1 0 0012.586 3H7a2 2 0 00-2 2v14a2 2 0 002 2z"/></svg>
@@ -257,6 +298,7 @@
           </h2>
           {% if tr.tr_no.startswith('TR-EDC-') %}
           <form method="post" action="{{ url_for('tr.reimport_edc_attachments', tr_id=tr.id) }}" onsubmit="return confirm('从 OneDrive 重新扫描并导入该 EDC 的所有附件？');" class="inline">
+            <input type="hidden" name="next" value="{{ back_url }}">
             <button type="submit" class="inline-flex items-center gap-2 px-4 py-2 rounded-lg bg-blue-50 text-blue-700 text-sm font-bold border-2 border-blue-200 hover:bg-blue-100 hover:border-blue-400 transition-all">
               <svg class="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24" stroke-width="2"><path stroke-linecap="round" stroke-linejoin="round" d="M4 4v5h.582m15.356 2A8.001 8.001 0 004.582 9m0 0H9m11 11v-5h-.581m0 0a8.003 8.003 0 01-15.357-2m15.357 2H15"/></svg>
               Sync EDC Attachments
@@ -266,10 +308,10 @@
         </div>
 
         <!-- Upload Form -->
-        <div class="bg-indigo-50 rounded-xl p-6 border-2 border-indigo-200 mb-6">
+        <div class="bg-gray-50 rounded-xl p-5 border border-gray-200 mb-6">
           <h3 class="text-sm font-bold text-gray-900 mb-4">Upload New Document</h3>
           <form method="post" action="{{ url_for('tr.upload_document', tr_id=tr.id) }}" enctype="multipart/form-data" class="grid grid-cols-12 gap-4">
-            {% if next_url %}<input type="hidden" name="next" value="{{ next_url }}">{% endif %}
+            <input type="hidden" name="next" value="{{ back_url }}">
             <div class="col-span-12 md:col-span-3">
               <label class="text-xs font-bold text-gray-700 mb-1.5 block">Document Type</label>
               <select name="doc_type" required class="w-full px-3 py-2 border-2 border-gray-200 rounded-lg text-sm focus:outline-none focus:border-gray-900 bg-white cursor-pointer">
@@ -355,9 +397,23 @@
                 </div>
               </div>
               <div class="flex items-center gap-2 shrink-0">
+                {% if doc.doc_type == '8d_report' %}
+                <form method="post" action="{{ url_for('tr.sync_document_to_case', tr_id=tr.id, doc_id=doc.id) }}" class="inline">
+                  <input type="hidden" name="next" value="{{ back_url }}">
+                  <button type="submit"
+                          class="w-8 h-8 rounded-lg border-2 inline-flex items-center justify-center {% if tr.case_no %}bg-purple-50 text-purple-600 hover:bg-purple-100 border-purple-200{% else %}bg-gray-50 text-gray-300 border-gray-200 cursor-not-allowed{% endif %}"
+                          title="{% if tr.case_no %}Sync this 8D to same Case{% else %}Assign Case No. first{% endif %}"
+                          {% if not tr.case_no %}disabled{% endif %}>
+                    <svg class="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24" stroke-width="2">
+                      <path stroke-linecap="round" stroke-linejoin="round" d="M4 4v6h6M20 20v-6h-6"/>
+                      <path stroke-linecap="round" stroke-linejoin="round" d="M20 9A8 8 0 006.3 5.7L4 10m16 4l-2.3 4.3A8 8 0 014 15"/>
+                    </svg>
+                  </button>
+                </form>
+                {% endif %}
                 <a href="{{ url_for('tr.view_document', tr_id=tr.id, doc_id=doc.id) }}" target="_blank" class="w-8 h-8 rounded-lg bg-blue-50 text-blue-600 hover:bg-blue-100 border-2 border-blue-200 inline-flex items-center justify-center" title="View"><svg class="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24" stroke-width="2"><path stroke-linecap="round" stroke-linejoin="round" d="M15 12a3 3 0 11-6 0 3 3 0 016 0z"/><path stroke-linecap="round" stroke-linejoin="round" d="M2.458 12C3.732 7.943 7.523 5 12 5c4.478 0 8.268 2.943 9.542 7-1.274 4.057-5.064 7-9.542 7-4.477 0-8.268-2.943-9.542-7z"/></svg></a>
                 <a href="{{ url_for('tr.download_document', tr_id=tr.id, doc_id=doc.id) }}" class="w-8 h-8 rounded-lg bg-green-50 text-green-600 hover:bg-green-100 border-2 border-green-200 inline-flex items-center justify-center" title="Download"><svg class="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24" stroke-width="2"><path stroke-linecap="round" stroke-linejoin="round" d="M4 16v1a3 3 0 003 3h10a3 3 0 003-3v-1m-4-4l-4 4m0 0l-4-4m4 4V4"/></svg></a>
-                <form method="post" action="{{ url_for('tr.delete_document', tr_id=tr.id, doc_id=doc.id) }}" onsubmit="return confirm('Delete?');" class="inline"><button type="submit" class="w-8 h-8 rounded-lg bg-red-50 text-red-600 hover:bg-red-100 border-2 border-red-200 inline-flex items-center justify-center" title="Delete"><svg class="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24" stroke-width="2"><path stroke-linecap="round" stroke-linejoin="round" d="M19 7l-.867 12.142A2 2 0 0116.138 21H7.862a2 2 0 01-1.995-1.858L5 7m5 4v6m4-6v6m1-10V4a1 1 0 00-1-1h-4a1 1 0 00-1 1v3M4 7h16"/></svg></button></form>
+                <form method="post" action="{{ url_for('tr.delete_document', tr_id=tr.id, doc_id=doc.id) }}" onsubmit="return confirm('Delete?');" class="inline"><input type="hidden" name="next" value="{{ back_url }}"><button type="submit" class="w-8 h-8 rounded-lg bg-red-50 text-red-600 hover:bg-red-100 border-2 border-red-200 inline-flex items-center justify-center" title="Delete"><svg class="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24" stroke-width="2"><path stroke-linecap="round" stroke-linejoin="round" d="M19 7l-.867 12.142A2 2 0 0116.138 21H7.862a2 2 0 01-1.995-1.858L5 7m5 4v6m4-6v6m1-10V4a1 1 0 00-1-1h-4a1 1 0 00-1 1v3M4 7h16"/></svg></button></form>
               </div>
             </div>
           </div>

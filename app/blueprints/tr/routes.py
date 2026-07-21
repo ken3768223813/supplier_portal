@@ -3,6 +3,7 @@ from werkzeug.utils import secure_filename
 from sqlalchemy import func, or_
 from concurrent.futures import ThreadPoolExecutor, as_completed
 import os
+import re
 import uuid
 import time
 import threading
@@ -11,6 +12,7 @@ import hashlib
 import shutil
 from pathlib import Path
 from datetime import datetime
+from html import escape
 from urllib.parse import urlsplit
 
 from . import tr_bp
@@ -427,6 +429,274 @@ def _read_debit_from_form():
     return debit_ref, debit_amount, debit_currency, debit_date, debit_signed
 
 
+def _split_email_list(raw):
+    emails = []
+    seen = set()
+    for item in re.split(r"[;,\n\r]+", raw or ""):
+        email = item.strip()
+        if not email:
+            continue
+        key = email.lower()
+        if key in seen:
+            continue
+        seen.add(key)
+        emails.append(email)
+    return emails
+
+
+def _find_supplier_for_tr(tr):
+    if tr.supplier_code and tr.supplier_code != "N/A":
+        supplier = Supplier.query.filter(func.lower(Supplier.code) == tr.supplier_code.lower()).first()
+        if supplier:
+            return supplier
+
+    supplier_name = (tr.supplier_name or "").strip()
+    if not supplier_name:
+        return None
+
+    return Supplier.query.filter(
+        or_(
+            func.lower(Supplier.name) == supplier_name.lower(),
+            func.lower(Supplier.chinese_name) == supplier_name.lower(),
+        )
+    ).first()
+
+
+def _tr_reminder_recipients(tr):
+    supplier = _find_supplier_for_tr(tr)
+    if not supplier:
+        return None, []
+    return supplier, _split_email_list(supplier.reminder_emails)
+
+
+def _tr_reminder_contacts(tr):
+    supplier = _find_supplier_for_tr(tr)
+    if not supplier:
+        return None, [], []
+    return (
+        supplier,
+        _split_email_list(supplier.reminder_emails),
+        _split_email_list(supplier.reminder_cc_emails),
+    )
+
+
+def _supplier_display_name_for_tr(tr):
+    supplier = _find_supplier_for_tr(tr)
+    if not supplier:
+        return tr.supplier_name or ""
+
+    names = []
+    seen = set()
+    for name in (supplier.name, supplier.chinese_name):
+        name = (name or "").strip()
+        key = name.lower()
+        if name and key not in seen:
+            names.append(name)
+            seen.add(key)
+    return " / ".join(names) or tr.supplier_name or ""
+
+
+def _eight_d_status_label(status):
+    return {
+        "NOT_REQUIRED": "Not Required",
+        "NOT_RECEIVED": "Required but Not Received",
+        "RECEIVED_REJECT": "Received but Rejected",
+        "RECEIVED_PASS": "Received and Accepted",
+    }.get(status or "", status or "")
+
+
+def _short_text(text, limit=90):
+    text = re.sub(r"\s+", " ", text or "").strip()
+    if len(text) <= limit:
+        return text
+    return text[: limit - 3].rstrip() + "..."
+
+
+def _ordinal(n):
+    n = int(n or 1)
+    if 10 <= n % 100 <= 20:
+        suffix = "th"
+    else:
+        suffix = {1: "st", 2: "nd", 3: "rd"}.get(n % 10, "th")
+    return f"{n}{suffix}"
+
+
+REMINDER_ATTACHMENT_EXCLUDED_TYPES = {"debit_note"}
+
+
+def _is_edc_report_document(tr, doc):
+    """Return True for the original EDC report PDF belonging to a TR."""
+    if doc.doc_type != "quality_report" or not (tr.tr_no or "").startswith("TR-EDC-"):
+        return False
+    edc_no = tr.tr_no.removeprefix("TR-EDC-").strip().lower()
+    searchable = " ".join([
+        doc.original_name or "",
+        doc.title or "",
+        doc.remark or "",
+    ]).lower()
+    return (
+        bool(edc_no and edc_no in searchable)
+        or "auto-imported edc report pdf" in searchable
+        or "edc report" in searchable
+    )
+
+
+def _attachment_content_key(file_path):
+    """Use file content to collapse documents copied between same-Case TRs."""
+    digest = hashlib.sha256()
+    with open(file_path, "rb") as source:
+        for chunk in iter(lambda: source.read(1024 * 1024), b""):
+            digest.update(chunk)
+    return digest.hexdigest()
+
+
+def _tr_reminder_attachments(tr):
+    attachments = []
+    missing = []
+    reports = [tr]
+    if tr.case_no:
+        reports = (
+            TroubleReport.query
+            .filter_by(case_no=tr.case_no)
+            .order_by(TroubleReport.created_at.asc(), TroubleReport.id.asc())
+            .all()
+        )
+
+    edc_documents = []
+    other_documents = []
+    missing_seen = set()
+    for report in reports:
+        docs = report.documents.order_by(TRDocument.created_at.asc(), TRDocument.id.asc()).all()
+        for doc in docs:
+            if doc.doc_type in REMINDER_ATTACHMENT_EXCLUDED_TYPES:
+                continue
+            file_path = os.path.abspath(os.path.join(current_app.config["UPLOAD_DIR"], doc.rel_path))
+            if not os.path.isfile(file_path):
+                missing_key = (doc.original_name or doc.title or "").strip().lower()
+                if missing_key and missing_key not in missing_seen:
+                    missing.append(doc.original_name or doc.title)
+                    missing_seen.add(missing_key)
+                continue
+            item = (report, doc, file_path)
+            if _is_edc_report_document(report, doc):
+                edc_documents.append(item)
+            else:
+                other_documents.append(item)
+
+    # Every TR in a Case keeps its own EDC report, even when two PDFs happen to
+    # contain identical content. Duplicate imports within the same TR are skipped.
+    seen_edc = set()
+    for report, doc, file_path in edc_documents:
+        key = (report.id, (doc.original_name or doc.title or "").strip().lower())
+        if key in seen_edc:
+            continue
+        seen_edc.add(key)
+        attachments.append((doc, file_path))
+
+    # Case synchronization creates physical copies of shared photos and 8D files.
+    # Hashing ensures only one copy of each shared document reaches Outlook.
+    seen_content = set()
+    for _report, doc, file_path in other_documents:
+        try:
+            key = _attachment_content_key(file_path)
+        except OSError:
+            key = f"{os.path.getsize(file_path)}:{(doc.original_name or '').strip().lower()}"
+        if key in seen_content:
+            continue
+        seen_content.add(key)
+        attachments.append((doc, file_path))
+    return attachments, missing
+
+
+def _notification_date_for_tr(tr):
+    remark = (tr.remark or "").strip()
+    if remark:
+        parts = [p.strip() for p in remark.split("|")]
+        issue_date = _parse_issue_date(parts[-1]) if parts else None
+        if issue_date:
+            return issue_date
+    if tr.created_at:
+        return tr.created_at.date()
+    return None
+
+
+def _build_8d_reminder_email(tr, attachments=None, reminder_no=1):
+    issue = tr.issue_summary or tr.issue_description or ""
+    issue_short = _short_text(issue, 80)
+    part_bits = [bit for bit in [tr.part_number, tr.part_name] if bit]
+    part_text = " / ".join(part_bits) if part_bits else "N/A"
+    reminder_no = int(reminder_no or 1)
+    ordinal = _ordinal(reminder_no)
+    notification_date = _notification_date_for_tr(tr)
+    today = datetime.now().date()
+    notification_date_text = notification_date.strftime("%d.%m.%Y") if notification_date else "N/A"
+    elapsed_days_text = (
+        f"{max((today - notification_date).days, 0)} day(s) / {max((today - notification_date).days, 0)} 天"
+        if notification_date else "N/A"
+    )
+
+    subject = f"第{reminder_no}次8D提醒 - {tr.tr_no}"
+    if tr.part_number:
+        subject += f" - {tr.part_number}"
+    if issue_short:
+        subject += f" - {issue_short}"
+
+    status_label = _eight_d_status_label(tr.eight_d_status)
+    supplier_display = _supplier_display_name_for_tr(tr)
+    info_table_style = (
+        'border-collapse: collapse; width: 680px; margin: 10px 0 14px 0; '
+        'font-family: "Aptos", "Segoe UI", "Microsoft YaHei", "PingFang SC", "Helvetica Neue", Arial, sans-serif; '
+        'font-size: 10.5pt; line-height: 1.25; mso-line-height-rule: exactly; border: 1px solid #d7dee8;'
+    )
+    label_cell_style = (
+        'width: 210px; padding: 6px 10px; background: #f3f6fa; color: #374151; '
+        'font-weight: 700; border-bottom: 1px solid #d7dee8; border-right: 1px solid #d7dee8; '
+        'vertical-align: top; white-space: nowrap;'
+    )
+    value_cell_style = (
+        'padding: 6px 10px; color: #111827; border-bottom: 1px solid #d7dee8; '
+        'vertical-align: top;'
+    )
+    ref_line = (
+        f'<tr><td style="{label_cell_style}">8D Ref.</td>'
+        f'<td style="{value_cell_style}">{escape(tr.eight_d)}</td></tr>'
+        if tr.eight_d else ""
+    )
+
+    body = f"""
+    <html>
+      <body style='font-family: "Aptos", "Segoe UI", "Microsoft YaHei", "PingFang SC", "Helvetica Neue", Arial, sans-serif; font-size: 11pt; line-height: 1.55; color: #111827;'>
+        <p>Dear Supplier Quality Team,</p>
+        <p>
+          This is the <b>{escape(ordinal)}</b> reminder to submit or update the 8D report for the following open trouble report to FPVT.
+          Please provide the completed 8D report and supporting evidence as soon as possible.
+        </p>
+        <p>
+          这是关于以下未关闭问题的<b>第{reminder_no}次 8D 报告提醒</b>。
+          请尽快提交或更新完整的 8D 报告及相关支持证据给佛山比亚乔。
+        </p>
+        <div style="margin: 12px 0 12px 0;">
+          <div style="font-size: 10.5pt; font-weight: 700; color: #374151; margin-bottom: 5px;">Issue / 问题描述</div>
+          <div style="width: 660px; background: #ffffff; border: 1px solid #d7dee8; border-left: 4px solid #2563eb; padding: 9px 12px; color: #111827; line-height: 1.45;">
+            {escape(issue or 'N/A')}
+          </div>
+        </div>
+        <table role="presentation" cellspacing="0" cellpadding="0" style='{info_table_style}'>
+          <tr><td style="{label_cell_style}">TR No.</td><td style="{value_cell_style}">{escape(tr.tr_no)}</td></tr>
+          <tr><td style="{label_cell_style}">Supplier / 供应商</td><td style="{value_cell_style}">{escape(supplier_display)}</td></tr>
+          <tr><td style="{label_cell_style}">Part / 零件</td><td style="{value_cell_style}">{escape(part_text)}</td></tr>
+          <tr><td style="{label_cell_style}">Notice Date / 通知日期</td><td style="{value_cell_style}">{escape(notification_date_text)}</td></tr>
+          <tr><td style="{label_cell_style}">Elapsed / 已过天数</td><td style="{value_cell_style}">{escape(elapsed_days_text)}</td></tr>
+          <tr><td style="{label_cell_style}">8D Status</td><td style="{value_cell_style}">{escape(status_label)}</td></tr>
+          {ref_line}
+        </table>
+        <p>Best regards,<br>SQE Team</p>
+      </body>
+    </html>
+    """
+    return subject, body
+
+
 def _parse_issue_date(raw):
     raw = (raw or "").strip()
     if not raw:
@@ -505,6 +775,7 @@ CASE_SYNC_FIELDS = (
     "status",
     "eight_d",
     "eight_d_status",
+    "issue_summary",
     "investigation_note",
     "eight_d_root_cause",
     "eight_d_root_cause_en",
@@ -515,6 +786,8 @@ CASE_SYNC_FIELDS = (
     "eight_d_escape_action",
     "eight_d_escape_action_en",
 )
+
+CASE_JOIN_DOC_TYPES = {"8d_report"}
 
 
 def _case_sibling_trs(tr):
@@ -529,10 +802,116 @@ def _case_sibling_trs(tr):
 
 def _sync_case_fields_from_tr(tr):
     siblings = _case_sibling_trs(tr)
+    synced = 0
     for sibling in siblings:
-        for field in CASE_SYNC_FIELDS:
-            setattr(sibling, field, getattr(tr, field))
-    return len(siblings)
+        if _copy_case_fields(tr, sibling):
+            synced += 1
+    return synced
+
+
+def _has_case_value(value):
+    return value is not None and value != ""
+
+
+def _copy_case_fields(source_tr, target_tr):
+    copied = 0
+    for field in CASE_SYNC_FIELDS:
+        value = getattr(source_tr, field)
+        if not _has_case_value(value):
+            continue
+        setattr(target_tr, field, value)
+        copied += 1
+    return copied
+
+
+def _case_sync_score(tr):
+    score = 0
+    if tr.eight_d_status and tr.eight_d_status != "NOT_REQUIRED":
+        score += 12
+    for field in CASE_SYNC_FIELDS:
+        if field in {"status", "eight_d_status"}:
+            continue
+        if _has_case_value(getattr(tr, field)):
+            score += 5
+    score += TRDocument.query.filter_by(tr_id=tr.id, doc_type="8d_report").count() * 20
+    return score
+
+
+def _case_source_tr(case_no, exclude_tr_id=None):
+    if not case_no:
+        return None
+    query = TroubleReport.query.filter(TroubleReport.case_no == case_no)
+    if exclude_tr_id:
+        query = query.filter(TroubleReport.id != exclude_tr_id)
+    candidates = query.all()
+    if not candidates:
+        return None
+    candidates.sort(
+        key=lambda tr: (
+            _case_sync_score(tr),
+            tr.updated_at or tr.created_at,
+            tr.id,
+        ),
+        reverse=True,
+    )
+    return candidates[0] if _case_sync_score(candidates[0]) > 0 else None
+
+
+def _copy_case_document_to_tr(app, source_tr, source_doc, target_tr):
+    if source_tr.id == target_tr.id:
+        return False
+
+    exists = TRDocument.query.filter_by(
+        tr_id=target_tr.id,
+        original_name=source_doc.original_name,
+        doc_type=source_doc.doc_type,
+    ).first()
+    if exists:
+        return False
+
+    src_path = os.path.join(app.config["UPLOAD_DIR"], source_doc.rel_path)
+    if not os.path.exists(src_path):
+        return False
+
+    ext = source_doc.stored_name.rsplit(".", 1)[-1].lower() if "." in source_doc.stored_name else ""
+    stored_name = f"{uuid.uuid4().hex}.{ext}" if ext else uuid.uuid4().hex
+    tr_dir = os.path.join("tr_docs", secure_filename(target_tr.tr_no))
+    full_dir = os.path.join(app.config["UPLOAD_DIR"], tr_dir)
+    os.makedirs(full_dir, exist_ok=True)
+    dst_path = os.path.join(full_dir, stored_name)
+    shutil.copy2(src_path, dst_path)
+
+    db.session.add(TRDocument(
+        tr_id=target_tr.id,
+        doc_type=source_doc.doc_type,
+        title=source_doc.title,
+        original_name=source_doc.original_name,
+        stored_name=stored_name,
+        rel_path=os.path.join(tr_dir, stored_name),
+        mime=source_doc.mime,
+        size=os.path.getsize(dst_path),
+        remark=(source_doc.remark or f"Synced from {source_tr.tr_no}"),
+    ))
+    return True
+
+
+def _pull_existing_case_into_tr(app, target_tr):
+    source_tr = _case_source_tr(target_tr.case_no, exclude_tr_id=target_tr.id)
+    if not source_tr:
+        return 0, 0, None
+
+    copied_fields = _copy_case_fields(source_tr, target_tr)
+    copied_docs = 0
+    docs = (
+        TRDocument.query
+        .filter(TRDocument.tr_id == source_tr.id, TRDocument.doc_type.in_(CASE_JOIN_DOC_TYPES))
+        .order_by(TRDocument.created_at.desc())
+        .all()
+    )
+    for doc in docs:
+        if _copy_case_document_to_tr(app, source_tr, doc, target_tr):
+            copied_docs += 1
+    return copied_fields, copied_docs, source_tr
 
 
 def _sync_case_document_from_doc(app, source_tr, source_doc):
@@ -540,40 +919,10 @@ def _sync_case_document_from_doc(app, source_tr, source_doc):
     if not siblings:
         return 0
 
-    src_path = os.path.join(app.config["UPLOAD_DIR"], source_doc.rel_path)
-    if not os.path.exists(src_path):
-        return 0
-
     imported = 0
-    ext = source_doc.stored_name.rsplit(".", 1)[-1].lower() if "." in source_doc.stored_name else ""
     for sibling in siblings:
-        exists = TRDocument.query.filter_by(
-            tr_id=sibling.id,
-            original_name=source_doc.original_name,
-            doc_type=source_doc.doc_type,
-        ).first()
-        if exists:
-            continue
-
-        stored_name = f"{uuid.uuid4().hex}.{ext}" if ext else uuid.uuid4().hex
-        tr_dir = os.path.join("tr_docs", secure_filename(sibling.tr_no))
-        full_dir = os.path.join(app.config["UPLOAD_DIR"], tr_dir)
-        os.makedirs(full_dir, exist_ok=True)
-        dst_path = os.path.join(full_dir, stored_name)
-        shutil.copy2(src_path, dst_path)
-
-        db.session.add(TRDocument(
-            tr_id=sibling.id,
-            doc_type=source_doc.doc_type,
-            title=source_doc.title,
-            original_name=source_doc.original_name,
-            stored_name=stored_name,
-            rel_path=os.path.join(tr_dir, stored_name),
-            mime=source_doc.mime,
-            size=os.path.getsize(dst_path),
-            remark=(source_doc.remark or f"Synced from {source_tr.tr_no}"),
-        ))
-        imported += 1
+        if _copy_case_document_to_tr(app, source_tr, source_doc, sibling):
+            imported += 1
     return imported
 
 
@@ -611,6 +960,9 @@ def index():
     _start_scheduler_if_needed(current_app._get_current_object())
 
     q = (request.args.get("q") or "").strip()
+    status_filter = (request.args.get("status") or "all").strip().lower()
+    if status_filter not in {"all", "open", "closed", "8d_pending"}:
+        status_filter = "all"
     page = request.args.get("page", 1, type=int)
     per_page = request.args.get("per_page", 20, type=int)
 
@@ -641,14 +993,22 @@ def index():
             )
         )
 
+    closed_statuses = ['closed', 'done', 'complete', 'completed']
+    if status_filter == "open":
+        query = query.filter(~func.lower(TroubleReport.status).in_(closed_statuses))
+    elif status_filter == "closed":
+        query = query.filter(func.lower(TroubleReport.status).in_(closed_statuses))
+    elif status_filter == "8d_pending":
+        query = query.filter(TroubleReport.eight_d_status == 'NOT_RECEIVED')
+
     query = query.order_by(TroubleReport.is_pinned.desc(), TroubleReport.created_at.desc(), TroubleReport.id.desc())
     pagination = query.paginate(page=page, per_page=per_page, error_out=False)
 
     # 全局统计（不受分页影响）
-    from sqlalchemy import func, case
+    from sqlalchemy import case
     stats = db.session.query(
         func.count(TroubleReport.id).label('total'),
-        func.sum(case((func.lower(TroubleReport.status).in_(['closed', 'done', 'completed']), 1), else_=0)).label(
+        func.sum(case((func.lower(TroubleReport.status).in_(['closed', 'done', 'complete', 'completed']), 1), else_=0)).label(
             'closed'),
         func.sum(case((TroubleReport.eight_d_status == 'NOT_RECEIVED', 1), else_=0)).label('pending_8d'),
     ).first()
@@ -658,7 +1018,8 @@ def index():
     pending_8d = int(stats.pending_8d or 0)
 
     return render_template("tr/index.html", trs=pagination.items, pagination=pagination,
-                           q=q, per_page=per_page,
+                           q=q, status_filter=status_filter, per_page=per_page,
+                           stat_total=total,
                            stat_ongoing=ongoing, stat_closed=closed, stat_8d=pending_8d)
 
 
@@ -756,6 +1117,15 @@ def new_tr():
             lot_number=(request.form.get("lot_number") or "").strip() or None,
         )
         db.session.add(tr)
+        db.session.flush()
+        pulled_case_fields = 0
+        pulled_case_docs = 0
+        pulled_case_source = None
+        if tr.case_no:
+            pulled_case_fields, pulled_case_docs, pulled_case_source = _pull_existing_case_into_tr(
+                current_app._get_current_object(),
+                tr,
+            )
         db.session.commit()
         _edc_cache["data"] = None
 
@@ -763,11 +1133,18 @@ def new_tr():
             threading.Thread(target=_auto_import_edc_attachments,
                                    args=(current_app._get_current_object(), tr.id), daemon=True).start()
                   # ↓ 新增这一段：AI 提取问题摘要
-            threading.Thread(target=_generate_issue_summary,
-                                   args=(current_app._get_current_object(), tr.id), daemon=True).start()
-            flash("✅ TR created. Importing attachments + generating AI summary...", "success")
+            if not tr.issue_summary:
+                threading.Thread(target=_generate_issue_summary,
+                                       args=(current_app._get_current_object(), tr.id), daemon=True).start()
+            if pulled_case_source:
+                flash(f"✅ TR created. Pulled Case data from {pulled_case_source.tr_no}: {pulled_case_docs} document(s). Importing EDC attachments...", "success")
+            else:
+                flash("✅ TR created. Importing attachments + generating AI summary...", "success")
         else:
-            flash("✅ TR created successfully", "success")
+            if pulled_case_source:
+                flash(f"✅ TR created. Pulled Case data from {pulled_case_source.tr_no}: {pulled_case_docs} document(s).", "success")
+            else:
+                flash("✅ TR created successfully", "success")
         return redirect(next_url)
 
     suppliers = Supplier.query.order_by(Supplier.code).all()
@@ -778,6 +1155,7 @@ def new_tr():
 def edit_tr(tr_id):
     tr = TroubleReport.query.get_or_404(tr_id)
     next_url = _return_url_from_request()
+    old_case_no = tr.case_no
 
     if request.method == "POST":
         tr_no = (request.form.get("tr_no") or "").strip()
@@ -825,13 +1203,26 @@ def edit_tr(tr_id):
         tr.debit_signed = debit_signed
         tr.case_no = case_no
         synced_case_count = 0
+        pulled_case_fields = 0
+        pulled_case_docs = 0
+        pulled_case_source = None
         if request.form.get("sync_case") == "1":
-            synced_case_count = _sync_case_fields_from_tr(tr)
+            joined_existing_case = bool(tr.case_no and tr.case_no != old_case_no)
+            if joined_existing_case:
+                pulled_case_fields, pulled_case_docs, pulled_case_source = _pull_existing_case_into_tr(
+                    current_app._get_current_object(),
+                    tr,
+                )
+            if not pulled_case_source:
+                synced_case_count = _sync_case_fields_from_tr(tr)
 
         db.session.commit()
-        threading.Thread(target=_generate_issue_summary,
-                        args=(current_app._get_current_object(), tr.id), daemon=True).start()
-        if synced_case_count:
+        if not (pulled_case_source and tr.issue_summary):
+            threading.Thread(target=_generate_issue_summary,
+                            args=(current_app._get_current_object(), tr.id), daemon=True).start()
+        if pulled_case_source:
+            flash(f"✅ TR updated. Pulled Case data from {pulled_case_source.tr_no}: {pulled_case_docs} document(s).", "success")
+        elif synced_case_count:
             flash(f"✅ TR updated. Synced {synced_case_count} TR(s) in {tr.case_no}.", "success")
         else:
             flash("✅ TR updated successfully", "success")
@@ -913,6 +1304,133 @@ def upload_document(tr_id):
     return redirect(edit_url)
 
 
+@tr_bp.route("/<int:tr_id>/documents/<int:doc_id>/sync-case", methods=["POST"])
+def sync_document_to_case(tr_id, doc_id):
+    tr = TroubleReport.query.get_or_404(tr_id)
+    doc = TRDocument.query.filter_by(id=doc_id, tr_id=tr.id).first_or_404()
+    next_url = _return_url_from_request(url_for("tr.edit_tr", tr_id=tr_id))
+    edit_url = url_for("tr.edit_tr", tr_id=tr_id, next=next_url)
+
+    if not tr.case_no:
+        flash("Please assign a Case No. before syncing this document.", "error")
+        return redirect(edit_url)
+
+    synced_docs = _sync_case_document_from_doc(current_app._get_current_object(), tr, doc)
+    synced_fields = 0
+    if doc.doc_type == "8d_report":
+        synced_fields = _sync_case_fields_from_tr(tr)
+
+    db.session.commit()
+
+    if doc.doc_type == "8d_report" and not any([
+        tr.eight_d_root_cause,
+        tr.eight_d_root_cause_en,
+        tr.eight_d_escape_cause,
+        tr.eight_d_escape_cause_en,
+        tr.eight_d_action,
+        tr.eight_d_action_en,
+        tr.eight_d_escape_action,
+        tr.eight_d_escape_action_en,
+    ]):
+        threading.Thread(
+            target=_extract_8d_for_tr,
+            args=(current_app._get_current_object(), tr.id),
+            daemon=True,
+        ).start()
+
+    if synced_docs or synced_fields:
+        flash(f"✅ Synced to same Case: {synced_docs} document(s), {synced_fields} field group(s).", "success")
+    else:
+        flash("No same-Case TR needed this sync, or they already have this document.", "info")
+    return redirect(edit_url)
+
+
+@tr_bp.route("/<int:tr_id>/8d-reminder-draft", methods=["POST"])
+def create_8d_reminder_draft(tr_id):
+    tr = TroubleReport.query.get_or_404(tr_id)
+    next_url = _return_url_from_request(url_for("tr.edit_tr", tr_id=tr_id))
+
+    status = (tr.status or "").lower()
+    if status in {"closed", "done", "completed"}:
+        flash("This TR is closed. 8D reminder draft was not created.", "warning")
+        return redirect(next_url)
+
+    if tr.eight_d_status not in {"NOT_RECEIVED", "RECEIVED_REJECT"}:
+        flash("8D reminder is intended for Not Received or Rejected 8D status.", "warning")
+        return redirect(next_url)
+
+    supplier, recipients, cc_recipients = _tr_reminder_contacts(tr)
+    if not supplier:
+        flash("No matching supplier profile found. Please check the TR supplier name/code.", "error")
+        return redirect(next_url)
+    if not recipients:
+        flash(f"No 8D reminder recipient configured for supplier {supplier.code}. Please add recipient emails in Supplier Edit.", "error")
+        return redirect(next_url)
+
+    attachments, missing_attachments = _tr_reminder_attachments(tr)
+    reminder_no = int(tr.eight_d_reminder_count or 0) + 1
+    subject, body = _build_8d_reminder_email(tr, attachments=attachments, reminder_no=reminder_no)
+    attached_count = 0
+    failed_attachments = []
+
+    try:
+        import pythoncom
+        import win32com.client
+
+        pythoncom.CoInitialize()
+        outlook = win32com.client.Dispatch("Outlook.Application")
+        mail = outlook.CreateItem(0)
+        mail.To = "; ".join(recipients)
+        if cc_recipients:
+            mail.CC = "; ".join(cc_recipients)
+        mail.Subject = subject
+        mail.HTMLBody = body
+        for doc, file_path in attachments:
+            display_name = doc.original_name or doc.title or os.path.basename(file_path)
+            try:
+                mail.Attachments.Add(file_path, 1, 1, display_name)
+                attached_count += 1
+            except Exception as attach_error:
+                current_app.logger.warning(
+                    f"[8D Reminder] attachment failed for {tr.tr_no}: {display_name} | {attach_error}"
+                )
+                failed_attachments.append(display_name)
+        mail.Save()
+        mail.Display(False)
+    except ImportError:
+        flash("pywin32 is not installed, so Outlook draft cannot be created.", "error")
+        return redirect(next_url)
+    except Exception as e:
+        current_app.logger.warning(f"[8D Reminder] Outlook draft failed for TR {tr.tr_no}: {e}")
+        flash(f"Failed to create Outlook draft: {e}", "error")
+        return redirect(next_url)
+
+    attachment_note = f" Attached {attached_count} document(s)."
+    skipped = len(missing_attachments) + len(failed_attachments)
+    if skipped:
+        attachment_note += f" Skipped {skipped} missing/failed attachment(s)."
+    cc_note = f" CC: {', '.join(cc_recipients)}." if cc_recipients else ""
+    flash(f"✅ Outlook draft #{reminder_no} created for {tr.tr_no}: {', '.join(recipients)}.{cc_note}{attachment_note} Count is not increased until you mark it sent.", "success")
+    return redirect(next_url)
+
+
+@tr_bp.route("/<int:tr_id>/8d-reminder-sent", methods=["POST"])
+def mark_8d_reminder_sent(tr_id):
+    tr = TroubleReport.query.get_or_404(tr_id)
+    next_url = _return_url_from_request(url_for("tr.edit_tr", tr_id=tr_id))
+
+    status = (tr.status or "").lower()
+    if status in {"closed", "done", "completed"}:
+        flash("This TR is closed. Reminder count was not changed.", "warning")
+        return redirect(next_url)
+
+    tr.eight_d_reminder_count = int(tr.eight_d_reminder_count or 0) + 1
+    db.session.commit()
+    next_reminder = int(tr.eight_d_reminder_count or 0) + 1
+    flash(f"✅ Marked reminder sent for {tr.tr_no}. Next draft will be reminder #{next_reminder}.", "success")
+    return redirect(next_url)
+
+
 @tr_bp.route("/<int:tr_id>/documents/<int:doc_id>/view")
 def view_document(tr_id, doc_id):
     TroubleReport.query.get_or_404(tr_id)
@@ -947,13 +1465,15 @@ def download_document(tr_id, doc_id):
 def delete_document(tr_id, doc_id):
     TroubleReport.query.get_or_404(tr_id)
     doc = TRDocument.query.filter_by(id=doc_id, tr_id=tr_id).first_or_404()
+    next_url = _return_url_from_request(url_for("tr.edit_tr", tr_id=tr_id))
+    edit_url = url_for("tr.edit_tr", tr_id=tr_id, next=next_url)
     fp = os.path.join(current_app.config["UPLOAD_DIR"], doc.rel_path)
     if os.path.exists(fp):
         try: os.remove(fp)
         except OSError: pass
     db.session.delete(doc); db.session.commit()
     flash(f"✅ Document deleted: {doc.title}", "success")
-    return redirect(url_for("tr.edit_tr", tr_id=tr_id))
+    return redirect(edit_url)
 
 
 @tr_bp.route("/<int:tr_id>/documents/panel", methods=["GET"])
@@ -966,14 +1486,16 @@ def documents_panel(tr_id):
 @tr_bp.route("/<int:tr_id>/reimport-edc-attachments", methods=["POST"])
 def reimport_edc_attachments(tr_id):
     tr = TroubleReport.query.get_or_404(tr_id)
+    next_url = _return_url_from_request(url_for("tr.edit_tr", tr_id=tr_id))
+    edit_url = url_for("tr.edit_tr", tr_id=tr_id, next=next_url)
     if not tr.tr_no.startswith("TR-EDC-"):
-        flash("❌ Not an EDC TR", "error"); return redirect(url_for("tr.edit_tr", tr_id=tr_id))
+        flash("❌ Not an EDC TR", "error"); return redirect(edit_url)
     with _attach_sync_lock:
         if tr_id in _attach_syncing_trs:
-            flash("⏳ 正在同步中，请耐心等待...", "info"); return redirect(url_for("tr.edit_tr", tr_id=tr_id))
+            flash("⏳ 正在同步中，请耐心等待...", "info"); return redirect(edit_url)
     threading.Thread(target=_auto_import_edc_attachments, args=(current_app._get_current_object(), tr.id), daemon=True).start()
     flash("✅ Syncing EDC attachments in background...", "success")
-    return redirect(url_for("tr.edit_tr", tr_id=tr_id))
+    return redirect(edit_url)
 
 
 # ── EDC 导入路由 ──
@@ -1190,28 +1712,57 @@ def _extract_8d_for_tr(app, tr_id):
             tr = TroubleReport.query.get(tr_id)
             if not tr:
                 return
-            doc = TRDocument.query.filter_by(
+            docs = TRDocument.query.filter_by(
                 tr_id=tr.id, doc_type="8d_report"
-            ).order_by(TRDocument.created_at.desc()).first()
-            if not doc:
+            ).order_by(TRDocument.created_at.desc()).limit(3).all()
+            if not docs:
                 return
-            file_path = os.path.join(app.config["UPLOAD_DIR"], doc.rel_path)
-            if not os.path.exists(file_path):
+
+            result = None
+            selected_doc = None
+            fallback_result = None
+            fallback_doc = None
+            for doc in docs:
+                file_path = os.path.join(app.config["UPLOAD_DIR"], doc.rel_path)
+                if not os.path.exists(file_path):
+                    continue
+                current = extract_8d(file_path, logger=app.logger)
+                if not current:
+                    continue
+                if not fallback_result:
+                    fallback_result = current
+                    fallback_doc = doc
+                if current.get("action") or current.get("action_en") or current.get("escape_action") or current.get("escape_action_en"):
+                    result = current
+                    selected_doc = doc
+                    break
+
+            if not result:
+                result = fallback_result
+                selected_doc = fallback_doc
+
+            if not result:
                 return
-            result = extract_8d(file_path, logger=app.logger)
+
             if result:
-                tr.eight_d_root_cause = result.get("root_cause", "")
-                tr.eight_d_root_cause_en = result.get("root_cause_en", "")
-                tr.eight_d_escape_cause = result.get("escape_cause", "")
-                tr.eight_d_escape_cause_en = result.get("escape_cause_en", "")
-                tr.eight_d_action = result.get("action", "")
-                tr.eight_d_action_en = result.get("action_en", "")
-                tr.eight_d_escape_action = result.get("escape_action", "")
-                tr.eight_d_escape_action_en = result.get("escape_action_en", "")
+                for attr, key in (
+                    ("eight_d_root_cause", "root_cause"),
+                    ("eight_d_root_cause_en", "root_cause_en"),
+                    ("eight_d_escape_cause", "escape_cause"),
+                    ("eight_d_escape_cause_en", "escape_cause_en"),
+                    ("eight_d_action", "action"),
+                    ("eight_d_action_en", "action_en"),
+                    ("eight_d_escape_action", "escape_action"),
+                    ("eight_d_escape_action_en", "escape_action_en"),
+                ):
+                    value = (result.get(key) or "").strip()
+                    if value or not getattr(tr, attr):
+                        setattr(tr, attr, value)
                 synced_count = _sync_case_fields_from_tr(tr)
                 db.session.commit()
                 app.logger.info(
                     f"[AI 8D] TR {tr.tr_no} saved | "
+                    f"doc={selected_doc.original_name if selected_doc else ''} "
                     f"occ_cn={len(tr.eight_d_root_cause)} occ_en={len(tr.eight_d_root_cause_en)} "
                     f"esc_cn={len(tr.eight_d_escape_cause)} esc_en={len(tr.eight_d_escape_cause_en)} "
                     f"synced_case={synced_count}"

@@ -27,7 +27,7 @@
   <div class="grid grid-cols-4 gap-4 mb-6">
     <div class="stat-card bg-white rounded-2xl p-5 border border-gray-100 shadow-sm">
       <div class="flex items-center gap-3 mb-3"><div class="w-10 h-10 rounded-xl bg-gray-100 flex items-center justify-center"><svg class="w-5 h-5 text-gray-600" fill="none" stroke="currentColor" viewBox="0 0 24 24" stroke-width="2"><path stroke-linecap="round" stroke-linejoin="round" d="M9 12h6m-6 4h6m2 5H7a2 2 0 01-2-2V5a2 2 0 012-2h5.586a1 1 0 01.707.293l5.414 5.414a1 1 0 01.293.707V19a2 2 0 01-2 2z"/></svg></div><span class="text-xs text-gray-400 font-medium uppercase tracking-wider">Total</span></div>
-      <div class="text-2xl font-bold text-gray-900">{{ pagination.total }}</div>
+      <div class="text-2xl font-bold text-gray-900">{{ stat_total }}</div>
     </div>
     <div class="stat-card bg-white rounded-2xl p-5 border border-gray-100 shadow-sm">
       <div class="flex items-center gap-3 mb-3"><div class="w-10 h-10 rounded-xl bg-orange-50 flex items-center justify-center"><svg class="w-5 h-5 text-orange-500" fill="none" stroke="currentColor" viewBox="0 0 24 24" stroke-width="2"><path stroke-linecap="round" stroke-linejoin="round" d="M12 8v4l3 3m6-3a9 9 0 11-18 0 9 9 0 0118 0z"/></svg></div><span class="text-xs text-gray-400 font-medium uppercase tracking-wider">Ongoing</span></div>
@@ -46,18 +46,35 @@
   <!-- Table Card -->
   <div class="bg-white rounded-2xl border border-gray-100 overflow-hidden shadow-sm">
 
-    <!-- Search -->
-    <div class="px-5 py-4 border-b border-gray-100">
+    <!-- Filters + Search -->
+    <div class="px-5 py-4 border-b border-gray-100 space-y-3">
+      <div class="flex flex-wrap items-center justify-between gap-3">
+        <div class="flex items-center gap-2">
+          <h2 class="text-lg font-bold text-gray-900">Reports ({{ pagination.total }})</h2>
+          <div class="flex items-center gap-1">
+            <a href="{{ url_for('tr.index', q=q, per_page=per_page) }}"
+               class="text-[10px] font-bold px-3 py-1.5 rounded-lg transition-all {% if status_filter == 'all' %}bg-gray-900 text-white{% else %}bg-gray-100 text-gray-600 hover:bg-gray-200{% endif %}">All</a>
+            <a href="{{ url_for('tr.index', status='open', q=q, per_page=per_page) }}"
+               class="text-[10px] font-bold px-3 py-1.5 rounded-lg transition-all {% if status_filter == 'open' %}bg-gray-900 text-white{% else %}bg-gray-100 text-gray-600 hover:bg-gray-200{% endif %}">Open</a>
+            <a href="{{ url_for('tr.index', status='closed', q=q, per_page=per_page) }}"
+               class="text-[10px] font-bold px-3 py-1.5 rounded-lg transition-all {% if status_filter == 'closed' %}bg-gray-900 text-white{% else %}bg-gray-100 text-gray-600 hover:bg-gray-200{% endif %}">Closed</a>
+            <a href="{{ url_for('tr.index', status='8d_pending', q=q, per_page=per_page) }}"
+               class="text-[10px] font-bold px-3 py-1.5 rounded-lg transition-all {% if status_filter == '8d_pending' %}bg-amber-500 text-white{% else %}bg-amber-50 text-amber-600 hover:bg-amber-100{% endif %}">8D Pending</a>
+          </div>
+        </div>
+        <div class="px-3.5 py-2 bg-gray-50 rounded-xl text-xs font-semibold text-gray-500 border border-gray-200">Page {{ pagination.page }} / {{ pagination.pages or 1 }}</div>
+      </div>
       <div class="flex items-center gap-3">
         <form method="get" class="flex-1">
+          {% if status_filter != 'all' %}<input type="hidden" name="status" value="{{ status_filter }}">{% endif %}
+          <input type="hidden" name="per_page" value="{{ per_page }}">
           <div class="relative">
             <input type="text" name="q" value="{{ q or '' }}" placeholder="Search by TR No., Supplier, Part Number, Issue, Debit Ref..."
               class="search-input w-full px-4 py-2.5 pl-11 rounded-xl bg-gray-50 border border-gray-200 text-sm focus:outline-none focus:border-blue-400 focus:bg-white transition-all"/>
             <div class="absolute left-3.5 top-1/2 -translate-y-1/2"><svg class="text-gray-400" fill="none" stroke="currentColor" viewBox="0 0 24 24" stroke-width="2" style="width:18px;height:18px;"><path stroke-linecap="round" stroke-linejoin="round" d="M21 21l-6-6m2-5a7 7 0 11-14 0 7 7 0 0114 0z"/></svg></div>
-            {% if q %}<a href="{{ url_for('tr.index', per_page=per_page) }}" class="absolute right-3.5 top-1/2 -translate-y-1/2 text-gray-400 hover:text-gray-600"><svg class="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24" stroke-width="2"><path stroke-linecap="round" stroke-linejoin="round" d="M6 18L18 6M6 6l12 12"/></svg></a>{% endif %}
+            {% if q %}<a href="{{ url_for('tr.index', status=status_filter if status_filter != 'all' else None, per_page=per_page) }}" class="absolute right-3.5 top-1/2 -translate-y-1/2 text-gray-400 hover:text-gray-600"><svg class="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24" stroke-width="2"><path stroke-linecap="round" stroke-linejoin="round" d="M6 18L18 6M6 6l12 12"/></svg></a>{% endif %}
           </div>
         </form>
-        <div class="px-3.5 py-2 bg-gray-50 rounded-xl text-xs font-semibold text-gray-500 border border-gray-200">Page {{ pagination.page }} / {{ pagination.pages or 1 }}</div>
       </div>
     </div>
 
@@ -66,18 +83,18 @@
       <table class="w-full table-fixed">
         <thead>
           <tr class="border-b border-gray-100">
-            <th class="w-[40px] px-2 py-3.5"></th>
-            <th class="w-[85px] px-3 py-3.5 text-left text-[11px] font-bold text-gray-400 uppercase tracking-widest cursor-pointer hover:text-gray-700 select-none" onclick="sortByDate()" id="dateHeader"><span class="inline-flex items-center gap-1">Date <span id="dateSortIcon" class="text-gray-300">⇅</span></span></th>
-            <th class="w-[120px] px-4 py-3.5 text-left text-[11px] font-bold text-gray-400 uppercase tracking-widest">TR No.</th>
-            <th class="w-[10%] px-3 py-3.5 text-left text-[11px] font-bold text-gray-400 uppercase tracking-widest">Supplier</th>
-            <th class="w-[100px] px-3 py-3.5 text-left text-[11px] font-bold text-gray-400 uppercase tracking-widest">Part No.</th>
-            <th class="w-[11%] px-3 py-3.5 text-left text-[11px] font-bold text-gray-400 uppercase tracking-widest">Part Name</th>
-            <th class="w-[24%] px-3 py-3.5 text-left text-[11px] font-bold text-gray-400 uppercase tracking-widest">Issue</th>
-            <th class="w-[36px] px-2 py-3.5 text-center text-[11px] font-bold text-gray-400 uppercase tracking-widest">8D</th>
-            <th class="w-[52px] px-2 py-3.5 text-center text-[11px] font-bold text-gray-400 uppercase tracking-widest">Status</th>
-            <th class="w-[80px] px-2 py-3.5 text-center text-[11px] font-bold text-gray-400 uppercase tracking-widest">💰 Debit</th>
-            <th class="w-[36px] px-2 py-3.5 text-center text-[11px] font-bold text-gray-400 uppercase tracking-widest">Doc</th>
-            <th class="w-[72px] px-3 py-3.5 text-center text-[11px] font-bold text-gray-400 uppercase tracking-widest">Action</th>
+            <th class="w-[28px] px-1 py-3.5"></th>
+            <th class="w-[74px] px-2 py-3.5 text-left text-[11px] font-bold text-gray-400 uppercase tracking-widest cursor-pointer hover:text-gray-700 select-none" onclick="sortByDate()" id="dateHeader"><span class="inline-flex items-center gap-1">Date <span id="dateSortIcon" class="text-gray-300">⇅</span></span></th>
+            <th class="w-[104px] px-2 py-3.5 text-left text-[11px] font-bold text-gray-400 uppercase tracking-widest">TR No.</th>
+            <th class="w-[7%] px-2 py-3.5 text-left text-[11px] font-bold text-gray-400 uppercase tracking-widest">Supplier</th>
+            <th class="w-[86px] px-2 py-3.5 text-left text-[11px] font-bold text-gray-400 uppercase tracking-widest">Part No.</th>
+            <th class="w-[8%] px-2 py-3.5 text-left text-[11px] font-bold text-gray-400 uppercase tracking-widest">Part Name</th>
+            <th class="w-[25%] px-3 py-3.5 text-left text-[11px] font-bold text-gray-400 uppercase tracking-widest">Issue</th>
+            <th class="w-[30px] px-1 py-3.5 text-center text-[11px] font-bold text-gray-400 uppercase tracking-widest">8D</th>
+            <th class="w-[54px] px-1 py-3.5 text-center text-[11px] font-bold text-gray-400 uppercase tracking-widest">Status</th>
+            <th class="w-[58px] px-1 py-3.5 text-center text-[11px] font-bold text-gray-400 uppercase tracking-widest">Debit</th>
+            <th class="w-[32px] px-1 py-3.5 text-center text-[11px] font-bold text-gray-400 uppercase tracking-widest">Doc</th>
+            <th class="w-[122px] px-1 py-3.5 text-center text-[11px] font-bold text-gray-400 uppercase tracking-widest">Action</th>
           </tr>
         </thead>
         <tbody class="divide-y divide-gray-50">
@@ -85,7 +102,7 @@
           {% set status = (tr.status or '')|lower %}
           <tr class="tr-row align-top {% if tr.is_pinned %}bg-yellow-50/40{% elif status in ['overdue','late'] %}bg-red-50/40{% endif %}">
 
-            <td class="px-2 py-4 text-center">
+            <td class="px-1 py-4 text-center">
               <button type="button" onclick="togglePin({{ tr.id }}, this)"
                       class="w-7 h-7 inline-flex items-center justify-center rounded-lg hover:bg-yellow-50 transition-all"
                       data-pinned="{{ '1' if tr.is_pinned else '0' }}"
@@ -98,29 +115,29 @@
               </button>
             </td>
 
-            <td class="px-3 py-4">
+            <td class="px-2 py-4">
               {% set parts = (tr.remark or '').split('|') %}
               {% set date_str = parts[-1].strip() if parts|length > 1 else '' %}
               <span class="text-xs font-medium text-gray-500 whitespace-nowrap">{{ date_str or '—' }}</span>
             </td>
 
-            <td class="px-4 py-4">
-              <span class="font-mono font-bold text-xs px-2.5 py-1.5 rounded-lg bg-gray-900 text-white inline-block" title="{{ tr.tr_no }}">{{ tr.tr_no }}</span>
+            <td class="px-2 py-4">
+              <span class="font-mono font-bold text-xs px-2 py-1.5 rounded-lg bg-gray-900 text-white inline-block" title="{{ tr.tr_no }}">{{ tr.tr_no }}</span>
               {% if tr.case_no %}
               <a href="{{ url_for('tr.case_detail', case_no=tr.case_no, next=request.full_path) }}"
-                 class="mt-1 inline-flex max-w-[105px] items-center px-2 py-0.5 rounded-md bg-violet-50 text-violet-700 border border-violet-200 text-[10px] font-bold font-mono truncate hover:bg-violet-100"
+                 class="mt-1 inline-flex max-w-[92px] items-center px-2 py-0.5 rounded-md bg-violet-50 text-violet-700 border border-violet-200 text-[10px] font-bold font-mono truncate hover:bg-violet-100"
                  title="View related case {{ tr.case_no }}">{{ tr.case_no }}</a>
               {% endif %}
             </td>
 
-            <td class="px-3 py-4"><div class="font-semibold text-sm text-gray-900 truncate" title="{{ tr.supplier_name }}">{{ tr.supplier_name }}</div></td>
+            <td class="px-2 py-4"><div class="font-semibold text-xs text-gray-900 truncate" title="{{ tr.supplier_name }}">{{ tr.supplier_name }}</div></td>
 
-            <td class="px-3 py-4">
-              {% if tr.part_number %}<span class="font-mono text-xs px-2 py-1 rounded-md bg-blue-50 text-blue-700 inline-block max-w-[100px] truncate align-bottom" title="{{ tr.part_number }}">{{ tr.part_number }}</span>{% else %}<span class="text-gray-300">—</span>{% endif %}
+            <td class="px-2 py-4">
+              {% if tr.part_number %}<span class="font-mono text-xs px-2 py-1 rounded-md bg-blue-50 text-blue-700 inline-block max-w-[76px] truncate align-bottom" title="{{ tr.part_number }}">{{ tr.part_number }}</span>{% else %}<span class="text-gray-300">—</span>{% endif %}
 <!--              {% if tr.lot_number %}<div class="text-[10px] font-mono text-gray-400 mt-0.5 truncate" title="{{ tr.lot_number }}">Lot {{ tr.lot_number }}</div>{% endif %}-->
             </td>
 
-            <td class="px-3 py-4 text-sm text-gray-600"><div class="truncate" title="{{ tr.part_name or '' }}">{{ tr.part_name or "—" }}</div></td>
+            <td class="px-2 py-4 text-sm text-gray-600"><div class="truncate" title="{{ tr.part_name or '' }}">{{ tr.part_name or "—" }}</div></td>
 
             <td class="px-3 py-4">
               {% set is_placeholder = tr.issue_summary and 'No specific defect described' in (tr.issue_summary or '') %}
@@ -155,7 +172,7 @@
               {% endif %}
             </td>
 
-            <td class="px-2 py-4 text-center">
+            <td class="px-1 py-4 text-center">
               {% set d8 = (tr.eight_d_status or 'NOT_REQUIRED')|trim|upper %}
               {% set has_rcca = tr.eight_d_root_cause or tr.eight_d_action %}
               <button onclick="openRcca({{ tr.id }})"
@@ -170,7 +187,7 @@
               </button>
             </td>
 
-            <td class="px-2 py-4 text-center">
+            <td class="px-1 py-4 text-center">
               {% set st = (tr.status or '')|lower %}
               {% if st in ['overdue','late'] %}<span class="h-6 px-2.5 rounded-md text-[10px] font-bold uppercase bg-red-100 text-red-700 inline-flex items-center">Late</span>
               {% elif st in ['closed','done','complete','completed'] %}<span class="h-6 px-2.5 rounded-md text-[10px] font-bold uppercase bg-green-100 text-green-700 inline-flex items-center">Closed</span>
@@ -179,7 +196,7 @@
             </td>
 
             <!-- 💰 Debit -->
-            <td class="px-2 py-4 text-center">
+            <td class="px-1 py-4 text-center">
               {% if tr.debit_amount %}
                 {% set sym = {'EUR':'€','USD':'$','CNY':'¥','VND':'₫'}.get(tr.debit_currency or 'EUR', '') %}
                 {% set debit_cls = 'bg-emerald-50 text-emerald-700 border-emerald-200' if tr.debit_signed else 'bg-red-50 text-red-700 border-red-200' %}
@@ -192,15 +209,36 @@
               {% endif %}
             </td>
 
-            <td class="px-2 py-4 text-center">
+            <td class="px-1 py-4 text-center">
               {% set doc_count = tr.documents.count() %}
               {% if doc_count > 0 %}<button type="button" onclick="openTRDocumentsModal({{ tr.id }})" class="w-7 h-7 rounded-lg bg-purple-50 text-purple-700 font-bold text-xs hover:bg-purple-100 transition-all inline-flex items-center justify-center" title="{{ doc_count }} docs">{{ doc_count }}</button>{% else %}<span class="text-gray-300 text-xs">—</span>{% endif %}
             </td>
 
-            <td class="px-3 py-4">
-              <div class="flex items-center justify-center gap-1.5">
-                <a href="{{ url_for('tr.edit_tr', tr_id=tr.id) }}" class="w-8 h-8 rounded-lg bg-gray-50 text-gray-500 hover:bg-blue-50 hover:text-blue-600 transition-all inline-flex items-center justify-center" title="Edit"><svg class="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24" stroke-width="2"><path stroke-linecap="round" stroke-linejoin="round" d="M11 5H6a2 2 0 00-2 2v11a2 2 0 002 2h11a2 2 0 002-2v-5m-1.414-9.414a2 2 0 112.828 2.828L11.828 15H9v-2.828l8.586-8.586z"/></svg></a>
-                <form method="post" action="{{ url_for('tr.delete_tr', tr_id=tr.id) }}" onsubmit="return confirm('Delete {{ tr.tr_no }}?');"><button type="submit" class="w-8 h-8 rounded-lg bg-gray-50 text-gray-500 hover:bg-red-50 hover:text-red-600 transition-all inline-flex items-center justify-center" title="Delete"><svg class="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24" stroke-width="2"><path stroke-linecap="round" stroke-linejoin="round" d="M19 7l-.867 12.142A2 2 0 0116.138 21H7.862a2 2 0 01-1.995-1.858L5 7m5 4v6m4-6v6m1-10V4a1 1 0 00-1-1h-4a1 1 0 00-1 1v3M4 7h16"/></svg></button></form>
+            <td class="px-1 py-4">
+              <div class="flex items-center justify-center gap-0.5">
+                {% set row_status = (tr.status or '')|lower %}
+                {% set row_8d = (tr.eight_d_status or '')|upper %}
+                {% if row_status not in ['closed','done','completed'] and row_8d in ['NOT_RECEIVED','RECEIVED_REJECT'] %}
+                <form method="post" action="{{ url_for('tr.create_8d_reminder_draft', tr_id=tr.id) }}" class="inline">
+                  <input type="hidden" name="next" value="{{ request.full_path }}">
+                  <button type="submit" class="w-7 h-7 rounded-md bg-amber-50 text-amber-600 hover:bg-amber-100 transition-all inline-flex items-center justify-center" title="Create 8D reminder draft #{{ (tr.eight_d_reminder_count or 0) + 1 }}">
+                    <svg class="w-3.5 h-3.5" fill="none" stroke="currentColor" viewBox="0 0 24 24" stroke-width="2">
+                      <path stroke-linecap="round" stroke-linejoin="round" d="M3 8l7.89 5.26a2 2 0 002.22 0L21 8"/>
+                      <path stroke-linecap="round" stroke-linejoin="round" d="M21 8v9a2 2 0 01-2 2H5a2 2 0 01-2-2V8"/>
+                    </svg>
+                  </button>
+                </form>
+                <form method="post" action="{{ url_for('tr.mark_8d_reminder_sent', tr_id=tr.id) }}" class="inline" onsubmit="return confirm('Mark this 8D reminder as sent?');">
+                  <input type="hidden" name="next" value="{{ request.full_path }}">
+                  <button type="submit" class="w-7 h-7 rounded-md bg-emerald-50 text-emerald-600 hover:bg-emerald-100 transition-all inline-flex items-center justify-center" title="Mark reminder sent. Sent: {{ tr.eight_d_reminder_count or 0 }}">
+                    <svg class="w-3.5 h-3.5" fill="none" stroke="currentColor" viewBox="0 0 24 24" stroke-width="2">
+                      <path stroke-linecap="round" stroke-linejoin="round" d="M5 13l4 4L19 7"/>
+                    </svg>
+                  </button>
+                </form>
+                {% endif %}
+                <a href="{{ url_for('tr.edit_tr', tr_id=tr.id, next=request.full_path) }}" class="w-7 h-7 rounded-md bg-gray-50 text-gray-500 hover:bg-blue-50 hover:text-blue-600 transition-all inline-flex items-center justify-center" title="Edit"><svg class="w-3.5 h-3.5" fill="none" stroke="currentColor" viewBox="0 0 24 24" stroke-width="2"><path stroke-linecap="round" stroke-linejoin="round" d="M11 5H6a2 2 0 00-2 2v11a2 2 0 002 2h11a2 2 0 002-2v-5m-1.414-9.414a2 2 0 112.828 2.828L11.828 15H9v-2.828l8.586-8.586z"/></svg></a>
+                <form method="post" action="{{ url_for('tr.delete_tr', tr_id=tr.id) }}" onsubmit="return confirm('Delete {{ tr.tr_no }}?');"><button type="submit" class="w-7 h-7 rounded-md bg-gray-50 text-gray-500 hover:bg-red-50 hover:text-red-600 transition-all inline-flex items-center justify-center" title="Delete"><svg class="w-3.5 h-3.5" fill="none" stroke="currentColor" viewBox="0 0 24 24" stroke-width="2"><path stroke-linecap="round" stroke-linejoin="round" d="M19 7l-.867 12.142A2 2 0 0116.138 21H7.862a2 2 0 01-1.995-1.858L5 7m5 4v6m4-6v6m1-10V4a1 1 0 00-1-1h-4a1 1 0 00-1 1v3M4 7h16"/></svg></button></form>
               </div>
             </td>
           </tr>
@@ -217,14 +255,14 @@
     <div class="px-5 py-4 border-t border-gray-100 flex items-center justify-between">
       <div class="text-xs text-gray-500">Showing <span class="font-semibold text-gray-900">{{ (pagination.page-1)*pagination.per_page+1 }}</span>–<span class="font-semibold text-gray-900">{{ (pagination.page-1)*pagination.per_page+trs|length }}</span> of <span class="font-semibold text-gray-900">{{ pagination.total }}</span></div>
       <nav class="flex items-center gap-1.5">
-        {% if pagination.has_prev %}<a class="px-3.5 py-1.5 rounded-lg border border-gray-200 text-xs font-medium text-gray-700 hover:bg-gray-50" href="{{ url_for('tr.index', page=pagination.prev_num, q=q, per_page=per_page) }}">Prev</a>{% else %}<span class="px-3.5 py-1.5 rounded-lg border border-gray-100 text-xs font-medium text-gray-300">Prev</span>{% endif %}
+        {% if pagination.has_prev %}<a class="px-3.5 py-1.5 rounded-lg border border-gray-200 text-xs font-medium text-gray-700 hover:bg-gray-50" href="{{ url_for('tr.index', page=pagination.prev_num, q=q, status=status_filter if status_filter != 'all' else None, per_page=per_page) }}">Prev</a>{% else %}<span class="px-3.5 py-1.5 rounded-lg border border-gray-100 text-xs font-medium text-gray-300">Prev</span>{% endif %}
         <div class="flex items-center gap-1">
           {% for p in range(1, pagination.pages+1) %}
             {% if p == pagination.page %}<span class="w-8 h-8 flex items-center justify-center rounded-lg bg-blue-600 text-white text-xs font-bold">{{ p }}</span>
-            {% else %}<a class="w-8 h-8 flex items-center justify-center rounded-lg border border-gray-200 text-xs font-medium text-gray-700 hover:bg-gray-50" href="{{ url_for('tr.index', page=p, q=q, per_page=per_page) }}">{{ p }}</a>{% endif %}
+            {% else %}<a class="w-8 h-8 flex items-center justify-center rounded-lg border border-gray-200 text-xs font-medium text-gray-700 hover:bg-gray-50" href="{{ url_for('tr.index', page=p, q=q, status=status_filter if status_filter != 'all' else None, per_page=per_page) }}">{{ p }}</a>{% endif %}
           {% endfor %}
         </div>
-        {% if pagination.has_next %}<a class="px-3.5 py-1.5 rounded-lg border border-gray-200 text-xs font-medium text-gray-700 hover:bg-gray-50" href="{{ url_for('tr.index', page=pagination.next_num, q=q, per_page=per_page) }}">Next</a>{% else %}<span class="px-3.5 py-1.5 rounded-lg border border-gray-100 text-xs font-medium text-gray-300">Next</span>{% endif %}
+        {% if pagination.has_next %}<a class="px-3.5 py-1.5 rounded-lg border border-gray-200 text-xs font-medium text-gray-700 hover:bg-gray-50" href="{{ url_for('tr.index', page=pagination.next_num, q=q, status=status_filter if status_filter != 'all' else None, per_page=per_page) }}">Next</a>{% else %}<span class="px-3.5 py-1.5 rounded-lg border border-gray-100 text-xs font-medium text-gray-300">Next</span>{% endif %}
       </nav>
     </div>
     {% endif %}
