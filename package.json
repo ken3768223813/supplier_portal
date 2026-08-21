@@ -1,0 +1,11 @@
+{
+  "name": "supplier-portal-assets",
+  "private": true,
+  "scripts": {
+    "build:css": "tailwindcss -i ./app/static/css/tailwind.input.css -o ./app/static/css/tailwind.css --minify",
+    "watch:css": "tailwindcss -i ./app/static/css/tailwind.input.css -o ./app/static/css/tailwind.css --watch"
+  },
+  "devDependencies": {
+    "tailwindcss": "3.4.17"
+  }
+}

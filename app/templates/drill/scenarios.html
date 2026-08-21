@@ -1,0 +1,83 @@
+{% extends "layout/base.html" %}
+{% block title %}SQE English Lab · 工作场景{% endblock %}
+
+{% block content %}
+<div class="overflow-hidden rounded-lg border border-gray-200 bg-white shadow-sm">
+  {% include "drill/_nav.html" %}
+
+  <section class="border-b border-gray-200 px-6 py-5">
+    <div class="flex flex-wrap items-center justify-between gap-3">
+      <div>
+        <h2 class="text-lg font-bold text-gray-950">按工作场景训练</h2>
+        <p class="mt-1 text-sm text-gray-500">选择今天最可能遇到的场景，集中练习相关表达。</p>
+      </div>
+      <a href="{{ url_for('drill.index') }}"
+         class="inline-flex items-center gap-2 rounded-lg bg-gray-900 px-4 py-2.5 text-sm font-semibold text-white hover:bg-gray-800">
+        开始混合练习
+        <svg class="h-4 w-4" fill="none" stroke="currentColor" viewBox="0 0 24 24" stroke-width="2">
+          <path stroke-linecap="round" stroke-linejoin="round" d="M9 5l7 7-7 7"/>
+        </svg>
+      </a>
+    </div>
+  </section>
+
+  <section class="grid divide-y divide-gray-200 md:grid-cols-2 md:divide-y-0">
+    {% for scenario in scenarios %}
+    <article class="border-gray-200 px-6 py-6 md:border-b {% if loop.index is odd %}md:border-r{% endif %}">
+      <div class="flex items-start justify-between gap-5">
+        <div class="min-w-0">
+          <div class="flex items-center gap-2">
+            <span class="h-2.5 w-2.5 shrink-0 rounded-full
+                         {% if scenario.accent == 'blue' %}bg-blue-500
+                         {% elif scenario.accent == 'amber' %}bg-amber-500
+                         {% elif scenario.accent == 'emerald' %}bg-emerald-500
+                         {% elif scenario.accent == 'red' %}bg-red-500
+                         {% elif scenario.accent == 'violet' %}bg-violet-500
+                         {% elif scenario.accent == 'cyan' %}bg-cyan-500
+                         {% elif scenario.accent == 'orange' %}bg-orange-500
+                         {% else %}bg-rose-500{% endif %}"></span>
+            <h3 class="text-base font-bold text-gray-950">{{ scenario.label }}</h3>
+            <span class="text-xs font-medium text-gray-400">{{ scenario.en }}</span>
+          </div>
+          <p class="mt-2 text-sm leading-6 text-gray-600">{{ scenario.description }}</p>
+        </div>
+        <div class="shrink-0 text-right">
+          <div class="text-2xl font-bold text-gray-950">{{ scenario.total }}</div>
+          <div class="text-[11px] text-gray-400">条素材</div>
+        </div>
+      </div>
+
+      <div class="mt-5 grid grid-cols-2 gap-3 border-t border-gray-100 pt-4">
+        <div>
+          <div class="text-xs text-gray-500">今日到期</div>
+          <div class="mt-1 text-sm font-bold {% if scenario.due %}text-amber-600{% else %}text-gray-400{% endif %}">{{ scenario.due }}</div>
+        </div>
+        <div>
+          <div class="text-xs text-gray-500">已练习</div>
+          <div class="mt-1 text-sm font-bold text-emerald-600">{{ scenario.practiced }}</div>
+        </div>
+      </div>
+
+      <div class="mt-5 flex items-center gap-2">
+        {% if scenario.total %}
+        <a href="{{ url_for('drill.index', category=scenario.value, mode='quick') }}"
+           class="inline-flex rounded-lg bg-gray-900 px-3 py-2 text-sm font-semibold text-white hover:bg-gray-800">
+          快速反应
+        </a>
+        <a href="{{ url_for('drill.index', category=scenario.value, mode='listening') }}"
+           class="inline-flex rounded-lg border border-gray-300 bg-white px-3 py-2 text-sm font-semibold text-gray-700 hover:bg-gray-50">
+          听力理解
+        </a>
+        <a href="{{ url_for('drill.index', category=scenario.value, mode='assembly') }}"
+           class="inline-flex rounded-lg border border-gray-300 bg-white px-3 py-2 text-sm font-semibold text-gray-700 hover:bg-gray-50">
+          表达组装
+        </a>
+        {% else %}
+        <a href="{{ url_for('drill.materials') }}" class="text-sm font-semibold text-blue-600 hover:text-blue-700">添加相关素材</a>
+        {% endif %}
+      </div>
+    </article>
+    {% endfor %}
+  </section>
+</div>
+{% endblock %}

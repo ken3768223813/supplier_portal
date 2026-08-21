@@ -1,0 +1,418 @@
+{% extends "layout/base.html" %}
+{% block title %}{{ cp.cp_no }} · Control Plan{% endblock %}
+
+{% block content %}
+<style>
+  .cp-field { width: 100%; border: 1px solid #dbe1ea; border-radius: 6px; background: white; padding: 7px 8px; font-size: 12px; line-height: 1.35; }
+  .cp-field:focus { outline: none; border-color: #2563eb; box-shadow: 0 0 0 3px #dbeafe; }
+  .cp-textarea { min-height: 62px; resize: vertical; }
+  .cp-standard-table { min-width: 1380px; width: 100%; table-layout: fixed; font-size: 12px; line-height: 1.45; }
+  .cp-standard-table th { padding: 10px 10px; vertical-align: middle; }
+  .cp-standard-table td { padding: 9px 10px; vertical-align: top; overflow-wrap: anywhere; word-break: break-word; }
+  .cp-standard-table .cp-process-cell { background: #f8fafc; }
+  .cp-standard-table .cp-process-start > td { border-top: 1.5px solid #cbd5e1; }
+  .cp-standard-table thead { position: sticky; top: 0; z-index: 5; }
+  @media print {
+    @page { size: A4 landscape; margin: 7mm; }
+    * { -webkit-print-color-adjust: exact !important; print-color-adjust: exact !important; }
+    aside, footer, .no-print, .print-hide { display: none !important; }
+    html, body { background: white !important; }
+    body > div { display: block !important; max-width: none !important; padding: 0 !important; }
+    main { width: 100% !important; max-width: none !important; }
+    .cp-print { overflow: visible !important; border: 0 !important; border-radius: 0 !important; box-shadow: none !important; }
+    .cp-print > header { padding: 0 0 3mm !important; }
+    .cp-print-title h1 { font-size: 16px !important; line-height: 1.2 !important; }
+    .cp-print-title p { margin-top: 1mm !important; font-size: 9px !important; }
+    .cp-standard-content { padding: 3mm 0 0 !important; }
+    .cp-metadata { display: grid !important; grid-template-columns: repeat(3, minmax(0, 1fr)) !important; margin-bottom: 3mm !important; padding-bottom: 3mm !important; column-gap: 5mm !important; row-gap: 2mm !important; font-size: 8px !important; }
+    .cp-metadata > div > div { margin-top: .5mm !important; }
+    .cp-table-wrap { overflow: visible !important; border-radius: 0 !important; }
+    .cp-standard-table { min-width: 0 !important; width: 100% !important; table-layout: fixed !important; font-size: 7.2pt !important; line-height: 1.25 !important; }
+    .cp-standard-table thead { display: table-header-group; position: static !important; }
+    .cp-standard-table tbody { display: table-row-group; }
+    .cp-standard-table tr { break-inside: avoid; page-break-inside: avoid; }
+    .cp-standard-table th { padding: 1.6mm 1.2mm !important; font-size: 6.8pt !important; }
+    .cp-standard-table td { padding: 1.4mm 1.2mm !important; }
+    .cp-standard-table .cp-character-type { margin-top: .7mm !important; font-size: 6pt !important; }
+  }
+</style>
+
+<div class="mx-auto max-w-[1500px] space-y-4">
+  <div class="no-print flex flex-wrap items-center justify-between gap-3">
+    <a href="{{ url_for('cp.index') }}" class="inline-flex items-center gap-2 text-sm font-semibold text-gray-500 hover:text-gray-900">
+      <svg class="h-4 w-4" fill="none" stroke="currentColor" viewBox="0 0 24 24" stroke-width="2"><path stroke-linecap="round" stroke-linejoin="round" d="M15 19l-7-7 7-7"/></svg>
+      返回控制计划
+    </a>
+    <div class="flex flex-wrap items-center gap-2">
+      <button type="button" onclick="toggleVersionPanel()" class="inline-flex h-9 items-center gap-2 rounded-md border border-gray-200 bg-white px-3 text-sm font-semibold text-gray-700 hover:bg-gray-50">
+        <svg class="h-4 w-4" fill="none" stroke="currentColor" viewBox="0 0 24 24" stroke-width="2"><path stroke-linecap="round" stroke-linejoin="round" d="M12 4v16m8-8H4"/></svg>
+        新版本
+      </button>
+      {% if version %}
+      <a href="{{ url_for('cp.download', cp_id=cp.id, version_id=version.id) }}" class="inline-flex h-9 items-center gap-2 rounded-md border border-gray-200 bg-white px-3 text-sm font-semibold text-gray-700 hover:bg-gray-50">
+        <svg class="h-4 w-4" fill="none" stroke="currentColor" viewBox="0 0 24 24" stroke-width="2"><path stroke-linecap="round" stroke-linejoin="round" d="M4 16v1a3 3 0 003 3h10a3 3 0 003-3v-1m-4-4l-4 4m0 0l-4-4m4 4V4"/></svg>
+        原始附件
+      </a>
+      <a href="{{ url_for('cp.export_csv', cp_id=cp.id, version_id=version.id) }}" class="inline-flex h-9 items-center gap-2 rounded-md border border-gray-200 bg-white px-3 text-sm font-semibold text-gray-700 hover:bg-gray-50">
+        <svg class="h-4 w-4" fill="none" stroke="currentColor" viewBox="0 0 24 24" stroke-width="2"><path stroke-linecap="round" stroke-linejoin="round" d="M8 17l4 4 4-4m-4-5v9M20 12V5a2 2 0 00-2-2H6a2 2 0 00-2 2v14a2 2 0 002 2h2"/></svg>
+        导出 CSV
+      </a>
+      {% endif %}
+      {% if tab == 'standard' %}
+      <button type="button" onclick="window.print()" class="inline-flex h-9 items-center gap-2 rounded-md bg-gray-900 px-3 text-sm font-semibold text-white hover:bg-gray-800">
+        <svg class="h-4 w-4" fill="none" stroke="currentColor" viewBox="0 0 24 24" stroke-width="2"><path stroke-linecap="round" stroke-linejoin="round" d="M6 9V2h12v7M6 18H4a2 2 0 01-2-2v-5a2 2 0 012-2h16a2 2 0 012 2v5a2 2 0 01-2 2h-2M6 14h12v8H6z"/></svg>
+        打印 / PDF
+      </button>
+      {% else %}
+      <a href="{{ url_for('cp.detail', cp_id=cp.id, tab='standard', version_id=version.id if version else none) }}" class="inline-flex h-9 items-center gap-2 rounded-md bg-gray-900 px-3 text-sm font-semibold text-white hover:bg-gray-800">
+        <svg class="h-4 w-4" fill="none" stroke="currentColor" viewBox="0 0 24 24" stroke-width="2"><path stroke-linecap="round" stroke-linejoin="round" d="M4 6h16M4 10h16M4 14h10M4 18h10"/></svg>
+        查看标准版
+      </a>
+      {% endif %}
+    </div>
+  </div>
+
+  <div id="newVersionPanel" class="no-print hidden rounded-lg border border-blue-200 bg-blue-50 p-4">
+    <form method="post" action="{{ url_for('cp.edit', cp_id=cp.id) }}" enctype="multipart/form-data" class="flex flex-wrap items-end gap-3">
+      <input type="hidden" name="process_type" value="{{ cp.process_type }}">
+      <input type="hidden" name="notes" value="{{ cp.notes or '' }}">
+      <div class="w-28">
+        <label class="mb-1 block text-[11px] font-bold uppercase text-blue-700">Revision</label>
+        <input name="revision" value="{{ cp.revision or 'A0' }}" class="cp-field font-mono">
+      </div>
+      <div class="min-w-[280px] flex-1">
+        <label class="mb-1 block text-[11px] font-bold uppercase text-blue-700">控制计划附件</label>
+        <input type="file" name="file" required accept=".pdf,.doc,.docx,.xls,.xlsx,.xlsm,.ppt,.pptx" class="cp-field bg-white">
+      </div>
+      <button class="h-9 rounded-md bg-blue-600 px-4 text-sm font-bold text-white hover:bg-blue-700">上传并提取</button>
+    </form>
+  </div>
+
+  <section class="cp-print overflow-hidden rounded-lg border border-gray-200 bg-white shadow-sm">
+    <header class="border-b border-gray-200 px-6 py-5">
+      <div class="flex flex-wrap items-start justify-between gap-4">
+        <div class="cp-print-title">
+          <div class="mb-2 flex flex-wrap items-center gap-2 text-xs font-semibold text-gray-500">
+            <span>{{ process_labels.get(cp.process_type, cp.process_type or 'Other') }}</span>
+            <span>·</span>
+            <span>{{ cp.supplier.code }}</span>
+            {% if version %}<span>·</span><span>V{{ version.version_no }} / {{ version.revision or cp.revision }}</span>{% endif %}
+          </div>
+          <h1 class="text-2xl font-bold text-gray-950">{{ cp.part.pn }} · {{ cp.part.description or 'Control Plan' }}</h1>
+          <p class="mt-1 text-sm text-gray-500">{{ cp.supplier.name or cp.supplier.chinese_name }}{% if cp.supplier.name and cp.supplier.chinese_name %} / {{ cp.supplier.chinese_name }}{% endif %}</p>
+        </div>
+        <div class="print-hide flex items-center gap-5 text-right">
+          <div>
+            <div class="text-[11px] font-bold uppercase text-gray-400">Quality score</div>
+            <div class="text-2xl font-bold {% if data.quality_score >= 85 %}text-emerald-600{% elif data.quality_score >= 60 %}text-amber-600{% else %}text-red-600{% endif %}">{{ data.quality_score or 0 }}</div>
+          </div>
+          <div>
+            <div class="text-[11px] font-bold uppercase text-gray-400">Status</div>
+            <div class="mt-1 rounded-md px-2 py-1 text-xs font-bold {% if version and version.status == 'published' %}bg-emerald-50 text-emerald-700{% else %}bg-amber-50 text-amber-700{% endif %}">
+              {{ 'Published' if version and version.status == 'published' else 'Review required' }}
+            </div>
+          </div>
+        </div>
+      </div>
+
+      <div class="print-hide mt-5 grid grid-cols-2 gap-px overflow-hidden rounded-md border border-gray-200 bg-gray-200 md:grid-cols-4">
+        <div class="bg-white px-4 py-3"><div class="text-[10px] font-bold uppercase text-gray-400">Processes</div><div class="mt-1 text-lg font-bold">{{ data.steps|length }}</div></div>
+        <div class="bg-white px-4 py-3"><div class="text-[10px] font-bold uppercase text-gray-400">Characteristics</div><div class="mt-1 text-lg font-bold">{{ characteristic_count }}</div></div>
+        <div class="bg-white px-4 py-3"><div class="text-[10px] font-bold uppercase text-gray-400">Template</div><div class="mt-1 truncate text-sm font-bold">{{ version.source_template if version else '—' }}</div></div>
+        <div class="bg-white px-4 py-3"><div class="text-[10px] font-bold uppercase text-gray-400">Source sheet</div><div class="mt-1 truncate text-sm font-bold">{{ version.source_sheet if version else '—' }}</div></div>
+      </div>
+    </header>
+
+    <nav class="no-print flex overflow-x-auto border-b border-gray-200 px-5">
+      {% for key, label in [('standard', '标准控制计划'), ('review', '审核与编辑'), ('original', '原件对照'), ('history', '版本历史')] %}
+      <a href="{{ url_for('cp.detail', cp_id=cp.id, tab=key, version_id=version.id if version else none) }}"
+         class="whitespace-nowrap border-b-2 px-4 py-3 text-sm font-bold {{ 'border-gray-900 text-gray-900' if tab == key else 'border-transparent text-gray-400 hover:text-gray-700' }}">{{ label }}</a>
+      {% endfor %}
+    </nav>
+
+    {% if tab == 'standard' %}
+    <div class="cp-standard-content p-5">
+      <div class="cp-metadata mb-5 grid gap-x-8 gap-y-3 border-b border-gray-200 pb-5 text-sm md:grid-cols-3">
+        <div><span class="text-gray-400">Control Plan No.</span><div class="mt-1 font-mono font-bold">{{ data.metadata.control_plan_number or cp.cp_no }}</div></div>
+        <div><span class="text-gray-400">Part</span><div class="mt-1 font-bold">{{ data.metadata.part_number or cp.part.pn }} · {{ data.metadata.part_name or cp.part.description or '—' }}</div></div>
+        <div><span class="text-gray-400">Organization</span><div class="mt-1 font-bold">{{ data.metadata.organization or cp.supplier.name or cp.supplier.chinese_name }}</div></div>
+        <div><span class="text-gray-400">Compiled</span><div class="mt-1 font-semibold">{{ data.metadata.compiled_date or '—' }}</div></div>
+        <div><span class="text-gray-400">Revised</span><div class="mt-1 font-semibold">{{ data.metadata.revised_date or version.revision if version else '—' }}</div></div>
+        <div><span class="text-gray-400">Source</span><div class="mt-1 font-semibold">{{ version.original_name if version else '—' }}</div></div>
+      </div>
+
+      {% if data.quality_issues %}
+      <div class="no-print mb-5 border-l-4 {{ 'border-red-500 bg-red-50' if critical_count else 'border-amber-400 bg-amber-50' }} px-4 py-3">
+        <div class="text-sm font-bold text-gray-900">质量检查：{{ data.quality_issues|length }} 类提示</div>
+        <div class="mt-2 flex flex-wrap gap-x-5 gap-y-1 text-xs text-gray-600">
+          {% for issue in data.quality_issues %}
+          <span><b>{{ issue.count }}</b> · {{ issue.message }}</span>
+          {% endfor %}
+        </div>
+      </div>
+      {% endif %}
+
+      <div class="cp-table-wrap overflow-x-auto rounded-md border border-gray-200">
+        <table class="cp-standard-table border-collapse">
+          <colgroup>
+            <col style="width: 5%">
+            <col style="width: 12%">
+            <col style="width: 10%">
+            <col style="width: 13%">
+            <col style="width: 20%">
+            <col style="width: 13%">
+            <col style="width: 8%">
+            <col style="width: 10%">
+            <col style="width: 9%">
+          </colgroup>
+          <thead class="bg-gray-900 text-white">
+            <tr>
+              <th class="border-r border-gray-700 text-left">Process No.</th>
+              <th class="border-r border-gray-700 text-left">Process / Operation</th>
+              <th class="border-r border-gray-700 text-left">Equipment</th>
+              <th class="border-r border-gray-700 text-left">Characteristic</th>
+              <th class="border-r border-gray-700 text-left">Specification / Tolerance</th>
+              <th class="border-r border-gray-700 text-left">Measurement</th>
+              <th class="border-r border-gray-700 text-left">Sample / Frequency</th>
+              <th class="border-r border-gray-700 text-left">Control Method</th>
+              <th class="text-left">Reaction Plan</th>
+            </tr>
+          </thead>
+          <tbody class="divide-y divide-gray-200">
+            {% for step in data.steps %}
+            {% set characteristics = step.characteristics or [{}] %}
+            {% for char in characteristics %}
+            <tr class="{{ 'bg-amber-50/50' if char.is_key_char or step.is_key_process else 'bg-white' }} {{ 'cp-process-start' if loop.first }} align-top">
+              {% if loop.first %}
+              <td rowspan="{{ characteristics|length }}" class="cp-process-cell border-r border-gray-200 font-mono font-bold">{{ step.process_code or step.seq }}</td>
+              <td rowspan="{{ characteristics|length }}" class="cp-process-cell border-r border-gray-200 font-bold">{{ step.process_name }}</td>
+              <td rowspan="{{ characteristics|length }}" class="cp-process-cell border-r border-gray-200 text-gray-600">{{ step.machine or '—' }}</td>
+              {% endif %}
+              <td class="border-r border-gray-200">
+                <div class="font-semibold">{{ char.char_name or '—' }}</div>
+                <div class="cp-character-type mt-1 text-[9px] uppercase text-gray-400">{{ char.char_type or 'product' }}{% if char.special_class %} · {{ char.special_class }}{% endif %}</div>
+              </td>
+              <td class="whitespace-pre-line border-r border-gray-200">{{ char.spec_value or '—' }}</td>
+              <td class="whitespace-pre-line border-r border-gray-200">{{ char.measurement_method or '—' }}</td>
+              <td class="border-r border-gray-200"><div>{{ char.sample_size or '—' }}</div><div class="mt-1 text-gray-500">{{ char.frequency or '—' }}</div></td>
+              <td class="whitespace-pre-line border-r border-gray-200">{{ char.control_method or '—' }}</td>
+              <td class="whitespace-pre-line">{{ char.reaction_plan or '—' }}</td>
+            </tr>
+            {% endfor %}
+            {% endfor %}
+          </tbody>
+        </table>
+      </div>
+    </div>
+
+    {% elif tab == 'review' %}
+    <div class="p-5">
+      {% if version %}
+      <div class="mb-4 flex flex-wrap items-center justify-between gap-3 border-b border-gray-200 pb-4">
+        <div>
+          <h2 class="font-bold text-gray-900">审核版本 V{{ version.version_no }}</h2>
+          <p class="mt-1 text-xs text-gray-500">修改只保存到结构化草稿，原始附件保持不变。</p>
+        </div>
+        <form method="post" action="{{ url_for('cp.reanalyze', cp_id=cp.id, version_id=version.id) }}" onsubmit="return beginControlPlanRecognition(this);">
+          <button id="aiRecognitionButton" type="submit" class="inline-flex h-9 min-w-[138px] items-center justify-center gap-2 rounded-md border border-violet-200 bg-violet-50 px-3 text-sm font-bold text-violet-700 hover:bg-violet-100 disabled:cursor-wait disabled:opacity-70">
+            <svg id="aiRecognitionIcon" class="h-4 w-4" fill="none" stroke="currentColor" viewBox="0 0 24 24" stroke-width="2"><path stroke-linecap="round" stroke-linejoin="round" d="M4 4v6h6M20 20v-6h-6M5.5 15a7 7 0 0011.8 2M18.5 9A7 7 0 006.7 7"/></svg>
+            <span id="aiRecognitionButtonText">AI 重新识别</span>
+          </button>
+        </form>
+      </div>
+
+      <div id="aiRecognitionProgress" class="mb-4 hidden items-center gap-3 rounded-md border border-violet-200 bg-violet-50 px-4 py-3 text-violet-800" role="status" aria-live="polite">
+        <svg class="h-5 w-5 animate-spin" fill="none" viewBox="0 0 24 24" aria-hidden="true">
+          <circle class="opacity-25" cx="12" cy="12" r="9" stroke="currentColor" stroke-width="3"></circle>
+          <path class="opacity-90" fill="currentColor" d="M21 12a9 9 0 00-9-9v3a6 6 0 016 6h3z"></path>
+        </svg>
+        <div>
+          <div class="text-sm font-bold">AI 识别进行中...</div>
+          <div class="mt-0.5 text-xs text-violet-600">正在解析附件、识别表格并整理控制计划字段，请稍候且不要重复点击。</div>
+        </div>
+      </div>
+
+      {% if version.extraction_error %}
+      <div class="mb-4 border-l-4 border-red-500 bg-red-50 px-4 py-3 text-sm text-red-800">{{ version.extraction_error }}</div>
+      {% endif %}
+
+      <form method="post" action="{{ url_for('cp.save_review', cp_id=cp.id, version_id=version.id) }}">
+        <input type="hidden" name="step_index" value="{{ review_step_index }}">
+        <div class="mb-5 grid gap-3 md:grid-cols-3">
+          {% for key, label in [('control_plan_number', 'Control Plan No.'), ('part_number', 'Part Number'), ('part_name', 'Part Name'), ('organization', 'Organization'), ('compiled_date', 'Compiled Date'), ('revised_date', 'Revised Date')] %}
+          <label class="text-[11px] font-bold uppercase text-gray-500">{{ label }}
+            <input name="meta_{{ key }}" value="{{ data.metadata.get(key, '') }}" class="cp-field mt-1 normal-case font-normal">
+          </label>
+          {% endfor %}
+        </div>
+
+        {% if review_step %}
+        <div class="mb-3 flex flex-wrap items-center justify-between gap-3 border-y border-gray-200 py-3">
+          <div>
+            <div class="text-[10px] font-bold uppercase text-gray-400">Review process</div>
+            <div class="mt-1 text-sm font-bold">{{ review_step_index + 1 }} / {{ data.steps|length }}</div>
+          </div>
+          <div class="flex min-w-[320px] flex-1 items-center justify-end gap-2">
+            {% if review_step_index > 0 %}
+            <a href="{{ url_for('cp.detail', cp_id=cp.id, tab='review', version_id=version.id, step=review_step_index - 1) }}" class="rounded-md border border-gray-200 px-3 py-2 text-xs font-bold text-gray-600 hover:bg-gray-50">上一工序</a>
+            {% endif %}
+            <select onchange="location.href=this.value" class="max-w-[440px] flex-1 rounded-md border border-gray-200 bg-white px-3 py-2 text-sm font-semibold text-gray-700">
+              {% for item in data.steps %}
+              <option value="{{ url_for('cp.detail', cp_id=cp.id, tab='review', version_id=version.id, step=loop.index0) }}" {{ 'selected' if loop.index0 == review_step_index }}>
+                {{ item.process_code or item.seq }} · {{ item.process_name }}
+              </option>
+              {% endfor %}
+            </select>
+            {% if review_step_index + 1 < data.steps|length %}
+            <a href="{{ url_for('cp.detail', cp_id=cp.id, tab='review', version_id=version.id, step=review_step_index + 1) }}" class="rounded-md border border-gray-200 px-3 py-2 text-xs font-bold text-gray-600 hover:bg-gray-50">下一工序</a>
+            {% endif %}
+          </div>
+        </div>
+
+        <div class="overflow-x-auto rounded-md border border-gray-200">
+          <table class="min-w-[1450px] w-full text-[11px]">
+            <thead class="bg-gray-900 text-white">
+              <tr>
+                <th class="px-2 py-2 text-left">Characteristic</th>
+                <th class="px-2 py-2 text-left">Specification</th>
+                <th class="px-2 py-2 text-left">Measurement</th>
+                <th class="px-2 py-2 text-left">Sample / Frequency</th>
+                <th class="px-2 py-2 text-left">Inspector</th>
+                <th class="px-2 py-2 text-left">Control Method</th>
+                <th class="px-2 py-2 text-left">Reaction Plan</th>
+                <th class="px-2 py-2 text-left">Source</th>
+              </tr>
+            </thead>
+            <tbody>
+              {% set si = review_step_index %}
+              {% set step = review_step %}
+              <tr class="border-t border-gray-300 bg-gray-100">
+                <td colspan="8" class="p-2">
+                  <div class="grid grid-cols-[100px_1fr_1fr_auto] gap-2">
+                    <input name="s{{ si }}_process_code" value="{{ step.process_code }}" placeholder="Process No." class="cp-field font-mono">
+                    <input name="s{{ si }}_process_name" value="{{ step.process_name }}" placeholder="Process name" class="cp-field font-semibold">
+                    <input name="s{{ si }}_machine" value="{{ step.machine }}" placeholder="Equipment / machine" class="cp-field">
+                    <label class="flex items-center gap-2 rounded-md border border-gray-200 bg-white px-3 text-xs font-bold text-gray-600"><input type="checkbox" name="s{{ si }}_is_key_process" value="1" {{ 'checked' if step.is_key_process }}> Key</label>
+                  </div>
+                  <input type="hidden" name="s{{ si }}_notes" value="{{ step.notes }}">
+                </td>
+              </tr>
+              {% for char in step.characteristics %}
+              {% set ci = loop.index0 %}
+              <tr class="border-t border-gray-100 align-top">
+                <td class="w-52 p-2">
+                  <div class="flex gap-1">
+                    <input name="s{{ si }}c{{ ci }}_char_code" value="{{ char.char_code }}" placeholder="#" class="cp-field w-12 font-mono">
+                    <input name="s{{ si }}c{{ ci }}_char_name" value="{{ char.char_name }}" class="cp-field font-semibold">
+                  </div>
+                  <div class="mt-1 flex gap-1">
+                    <select name="s{{ si }}c{{ ci }}_char_type" class="cp-field">
+                      <option value="product" {{ 'selected' if char.char_type == 'product' }}>Product</option>
+                      <option value="process" {{ 'selected' if char.char_type == 'process' }}>Process</option>
+                    </select>
+                    <input name="s{{ si }}c{{ ci }}_special_class" value="{{ char.special_class }}" placeholder="Class" class="cp-field">
+                    <label class="flex items-center px-1" title="关键特性"><input type="checkbox" name="s{{ si }}c{{ ci }}_is_key_char" value="1" {{ 'checked' if char.is_key_char }}></label>
+                  </div>
+                </td>
+                <td class="w-56 p-2"><textarea name="s{{ si }}c{{ ci }}_spec_value" class="cp-field cp-textarea">{{ char.spec_value }}</textarea></td>
+                <td class="w-48 p-2"><textarea name="s{{ si }}c{{ ci }}_measurement_method" class="cp-field cp-textarea">{{ char.measurement_method }}</textarea></td>
+                <td class="w-40 p-2"><input name="s{{ si }}c{{ ci }}_sample_size" value="{{ char.sample_size }}" placeholder="Sample size" class="cp-field"><input name="s{{ si }}c{{ ci }}_frequency" value="{{ char.frequency }}" placeholder="Frequency" class="cp-field mt-1"></td>
+                <td class="w-32 p-2"><textarea name="s{{ si }}c{{ ci }}_inspector" class="cp-field cp-textarea">{{ char.inspector }}</textarea></td>
+                <td class="w-56 p-2"><textarea name="s{{ si }}c{{ ci }}_control_method" class="cp-field cp-textarea">{{ char.control_method }}</textarea></td>
+                <td class="w-48 p-2"><textarea name="s{{ si }}c{{ ci }}_reaction_plan" class="cp-field cp-textarea">{{ char.reaction_plan }}</textarea></td>
+                <td class="w-28 p-2 font-mono text-[10px] text-gray-400">{{ char.source_sheet }}<br>Row {{ char.source_row }}</td>
+              </tr>
+              {% endfor %}
+            </tbody>
+          </table>
+        </div>
+        {% endif %}
+
+        <div class="sticky bottom-3 mt-4 flex flex-wrap items-center justify-between gap-3 rounded-lg border border-gray-200 bg-white/95 p-3 shadow-lg backdrop-blur">
+          <div class="text-xs text-gray-500">保存后会重新计算完整度；发布后才会替换当前正式结构化版本。</div>
+          <button class="h-10 rounded-md bg-gray-900 px-5 text-sm font-bold text-white hover:bg-gray-800">保存审核草稿</button>
+        </div>
+      </form>
+
+      {% if data.steps %}
+      <form method="post" action="{{ url_for('cp.publish', cp_id=cp.id, version_id=version.id) }}" class="mt-3 flex justify-end" onsubmit="return confirm('确认将该版本发布为当前正式控制计划？');">
+        <button class="h-10 rounded-md bg-emerald-600 px-5 text-sm font-bold text-white hover:bg-emerald-700">审核通过并发布</button>
+      </form>
+      {% endif %}
+      {% else %}
+      <div class="py-16 text-center text-gray-400">暂无可审核版本。</div>
+      {% endif %}
+    </div>
+
+    {% elif tab == 'original' %}
+    <div class="p-5">
+      {% if version %}
+      <div class="no-print mb-3 flex items-center justify-between">
+        <div><div class="font-bold">{{ version.original_name }}</div><div class="text-xs text-gray-400">V{{ version.version_no }} · 原始文件只读</div></div>
+        <a href="{{ url_for('cp.download', cp_id=cp.id, version_id=version.id) }}" class="rounded-md border border-gray-200 px-3 py-2 text-sm font-bold text-gray-700 hover:bg-gray-50">下载原件</a>
+      </div>
+      <iframe src="{{ url_for('cp.view', cp_id=cp.id, version_id=version.id) }}" class="h-[72vh] w-full rounded-md border border-gray-200 bg-gray-100"></iframe>
+      {% else %}
+      <div class="py-16 text-center text-gray-400">没有原始附件。</div>
+      {% endif %}
+    </div>
+
+    {% elif tab == 'history' %}
+    <div class="p-5">
+      <div class="mb-4">
+        <h2 class="font-bold">版本记录</h2>
+        <p class="mt-1 text-xs text-gray-500">上传后的原件不可覆盖；发布旧版本时会自动将前一版本标记为已替代。</p>
+      </div>
+      <div class="divide-y divide-gray-200 border-y border-gray-200">
+        {% for item in versions %}
+        <div class="flex flex-wrap items-center gap-4 py-4">
+          <div class="w-16 font-mono text-lg font-bold">V{{ item.version_no }}</div>
+          <div class="min-w-[260px] flex-1">
+            <div class="font-semibold text-gray-900">{{ item.original_name }}</div>
+            <div class="mt-1 text-xs text-gray-400">{{ item.created_at.strftime('%Y-%m-%d %H:%M') }} · Revision {{ item.revision or '—' }} · {{ (item.size or 0) // 1024 }} KB</div>
+          </div>
+          <div class="w-28">
+            <div class="text-xs font-bold {{ 'text-emerald-600' if item.status == 'published' else 'text-amber-600' if item.status == 'review' else 'text-gray-500' }}">{{ item.status|upper }}</div>
+            <div class="mt-1 text-[10px] text-gray-400">Score {{ item.quality_score if item.quality_score is not none else '—' }}</div>
+          </div>
+          <div class="flex gap-2">
+            <a href="{{ url_for('cp.detail', cp_id=cp.id, tab='standard', version_id=item.id) }}" class="rounded-md border border-gray-200 px-3 py-2 text-xs font-bold text-gray-700 hover:bg-gray-50">查看</a>
+            <a href="{{ url_for('cp.download', cp_id=cp.id, version_id=item.id) }}" class="rounded-md border border-gray-200 px-3 py-2 text-xs font-bold text-gray-700 hover:bg-gray-50">下载</a>
+          </div>
+        </div>
+        {% endfor %}
+      </div>
+    </div>
+    {% endif %}
+  </section>
+</div>
+
+<script>
+function toggleVersionPanel() {
+  document.getElementById('newVersionPanel').classList.toggle('hidden');
+}
+
+function beginControlPlanRecognition(form) {
+  if (form.dataset.submitting === 'true') {
+    return false;
+  }
+  if (!confirm('AI 将重新判断列结构，并覆盖当前提取草稿。继续吗？')) {
+    return false;
+  }
+
+  form.dataset.submitting = 'true';
+  const button = document.getElementById('aiRecognitionButton');
+  const icon = document.getElementById('aiRecognitionIcon');
+  const buttonText = document.getElementById('aiRecognitionButtonText');
+  const progress = document.getElementById('aiRecognitionProgress');
+
+  button.disabled = true;
+  button.setAttribute('aria-busy', 'true');
+  icon.classList.add('animate-spin');
+  buttonText.textContent = 'AI 识别进行中...';
+  progress.classList.remove('hidden');
+  progress.classList.add('flex');
+  return true;
+}
+</script>
+{% endblock %}

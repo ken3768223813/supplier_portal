@@ -5,18 +5,8 @@
   <meta name="viewport" content="width=device-width, initial-scale=1" />
   <title>{% block title %}Quality Engineering Portal{% endblock %}</title>
 
-  <script src="https://cdn.tailwindcss.com"></script>
-  <script>
-    tailwind.config = {
-      theme: {
-        extend: {
-          fontFamily: {
-            sans: ['-apple-system', 'BlinkMacSystemFont', 'SF Pro Display', 'Segoe UI', 'Roboto', 'sans-serif']
-          }
-        }
-      }
-    }
-  </script>
+  <link rel="stylesheet" href="{{ url_for('static', filename='css/tailwind.css') }}" />
+  <link rel="stylesheet" href="{{ url_for('static', filename='css/app.css') }}" />
 
   <style>
     html {
@@ -34,6 +24,23 @@
 </head>
 
 <body class="bg-gray-50 text-gray-900 antialiased">
+
+  {% with messages = get_flashed_messages(with_categories=true) %}
+  {% if messages %}
+  <div class="fixed right-5 top-5 z-[100] w-[min(380px,calc(100vw-40px))] space-y-2">
+    {% for category, message in messages %}
+    <div class="flex items-start gap-3 rounded-lg border px-4 py-3 shadow-lg
+                {% if category == 'error' %}border-red-200 bg-red-50 text-red-800
+                {% elif category == 'warning' %}border-amber-200 bg-amber-50 text-amber-800
+                {% elif category == 'success' %}border-emerald-200 bg-emerald-50 text-emerald-800
+                {% else %}border-blue-200 bg-blue-50 text-blue-800{% endif %}">
+      <div class="min-w-0 flex-1 text-sm font-semibold leading-5">{{ message }}</div>
+      <button type="button" onclick="this.parentElement.remove()" class="shrink-0 text-lg leading-none opacity-50 hover:opacity-100" aria-label="关闭提示">×</button>
+    </div>
+    {% endfor %}
+  </div>
+  {% endif %}
+  {% endwith %}
 
   <div class="max-w-[1400px] mx-auto px-6 py-6 grid grid-cols-12 gap-6">
 
@@ -192,7 +199,7 @@
                 <path stroke-linecap="round" stroke-linejoin="round"
                       d="M3 5h12M9 3v2m1.048 9.5A18.022 18.022 0 016.412 9m6.088 9h7M11 21l5-10 5 10M12.751 5C11.783 10.77 8.07 15.61 3 18.129"/>
               </svg>
-              <span>English Drill</span>
+              <span>SQE English</span>
             </a>
 
 
@@ -225,6 +232,45 @@
       Quality Engineering Portal
     </div>
   </footer>
+
+  <script>
+    window.revealTRDocument = async function(event, url) {
+      event.preventDefault();
+      const button = event.currentTarget;
+      if (button.disabled) return;
+      button.disabled = true;
+      button.classList.add('opacity-60', 'cursor-wait');
+      try {
+        const response = await fetch(url, {
+          method: 'POST',
+          credentials: 'same-origin',
+          headers: {'Accept': 'application/json'}
+        });
+        const data = await response.json().catch(() => ({}));
+        if (!response.ok || !data.ok) {
+          throw new Error(data.error || 'Unable to open folder.');
+        }
+        showFolderNotice(data.message || 'File located in folder.', false);
+      } catch (error) {
+        showFolderNotice(error.message, true);
+      } finally {
+        button.disabled = false;
+        button.classList.remove('opacity-60', 'cursor-wait');
+      }
+    };
+
+    function showFolderNotice(message, isError) {
+      const notice = document.createElement('div');
+      notice.className = `fixed right-5 top-5 z-[120] max-w-sm rounded-lg border px-4 py-3 text-sm font-semibold shadow-lg ${
+        isError
+          ? 'border-red-200 bg-red-50 text-red-800'
+          : 'border-emerald-200 bg-emerald-50 text-emerald-800'
+      }`;
+      notice.textContent = message;
+      document.body.appendChild(notice);
+      setTimeout(() => notice.remove(), 3200);
+    }
+  </script>
 
 </body>
 </html>

@@ -8,6 +8,7 @@ import uuid
 import time
 import threading
 import subprocess
+import sys
 import hashlib
 import shutil
 from pathlib import Path
@@ -39,6 +40,7 @@ _scheduler_lock    = threading.Lock()
 _SCHEDULE_INTERVAL = 3600
 
 ALLOWED_8D_STATUS = {"NOT_REQUIRED", "NOT_RECEIVED", "RECEIVED_REJECT", "RECEIVED_PASS"}
+CLOSED_TR_STATUSES = {"closed", "done", "complete", "completed"}
 
 EIGHTD_SEARCH_MAP = {
     "NOT_REQUIRED": "不要求",
@@ -857,6 +859,39 @@ def _case_source_tr(case_no, exclude_tr_id=None):
     return candidates[0] if _case_sync_score(candidates[0]) > 0 else None
 
 
+def _case_resolution_source(trs):
+    """Return the strongest closed TR with an accepted 8D document."""
+    candidates = []
+    for tr in trs:
+        if (tr.status or "").lower() not in CLOSED_TR_STATUSES:
+            continue
+        if (tr.eight_d_status or "").upper() != "RECEIVED_PASS":
+            continue
+        has_8d_document = TRDocument.query.filter_by(
+            tr_id=tr.id, doc_type="8d_report"
+        ).first() is not None
+        if has_8d_document:
+            candidates.append(tr)
+    if not candidates:
+        return None
+    return max(
+        candidates,
+        key=lambda tr: (_case_sync_score(tr), tr.updated_at or tr.created_at, tr.id),
+    )
+
+
+def _case_resolution_targets(trs, source_tr):
+    if not source_tr:
+        return []
+    return [
+        tr for tr in trs
+        if tr.id != source_tr.id and (
+            (tr.status or "").lower() not in CLOSED_TR_STATUSES
+            or (tr.eight_d_status or "").upper() != "RECEIVED_PASS"
+        )
+    ]
+
+
 def _copy_case_document_to_tr(app, source_tr, source_doc, target_tr):
     if source_tr.id == target_tr.id:
         return False
@@ -1043,14 +1078,23 @@ def case_detail(case_no):
     if not trs:
         abort(404)
 
-    closed_statuses = {"closed", "done", "complete", "completed"}
-    open_count = sum(1 for tr in trs if (tr.status or "").lower() not in closed_statuses)
+    tr_ids = [tr.id for tr in trs]
+    document_counts = dict(
+        db.session.query(TRDocument.tr_id, func.count(TRDocument.id))
+        .filter(TRDocument.tr_id.in_(tr_ids))
+        .group_by(TRDocument.tr_id)
+        .all()
+    )
+
+    open_count = sum(1 for tr in trs if (tr.status or "").lower() not in CLOSED_TR_STATUSES)
     closed_count = len(trs) - open_count
     pending_8d = sum(1 for tr in trs if tr.eight_d_status == "NOT_RECEIVED")
     debit_total = sum((tr.debit_amount or 0) for tr in trs)
 
     suppliers = sorted({tr.supplier_name for tr in trs if tr.supplier_name})
     parts = sorted({tr.part_number for tr in trs if tr.part_number})
+    resolution_source = _case_resolution_source(trs)
+    resolution_targets = _case_resolution_targets(trs, resolution_source)
 
     return render_template(
         "tr/case_detail.html",
@@ -1062,8 +1106,55 @@ def case_detail(case_no):
         debit_total=debit_total,
         suppliers=suppliers,
         parts=parts,
+        document_counts=document_counts,
+        resolution_source=resolution_source,
+        resolution_targets=resolution_targets,
         back_url=_return_url_from_request(),
     )
+
+
+@tr_bp.route("/cases/<case_no>/sync-resolution", methods=["POST"])
+def sync_case_resolution(case_no):
+    case_no = _normalize_case_no(case_no)
+    if not case_no:
+        abort(404)
+    trs = TroubleReport.query.filter(TroubleReport.case_no == case_no).all()
+    if not trs:
+        abort(404)
+
+    source_tr = _case_resolution_source(trs)
+    targets = _case_resolution_targets(trs, source_tr)
+    if not source_tr:
+        flash("No closed TR with an accepted 8D report is available for Case sync.", "warning")
+        return redirect(url_for("tr.case_detail", case_no=case_no))
+    if not targets:
+        flash("All TRs in this Case already share the accepted 8D result.", "info")
+        return redirect(url_for("tr.case_detail", case_no=case_no))
+
+    source_documents = (
+        TRDocument.query
+        .filter_by(tr_id=source_tr.id, doc_type="8d_report")
+        .order_by(TRDocument.created_at.asc(), TRDocument.id.asc())
+        .all()
+    )
+    copied_documents = 0
+    for target_tr in targets:
+        _copy_case_fields(source_tr, target_tr)
+        target_tr.status = "Closed"
+        target_tr.eight_d_status = "RECEIVED_PASS"
+        for source_doc in source_documents:
+            if _copy_case_document_to_tr(
+                current_app._get_current_object(), source_tr, source_doc, target_tr
+            ):
+                copied_documents += 1
+
+    db.session.commit()
+    flash(
+        f"Case aligned from {source_tr.tr_no}: closed {len(targets)} TR(s) "
+        f"and synced {copied_documents} 8D document(s).",
+        "success",
+    )
+    return redirect(url_for("tr.case_detail", case_no=case_no))
 
 
 @tr_bp.route("/new", methods=["GET", "POST"])
@@ -1450,6 +1541,43 @@ def view_document(tr_id, doc_id):
     resp = make_response(send_file(file_path, mimetype=doc.mime or 'application/octet-stream'))
     resp.headers['Content-Disposition'] = f'inline; filename="{doc.original_name}"'
     return resp
+
+
+def _reveal_file_in_manager(file_path):
+    """Open the host file manager and select the requested document."""
+    file_path = os.path.abspath(file_path)
+    if os.name == "nt":
+        subprocess.Popen(["explorer.exe", "/select,", os.path.normpath(file_path)])
+    elif sys.platform == "darwin":
+        subprocess.Popen(["open", "-R", file_path])
+    else:
+        subprocess.Popen(["xdg-open", os.path.dirname(file_path)])
+
+
+@tr_bp.route("/<int:tr_id>/documents/<int:doc_id>/reveal", methods=["POST"])
+def reveal_document(tr_id, doc_id):
+    """Reveal a non-PDF document in the server's local file manager."""
+    TroubleReport.query.get_or_404(tr_id)
+    doc = TRDocument.query.filter_by(id=doc_id, tr_id=tr_id).first_or_404()
+    if Path(doc.original_name or "").suffix.lower() == ".pdf":
+        return jsonify(ok=False, error="PDF files use browser preview."), 400
+
+    upload_root = os.path.abspath(current_app.config["UPLOAD_DIR"])
+    file_path = os.path.abspath(os.path.join(upload_root, doc.rel_path))
+    try:
+        if os.path.commonpath([upload_root, file_path]) != upload_root:
+            abort(400, "Invalid document path")
+    except ValueError:
+        abort(400, "Invalid document path")
+    if not os.path.isfile(file_path):
+        return jsonify(ok=False, error="File not found."), 404
+
+    try:
+        _reveal_file_in_manager(file_path)
+    except Exception as exc:
+        current_app.logger.exception("[TR Document] failed to reveal %s", file_path)
+        return jsonify(ok=False, error=f"Unable to open folder: {exc}"), 500
+    return jsonify(ok=True, message=f"Located in folder: {doc.original_name}")
 
 
 @tr_bp.route("/<int:tr_id>/documents/<int:doc_id>/download")

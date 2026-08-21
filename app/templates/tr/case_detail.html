@@ -8,9 +8,11 @@
     -webkit-box-orient: vertical;
     overflow: hidden;
   }
+  @keyframes pulse-glow { 0%, 100% { opacity: 1; } 50% { opacity: .55; } }
+  .dot-pulse { animation: pulse-glow 2s ease-in-out infinite; }
 </style>
 
-<div class="max-w-[1280px] mx-auto px-6 py-6">
+<div class="max-w-[1440px] mx-auto px-6 py-6">
   <div class="mb-6 flex items-center justify-between gap-4">
     <div>
       <div class="flex items-center gap-2 text-sm text-gray-500 mb-2">
@@ -73,6 +75,49 @@
     </div>
   </div>
 
+  {% if resolution_source and resolution_targets %}
+  <div class="mb-6 border border-amber-200 bg-amber-50 px-5 py-4 rounded-lg">
+    <div class="flex flex-col gap-4 lg:flex-row lg:items-center lg:justify-between">
+      <div class="flex min-w-0 items-start gap-3">
+        <div class="mt-0.5 flex h-9 w-9 shrink-0 items-center justify-center rounded-lg bg-amber-100 text-amber-700">
+          <svg class="h-5 w-5" fill="none" stroke="currentColor" viewBox="0 0 24 24" stroke-width="2">
+            <path stroke-linecap="round" stroke-linejoin="round" d="M12 9v4m0 4h.01M10.3 3.7L2.8 17a2 2 0 001.7 3h15a2 2 0 001.7-3L13.7 3.7a2 2 0 00-3.4 0z"/>
+          </svg>
+        </div>
+        <div class="min-w-0">
+          <div class="flex flex-wrap items-center gap-2">
+            <h2 class="text-sm font-bold text-gray-900">Case 状态待统一</h2>
+            <span class="rounded-md bg-white px-2 py-1 font-mono text-[11px] font-bold text-gray-700 ring-1 ring-amber-200">{{ resolution_source.tr_no }}</span>
+            <span class="text-xs font-semibold text-emerald-700">8D accepted · Closed</span>
+          </div>
+          <p class="mt-1 text-sm leading-6 text-gray-700">
+            该 TR 已收到通过的 8D 报告并关闭；另有 {{ resolution_targets|length }} 条同 Case TR 仍为 Open 或 8D 未通过。
+          </p>
+          <div class="mt-2 flex flex-wrap items-center gap-2">
+            <span class="text-xs text-gray-500">待统一：</span>
+            {% for target in resolution_targets %}
+            <span class="rounded-md bg-white px-2 py-1 font-mono text-[11px] font-semibold text-gray-600 ring-1 ring-gray-200">{{ target.tr_no }}</span>
+            {% endfor %}
+          </div>
+          <p class="mt-2 text-xs text-gray-500">同步会复制 8D 结论与 8D 报告并关闭上述 TR，不会删除它们已有的附件。</p>
+        </div>
+      </div>
+      <form method="post"
+            action="{{ url_for('tr.sync_case_resolution', case_no=case_no) }}"
+            class="shrink-0"
+            onsubmit="return confirm('将 {{ resolution_source.tr_no }} 的 8D 结论与报告同步到 {{ resolution_targets|length }} 条 TR，并将其关闭。是否继续？');">
+        <button type="submit"
+                class="inline-flex h-10 w-full items-center justify-center gap-2 rounded-lg bg-gray-900 px-4 text-sm font-bold text-white transition-colors hover:bg-gray-800 lg:w-auto">
+          <svg class="h-4 w-4" fill="none" stroke="currentColor" viewBox="0 0 24 24" stroke-width="2">
+            <path stroke-linecap="round" stroke-linejoin="round" d="M4 4v6h6M20 20v-6h-6M5.1 15A7 7 0 0017 18.9L20 16M4 8l3-2.9A7 7 0 0118.9 9"/>
+          </svg>
+          同步结案结果
+        </button>
+      </form>
+    </div>
+  </div>
+  {% endif %}
+
   <div class="bg-white rounded-2xl border border-gray-100 overflow-hidden shadow-sm">
     <div class="px-6 py-4 border-b border-gray-100 flex items-center justify-between">
       <h2 class="text-lg font-bold text-gray-900">TR List</h2>
@@ -80,16 +125,21 @@
     </div>
 
     <div class="overflow-x-auto">
-      <table class="w-full">
+      <table class="w-full table-fixed">
         <thead>
           <tr class="border-b border-gray-100">
-            <th class="px-4 py-3 text-left text-[11px] font-bold text-gray-400 uppercase">Date</th>
-            <th class="px-4 py-3 text-left text-[11px] font-bold text-gray-400 uppercase">TR No.</th>
-            <th class="px-4 py-3 text-left text-[11px] font-bold text-gray-400 uppercase">Supplier</th>
-            <th class="px-4 py-3 text-left text-[11px] font-bold text-gray-400 uppercase">Part</th>
-            <th class="px-4 py-3 text-left text-[11px] font-bold text-gray-400 uppercase">Issue</th>
-            <th class="px-4 py-3 text-center text-[11px] font-bold text-gray-400 uppercase">Status</th>
-            <th class="px-4 py-3 text-center text-[11px] font-bold text-gray-400 uppercase">Action</th>
+            <th class="w-[28px] px-1 py-3.5"></th>
+            <th class="w-[74px] px-2 py-3.5 text-left text-[11px] font-bold text-gray-400 uppercase">Date</th>
+            <th class="w-[104px] px-2 py-3.5 text-left text-[11px] font-bold text-gray-400 uppercase">TR No.</th>
+            <th class="w-[7%] px-2 py-3.5 text-left text-[11px] font-bold text-gray-400 uppercase">Supplier</th>
+            <th class="w-[86px] px-2 py-3.5 text-left text-[11px] font-bold text-gray-400 uppercase">Part No.</th>
+            <th class="w-[8%] px-2 py-3.5 text-left text-[11px] font-bold text-gray-400 uppercase">Part Name</th>
+            <th class="w-[25%] px-3 py-3.5 text-left text-[11px] font-bold text-gray-400 uppercase">Issue</th>
+            <th class="w-[30px] px-1 py-3.5 text-center text-[11px] font-bold text-gray-400 uppercase">8D</th>
+            <th class="w-[54px] px-1 py-3.5 text-center text-[11px] font-bold text-gray-400 uppercase">Status</th>
+            <th class="w-[58px] px-1 py-3.5 text-center text-[11px] font-bold text-gray-400 uppercase">Debit</th>
+            <th class="w-[32px] px-1 py-3.5 text-center text-[11px] font-bold text-gray-400 uppercase">Doc</th>
+            <th class="w-[122px] px-1 py-3.5 text-center text-[11px] font-bold text-gray-400 uppercase">Action</th>
           </tr>
         </thead>
         <tbody class="divide-y divide-gray-50">
@@ -97,36 +147,93 @@
           {% set parts = (tr.remark or '').split('|') %}
           {% set date_str = parts[-1].strip() if parts|length > 1 else '' %}
           {% set st = (tr.status or '')|lower %}
-          <tr class="hover:bg-gray-50">
-            <td class="px-4 py-4 text-xs font-medium text-gray-500 whitespace-nowrap">{{ date_str or '—' }}</td>
-            <td class="px-4 py-4">
-              <span class="font-mono font-bold text-xs px-2 py-1 rounded-lg bg-gray-900 text-white">{{ tr.tr_no }}</span>
+          <tr class="hover:bg-gray-50 align-top {% if tr.is_pinned %}bg-yellow-50/40{% endif %}">
+            <td class="px-1 py-4 text-center">
+              <button type="button" onclick="toggleCasePin({{ tr.id }}, this)"
+                      class="w-7 h-7 inline-flex items-center justify-center rounded-lg hover:bg-yellow-50 transition-all"
+                      data-pinned="{{ '1' if tr.is_pinned else '0' }}"
+                      title="{{ '取消重点跟进' if tr.is_pinned else '标记为重点跟进（领导关注）' }}">
+                {% if tr.is_pinned %}
+                <svg class="w-4 h-4 text-yellow-500 fill-current" viewBox="0 0 24 24"><path d="M12 2l2.4 7.4H22l-6.2 4.5 2.4 7.4L12 16.8l-6.2 4.5 2.4-7.4L2 9.4h7.6z"/></svg>
+                {% else %}
+                <svg class="w-4 h-4 text-gray-300 hover:text-yellow-400" fill="none" stroke="currentColor" viewBox="0 0 24 24" stroke-width="2"><path stroke-linecap="round" stroke-linejoin="round" d="M11.049 2.927c.3-.921 1.603-.921 1.902 0l1.519 4.674a1 1 0 00.95.69h4.915c.969 0 1.371 1.24.588 1.81l-3.976 2.888a1 1 0 00-.363 1.118l1.518 4.674c.3.922-.755 1.688-1.538 1.118l-3.976-2.888a1 1 0 00-1.176 0l-3.976 2.888c-.783.57-1.838-.196-1.538-1.118l1.518-4.674a1 1 0 00-.363-1.118l-3.976-2.888c-.784-.57-.38-1.81.588-1.81h4.914a1 1 0 00.951-.69l1.519-4.674z"/></svg>
+                {% endif %}
+              </button>
             </td>
-            <td class="px-4 py-4 text-sm font-semibold text-gray-700">{{ tr.supplier_name }}</td>
-            <td class="px-4 py-4">
+            <td class="px-2 py-4 text-xs font-medium text-gray-500 whitespace-nowrap">{{ date_str or '—' }}</td>
+            <td class="px-2 py-4">
+              <span class="font-mono font-bold text-xs px-2 py-1.5 rounded-lg bg-gray-900 text-white inline-block" title="{{ tr.tr_no }}">{{ tr.tr_no }}</span>
+            </td>
+            <td class="px-2 py-4"><div class="font-semibold text-xs text-gray-900 truncate" title="{{ tr.supplier_name }}">{{ tr.supplier_name }}</div></td>
+            <td class="px-2 py-4">
               {% if tr.part_number %}
-              <span class="font-mono text-xs px-2 py-1 rounded-md bg-blue-50 text-blue-700">{{ tr.part_number }}</span>
+              <span class="font-mono text-xs px-2 py-1 rounded-md bg-blue-50 text-blue-700 inline-block max-w-[76px] truncate" title="{{ tr.part_number }}">{{ tr.part_number }}</span>
               {% else %}
               <span class="text-gray-300">—</span>
               {% endif %}
             </td>
-            <td class="px-4 py-4 text-sm text-gray-700 max-w-xl">
+            <td class="px-2 py-4 text-sm text-gray-600"><div class="truncate" title="{{ tr.part_name or '' }}">{{ tr.part_name or '—' }}</div></td>
+            <td class="px-3 py-4 text-xs text-gray-700">
               <div class="line-clamp-2">{{ tr.investigation_note or tr.issue_summary or tr.issue_description or '—' }}</div>
             </td>
-            <td class="px-4 py-4 text-center">
-              {% if st in ['closed','done','completed'] %}
-              <span class="text-[10px] font-bold px-2 py-0.5 rounded bg-green-100 text-green-700">Closed</span>
-              {% elif st in ['in progress'] %}
-              <span class="text-[10px] font-bold px-2 py-0.5 rounded bg-blue-100 text-blue-700">WIP</span>
+            <td class="px-1 py-4 text-center">
+              {% set d8 = (tr.eight_d_status or 'NOT_REQUIRED')|trim|upper %}
+              {% set has_rcca = tr.eight_d_root_cause or tr.eight_d_action %}
+              <button type="button" onclick="openRcca({{ tr.id }})" class="relative inline-flex w-7 h-7 items-center justify-center rounded-full hover:bg-gray-100" title="点击查看 8D 分析">
+                {% if d8 == 'NOT_REQUIRED' %}<span class="w-3 h-3 rounded-full bg-gray-200"></span>
+                {% elif d8 == 'NOT_RECEIVED' %}<span class="dot-pulse w-3 h-3 rounded-full bg-yellow-400"></span>
+                {% elif d8 == 'RECEIVED_REJECT' %}<span class="w-3 h-3 rounded-full bg-red-500"></span>
+                {% elif d8 == 'RECEIVED_PASS' %}<span class="w-3 h-3 rounded-full bg-green-500"></span>
+                {% else %}<span class="w-3 h-3 rounded-full bg-gray-200"></span>{% endif %}
+                {% if has_rcca %}<span class="absolute inset-0 rounded-full ring-2 ring-violet-400 ring-offset-1"></span>{% endif %}
+              </button>
+            </td>
+            <td class="px-1 py-4 text-center">
+              {% if st in ['overdue','late'] %}<span class="h-6 px-2.5 rounded-md text-[10px] font-bold uppercase bg-red-100 text-red-700 inline-flex items-center">Late</span>
+              {% elif st in ['closed','done','complete','completed'] %}<span class="h-6 px-2.5 rounded-md text-[10px] font-bold uppercase bg-green-100 text-green-700 inline-flex items-center">Closed</span>
+              {% elif st in ['in progress','in_progress'] %}<span class="h-6 px-2.5 rounded-md text-[10px] font-bold uppercase bg-blue-100 text-blue-700 inline-flex items-center">WIP</span>
+              {% else %}<span class="h-6 px-2.5 rounded-md text-[10px] font-bold uppercase bg-orange-100 text-orange-700 inline-flex items-center">Open</span>{% endif %}
+            </td>
+            <td class="px-1 py-4 text-center">
+              {% if tr.debit_amount %}
+                {% set sym = {'EUR':'€','USD':'$','CNY':'¥','VND':'₫'}.get(tr.debit_currency or 'EUR', '') %}
+                {% set debit_cls = 'bg-emerald-50 text-emerald-700 border-emerald-200' if tr.debit_signed else 'bg-red-50 text-red-700 border-red-200' %}
+                <span class="inline-flex h-6 items-center whitespace-nowrap rounded-md border px-2 text-[10px] font-bold {{ debit_cls }}" title="{{ 'Signed' if tr.debit_signed else 'Unsigned' }} | {{ tr.debit_ref or '' }} | {{ tr.debit_date or '' }}">{{ sym }}{{ '{:,.0f}'.format(tr.debit_amount) }}</span>
+              {% else %}<span class="text-gray-300 text-xs">—</span>{% endif %}
+            </td>
+            <td class="px-1 py-4 text-center">
+              {% set doc_count = document_counts.get(tr.id, 0) %}
+              {% if doc_count %}
+              <button type="button"
+                      onclick="openCaseTRDocuments({{ tr.id }})"
+                      class="inline-flex h-7 w-7 items-center justify-center rounded-lg bg-purple-50 text-xs font-bold text-purple-700 transition-colors hover:bg-purple-100"
+                      title="View {{ doc_count }} document{% if doc_count != 1 %}s{% endif %}">
+                {{ doc_count }}
+              </button>
               {% else %}
-              <span class="text-[10px] font-bold px-2 py-0.5 rounded bg-orange-100 text-orange-700">Open</span>
+              <span class="text-gray-300">—</span>
               {% endif %}
             </td>
-            <td class="px-4 py-4 text-center">
+            <td class="px-1 py-4">
+              <div class="flex items-center justify-center gap-0.5">
+              {% set row_8d = (tr.eight_d_status or '')|upper %}
+              {% if st not in ['closed','done','completed'] and row_8d in ['NOT_RECEIVED','RECEIVED_REJECT'] %}
+              <form method="post" action="{{ url_for('tr.create_8d_reminder_draft', tr_id=tr.id) }}" class="inline">
+                <input type="hidden" name="next" value="{{ request.full_path }}">
+                <button type="submit" class="w-7 h-7 rounded-md bg-amber-50 text-amber-600 hover:bg-amber-100 inline-flex items-center justify-center" title="Create 8D reminder draft #{{ (tr.eight_d_reminder_count or 0) + 1 }}"><svg class="w-3.5 h-3.5" fill="none" stroke="currentColor" viewBox="0 0 24 24" stroke-width="2"><path stroke-linecap="round" stroke-linejoin="round" d="M3 8l7.89 5.26a2 2 0 002.22 0L21 8"/><path stroke-linecap="round" stroke-linejoin="round" d="M21 8v9a2 2 0 01-2 2H5a2 2 0 01-2-2V8"/></svg></button>
+              </form>
+              <form method="post" action="{{ url_for('tr.mark_8d_reminder_sent', tr_id=tr.id) }}" class="inline" onsubmit="return confirm('Mark this 8D reminder as sent?');">
+                <input type="hidden" name="next" value="{{ request.full_path }}">
+                <button type="submit" class="w-7 h-7 rounded-md bg-emerald-50 text-emerald-600 hover:bg-emerald-100 inline-flex items-center justify-center" title="Mark reminder sent. Sent: {{ tr.eight_d_reminder_count or 0 }}"><svg class="w-3.5 h-3.5" fill="none" stroke="currentColor" viewBox="0 0 24 24" stroke-width="2"><path stroke-linecap="round" stroke-linejoin="round" d="M5 13l4 4L19 7"/></svg></button>
+              </form>
+              {% endif %}
               <a href="{{ url_for('tr.edit_tr', tr_id=tr.id, next=request.full_path) }}"
-                 class="inline-flex items-center justify-center px-3 py-1.5 rounded-lg bg-gray-50 text-gray-600 text-xs font-semibold hover:bg-blue-50 hover:text-blue-600">
-                Edit
-              </a>
+                 class="w-7 h-7 rounded-md bg-gray-50 text-gray-500 hover:bg-blue-50 hover:text-blue-600 inline-flex items-center justify-center" title="Edit"><svg class="w-3.5 h-3.5" fill="none" stroke="currentColor" viewBox="0 0 24 24" stroke-width="2"><path stroke-linecap="round" stroke-linejoin="round" d="M11 5H6a2 2 0 00-2 2v11a2 2 0 002 2h11a2 2 0 002-2v-5m-1.414-9.414a2 2 0 112.828 2.828L11.828 15H9v-2.828l8.586-8.586z"/></svg></a>
+              <form method="post" action="{{ url_for('tr.delete_tr', tr_id=tr.id) }}" class="inline" onsubmit="return confirm('Delete {{ tr.tr_no }}?');">
+                <input type="hidden" name="next" value="{{ request.full_path }}">
+                <button type="submit" class="w-7 h-7 rounded-md bg-gray-50 text-gray-500 hover:bg-red-50 hover:text-red-600 inline-flex items-center justify-center" title="Delete"><svg class="w-3.5 h-3.5" fill="none" stroke="currentColor" viewBox="0 0 24 24" stroke-width="2"><path stroke-linecap="round" stroke-linejoin="round" d="M19 7l-.867 12.142A2 2 0 0116.138 21H7.862a2 2 0 01-1.995-1.858L5 7m5 4v6m4-6v6m1-10V4a1 1 0 00-1-1h-4a1 1 0 00-1 1v3M4 7h16"/></svg></button>
+              </form>
+              </div>
             </td>
           </tr>
           {% endfor %}
@@ -135,5 +242,62 @@
     </div>
   </div>
 </div>
+
+<script>
+  window.openCaseTRDocuments = function(trId) {
+    const existing = document.getElementById('tr-documents-modal-container');
+    if (existing) existing.remove();
+
+    const container = document.createElement('div');
+    container.id = 'tr-documents-modal-container';
+    container.style.opacity = '0';
+    container.style.transition = 'opacity 0.2s ease';
+    document.body.appendChild(container);
+    document.body.style.overflow = 'hidden';
+
+    fetch(`/tr/${trId}/documents/panel`)
+      .then(response => {
+        if (!response.ok) throw new Error('Unable to load documents.');
+        return response.text();
+      })
+      .then(html => {
+        container.innerHTML = html;
+        requestAnimationFrame(() => { container.style.opacity = '1'; });
+      })
+      .catch(error => {
+        container.remove();
+        document.body.style.overflow = '';
+        alert(error.message);
+      });
+  };
+
+  window.closeTRDocumentsModal = function(event) {
+    if (event && event.target !== event.currentTarget) return;
+    const container = document.getElementById('tr-documents-modal-container');
+    if (!container) return;
+    container.style.opacity = '0';
+    setTimeout(() => {
+      container.remove();
+      document.body.style.overflow = '';
+    }, 200);
+  };
+
+  window.toggleCasePin = function(trId, button) {
+    fetch(`/tr/${trId}/toggle-pin`, {method: 'POST'})
+      .then(response => response.json())
+      .then(data => {
+        if (!data.ok) return;
+        button.dataset.pinned = data.pinned ? '1' : '0';
+        button.title = data.pinned ? '取消重点跟进' : '标记为重点跟进（领导关注）';
+        button.innerHTML = data.pinned
+          ? '<svg class="w-4 h-4 text-yellow-500 fill-current" viewBox="0 0 24 24"><path d="M12 2l2.4 7.4H22l-6.2 4.5 2.4 7.4L12 16.8l-6.2 4.5 2.4-7.4L2 9.4h7.6z"/></svg>'
+          : '<svg class="w-4 h-4 text-gray-300 hover:text-yellow-400" fill="none" stroke="currentColor" viewBox="0 0 24 24" stroke-width="2"><path stroke-linecap="round" stroke-linejoin="round" d="M11.049 2.927c.3-.921 1.603-.921 1.902 0l1.519 4.674a1 1 0 00.95.69h4.915c.969 0 1.371 1.24.588 1.81l-3.976 2.888a1 1 0 00-.363 1.118l1.518 4.674c.3.922-.755 1.688-1.538 1.118l-3.976-2.888a1 1 0 00-1.176 0l-3.976 2.888c-.783.57-1.838-.196-1.538-1.118l1.518-4.674A1 1 0 009.053 12.99L5.077 10.1c-.784-.57-.38-1.81.588-1.81h4.914a1 1 0 00.951-.69l1.519-4.674z"/></svg>';
+        const row = button.closest('tr');
+        if (row) row.classList.toggle('bg-yellow-50/40', data.pinned);
+      });
+  };
+</script>
+
+{% include "tr/_8d_modal.html" %}
 
 {% endblock %}

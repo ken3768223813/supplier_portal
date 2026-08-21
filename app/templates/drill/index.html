@@ -1,143 +1,206 @@
 {% extends "layout/base.html" %}
-{% block title %}默译冲刺 · 句库管理{% endblock %}
+{% block title %}SQE English Lab · 今日练习{% endblock %}
 
 {% block content %}
-<div class="space-y-6">
+<div class="overflow-hidden rounded-lg border border-gray-200 bg-white shadow-sm">
+  {% include "drill/_nav.html" %}
 
-  <!-- 顶部标题 + 导出 -->
-  <div class="bg-white rounded-2xl border-2 border-gray-200 p-6">
-    <div class="flex items-start justify-between gap-4 flex-wrap">
-      <div>
-        <h1 class="text-2xl font-bold text-gray-900">默译冲刺 · 句库</h1>
-        <p class="text-sm text-gray-500 mt-1">
-          共 {{ total }} 句。地铁上看中文 → 脑子里默译成英文 → 翻面对答案 → 自评。
-        </p>
-      </div>
-      <div class="flex items-center gap-2">
-        <a href="{{ url_for('drill.export', cat=current_cat) }}"
-           class="inline-flex items-center gap-2 rounded-xl bg-gray-900 text-white px-4 py-2.5 text-sm font-semibold shadow-lg hover:bg-gray-800 transition">
-          <svg class="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24" stroke-width="2">
-            <path stroke-linecap="round" stroke-linejoin="round" d="M4 16v1a3 3 0 003 3h10a3 3 0 003-3v-1m-4-4l-4 4m0 0l-4-4m4 4V4"/>
-          </svg>
-          导出离线 HTML{% if current_cat %}（当前分类）{% endif %}
-        </a>
-      </div>
+  <section class="grid grid-cols-2 border-b border-gray-200 bg-gray-50 md:grid-cols-4">
+    <div class="border-b border-r border-gray-200 px-5 py-4 md:border-b-0">
+      <div class="text-xs font-semibold uppercase text-gray-500">今日到期</div>
+      <div class="mt-1 text-2xl font-bold text-gray-950">{{ due_count }}</div>
     </div>
+    <div class="border-b border-gray-200 px-5 py-4 md:border-b-0 md:border-r">
+      <div class="text-xs font-semibold uppercase text-gray-500">今日已练</div>
+      <div class="mt-1 text-2xl font-bold text-blue-600">{{ today_attempts }}</div>
+    </div>
+    <div class="border-r border-gray-200 px-5 py-4">
+      <div class="text-xs font-semibold uppercase text-gray-500">已掌握</div>
+      <div class="mt-1 text-2xl font-bold text-emerald-600">{{ mastered_count }}</div>
+    </div>
+    <div class="px-5 py-4">
+      <div class="text-xs font-semibold uppercase text-gray-500">连续练习</div>
+      <div class="mt-1 text-2xl font-bold text-gray-950">{{ streak }}<span class="ml-1 text-sm font-medium text-gray-500">天</span></div>
+    </div>
+  </section>
 
-    <p class="text-xs text-gray-400 mt-3">
-      导出的是一个自包含 HTML 文件，无需联网、无需服务器。下载到手机后用浏览器打开即可练习，进度存在手机本地。
-    </p>
-  </div>
-
-  <!-- 分类筛选 -->
-  <div class="flex flex-wrap gap-2">
-    <a href="{{ url_for('drill.index') }}"
-       class="px-3 py-1.5 rounded-full text-sm font-medium border-2 transition
-              {% if not current_cat %}bg-gray-900 text-white border-gray-900{% else %}bg-white text-gray-600 border-gray-200 hover:border-gray-300{% endif %}">
-      全部 {{ total }}
-    </a>
-    {% for value, label in categories %}
-    <a href="{{ url_for('drill.index', cat=value) }}"
-       class="px-3 py-1.5 rounded-full text-sm font-medium border-2 transition
-              {% if current_cat == value %}bg-gray-900 text-white border-gray-900{% else %}bg-white text-gray-600 border-gray-200 hover:border-gray-300{% endif %}">
-      {{ label }} {{ counts[value] }}
-    </a>
-    {% endfor %}
-  </div>
-
-  <!-- 新增句子 -->
-  <div class="bg-white rounded-2xl border-2 border-gray-200 p-6">
-    <h2 class="text-sm font-bold text-gray-900 mb-4">＋ 新增句子</h2>
-    <form method="POST" action="{{ url_for('drill.add') }}" class="space-y-3">
-      <div class="grid grid-cols-12 gap-3">
-        <div class="col-span-12 md:col-span-3">
-          <label class="block text-xs font-semibold text-gray-500 mb-1">分类</label>
-          <select name="category"
-                  class="w-full rounded-xl border-2 border-gray-200 px-3 py-2 text-sm focus:border-gray-900 outline-none">
-            {% for value, label in categories %}
-            <option value="{{ value }}" {% if current_cat == value %}selected{% endif %}>{{ label }}</option>
-            {% endfor %}
-          </select>
+  <section class="border-b border-gray-200 px-5 py-4">
+    <div class="flex flex-wrap items-center justify-between gap-4">
+      <div class="flex min-w-0 flex-wrap items-center gap-3">
+        <div class="inline-flex rounded-lg bg-gray-100 p-1" aria-label="练习模式">
+          {% for value, label in modes %}
+          <a href="{{ url_for('drill.index', mode=value, category=current_category) }}"
+             class="rounded-md px-3 py-2 text-sm font-semibold transition
+                    {% if current_mode == value %}bg-white text-gray-950 shadow-sm{% else %}text-gray-500 hover:text-gray-900{% endif %}">
+            {{ label }}
+          </a>
+          {% endfor %}
         </div>
-        <div class="col-span-12 md:col-span-9">
-          <label class="block text-xs font-semibold text-gray-500 mb-1">来源（可选，如 TR-2026-012 / Whetron 审核）</label>
-          <input type="text" name="source"
-                 class="w-full rounded-xl border-2 border-gray-200 px-3 py-2 text-sm focus:border-gray-900 outline-none" />
-        </div>
+
+        <label class="sr-only" for="drillCategory">工作场景</label>
+        <select id="drillCategory"
+                class="h-10 rounded-lg border border-gray-300 bg-white px-3 text-sm font-semibold text-gray-700 outline-none focus:border-blue-500 focus:ring-2 focus:ring-blue-100">
+          <option value="" {% if not current_category %}selected{% endif %}>全部工作场景</option>
+          {% for scenario in scenarios %}
+          <option value="{{ scenario.value }}" {% if current_category == scenario.value %}selected{% endif %}>{{ scenario.label }}</option>
+          {% endfor %}
+        </select>
       </div>
 
-      <div>
-        <label class="block text-xs font-semibold text-gray-500 mb-1">中文（正面）<span class="text-red-500">*</span></label>
-        <textarea name="cn" rows="2" required
-                  class="w-full rounded-xl border-2 border-gray-200 px-3 py-2 text-sm focus:border-gray-900 outline-none"
-                  placeholder="这批样件数量不满足最小要求。"></textarea>
-      </div>
+      <button id="audioToggle" type="button" aria-pressed="false"
+              class="inline-flex h-10 items-center gap-2 rounded-lg border border-gray-300 bg-white px-3 text-sm font-semibold text-gray-700 hover:bg-gray-50">
+        <svg id="audioIconOff" class="h-4 w-4" fill="none" stroke="currentColor" viewBox="0 0 24 24" stroke-width="2">
+          <path stroke-linecap="round" stroke-linejoin="round" d="M5.586 15H4a1 1 0 01-1-1v-4a1 1 0 011-1h3l4-4v14l-4-4H5.586zM17 9l4 4m0-4l-4 4"/>
+        </svg>
+        <svg id="audioIconOn" class="hidden h-4 w-4" fill="none" stroke="currentColor" viewBox="0 0 24 24" stroke-width="2">
+          <path stroke-linecap="round" stroke-linejoin="round" d="M11 5L7 9H4v6h3l4 4V5zm5.5 3.5a5 5 0 010 7M19 6a8 8 0 010 12"/>
+        </svg>
+        <span id="audioLabel">办公室静音</span>
+      </button>
+    </div>
+  </section>
 
-      <div>
-        <label class="block text-xs font-semibold text-gray-500 mb-1">英文参考（背面）<span class="text-red-500">*</span></label>
-        <textarea name="en" rows="2" required
-                  class="w-full rounded-xl border-2 border-gray-200 px-3 py-2 text-sm focus:border-gray-900 outline-none"
-                  placeholder="The sample quantity does not meet the minimum requirement."></textarea>
-      </div>
-
-      <div class="grid grid-cols-12 gap-3">
-        <div class="col-span-12 md:col-span-5">
-          <label class="block text-xs font-semibold text-gray-500 mb-1">重点术语（可选，逗号分隔，背面高亮）</label>
-          <input type="text" name="key_terms"
-                 class="w-full rounded-xl border-2 border-gray-200 px-3 py-2 text-sm focus:border-gray-900 outline-none"
-                 placeholder="sample quantity, minimum requirement" />
-        </div>
-        <div class="col-span-12 md:col-span-7">
-          <label class="block text-xs font-semibold text-gray-500 mb-1">用法提示（可选）</label>
-          <input type="text" name="note"
-                 class="w-full rounded-xl border-2 border-gray-200 px-3 py-2 text-sm focus:border-gray-900 outline-none"
-                 placeholder="审核 findings 讨论时的中性表述，不带情绪" />
-        </div>
-      </div>
-
-      <div class="pt-1">
-        <button type="submit"
-                class="rounded-xl bg-gray-900 text-white px-5 py-2.5 text-sm font-semibold shadow-lg hover:bg-gray-800 transition">
-          保存
-        </button>
-      </div>
-    </form>
-  </div>
-
-  <!-- 句子列表 -->
-  <div class="bg-white rounded-2xl border-2 border-gray-200 overflow-hidden">
-    {% if phrases %}
-    <div class="divide-y divide-gray-100">
-      {% for p in phrases %}
-      <div class="p-4 hover:bg-gray-50 transition flex items-start justify-between gap-4">
-        <div class="flex-1 min-w-0">
-          <div class="flex items-center gap-2 mb-1">
-            <span class="text-[11px] px-2 py-0.5 rounded-full bg-gray-100 text-gray-600 font-medium">
-              {{ category_map.get(p.category, p.category) }}
-            </span>
-            {% if p.source %}<span class="text-[11px] text-gray-400">{{ p.source }}</span>{% endif %}
+  {% if phrases %}
+  <section id="drillApp"
+           data-mode="{{ current_mode }}"
+           data-rate-url="{{ url_for('drill.rate') }}"
+           class="grid min-h-[430px] lg:grid-cols-[minmax(0,1fr)_260px]">
+    <div class="flex min-w-0 flex-col px-6 py-5 lg:px-9 lg:py-6">
+      <div class="mb-6">
+        <div class="flex items-center justify-between gap-4 text-xs font-semibold text-gray-500">
+          <div class="flex items-center gap-2">
+            <span id="cardCategory" class="rounded-md bg-blue-50 px-2 py-1 text-blue-700"></span>
+            <span id="cardDifficulty"></span>
           </div>
-          <div class="text-sm text-gray-900 font-medium">{{ p.cn }}</div>
-          <div class="text-sm text-gray-500 mt-0.5">{{ p.en }}</div>
-          {% if p.note %}<div class="text-xs text-gray-400 mt-1">💡 {{ p.note }}</div>{% endif %}
+          <span id="cardCounter">1 / {{ phrases|length }}</span>
         </div>
-        <form method="POST" action="{{ url_for('drill.delete', pid=p.id) }}"
-              onsubmit="return confirm('删除这句？');">
-          <button type="submit" class="text-gray-300 hover:text-red-500 transition p-1">
-            <svg class="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24" stroke-width="2">
-              <path stroke-linecap="round" stroke-linejoin="round" d="M19 7l-.867 12.142A2 2 0 0116.138 21H7.862a2 2 0 01-1.995-1.858L5 7m5 4v6m4-6v6m1-10V4a1 1 0 00-1-1h-4a1 1 0 00-1 1v3M4 7h16"/>
+        <div class="mt-3 h-1.5 overflow-hidden rounded-full bg-gray-100">
+          <div id="sessionProgress" class="h-full rounded-full bg-blue-600 transition-all duration-300" style="width:0"></div>
+        </div>
+      </div>
+
+      <div id="practiceSurface" class="flex min-h-[250px] flex-1 flex-col justify-center">
+        <div id="cardContextWrap" class="mb-5 hidden">
+          <div class="text-xs font-bold uppercase text-gray-400">工作情境</div>
+          <p id="cardContext" class="mt-2 text-sm leading-6 text-gray-600"></p>
+        </div>
+
+        <div id="listeningPrompt" class="hidden text-center">
+          <button id="playPrompt" type="button" title="播放英文"
+                  class="mx-auto flex h-14 w-14 items-center justify-center rounded-full bg-blue-600 text-white shadow-sm hover:bg-blue-700">
+            <svg class="h-6 w-6" fill="currentColor" viewBox="0 0 24 24">
+              <path d="M8 5v14l11-7z"/>
             </svg>
           </button>
-        </form>
-      </div>
-      {% endfor %}
-    </div>
-    {% else %}
-    <div class="p-12 text-center text-gray-400 text-sm">
-      还没有句子。用上面的表单添加，或运行 seed_drill.py 导入起步句库。
-    </div>
-    {% endif %}
-  </div>
+          <p class="mt-4 text-sm font-semibold text-gray-600">听完后，在心里复述意思</p>
+        </div>
 
+        <div id="cardChineseWrap">
+          <div class="text-xs font-bold uppercase text-gray-400">请用英文表达</div>
+          <p id="cardChinese" class="mt-3 max-w-3xl text-2xl font-semibold leading-10 text-gray-950"></p>
+        </div>
+
+        <div id="assemblyArea" class="mt-7 hidden">
+          <div id="assemblyAnswer" class="min-h-[58px] rounded-lg border-2 border-dashed border-gray-300 bg-gray-50 p-3">
+            <span id="assemblyPlaceholder" class="text-sm text-gray-400">依次点击下方词组，组成完整表达</span>
+          </div>
+          <div id="assemblyTokens" class="mt-3 flex min-h-[48px] flex-wrap gap-2"></div>
+          <div id="assemblyFeedback" class="mt-3 hidden text-sm font-semibold"></div>
+        </div>
+
+        <div id="answerArea" class="mt-7 hidden border-l-4 border-blue-600 bg-blue-50 px-5 py-4">
+          <div class="text-xs font-bold uppercase text-blue-700">参考表达</div>
+          <p id="cardEnglish" class="mt-2 text-xl font-semibold leading-8 text-gray-950"></p>
+          <div id="alternativesWrap" class="mt-3 hidden border-t border-blue-100 pt-3">
+            <div class="text-xs font-semibold text-gray-500">其他自然表达</div>
+            <div id="cardAlternatives" class="mt-1 space-y-1 text-sm text-gray-700"></div>
+          </div>
+          <p id="cardNote" class="mt-3 hidden text-sm leading-6 text-gray-600"></p>
+        </div>
+      </div>
+
+      <div id="primaryActions" class="mt-6 flex items-center justify-between gap-3 border-t border-gray-200 pt-5">
+        <span id="silentHint" class="text-xs text-gray-400">无需开口，在心里组织完整句子</span>
+        <button id="revealButton" type="button"
+                class="inline-flex h-11 items-center justify-center gap-2 rounded-lg bg-gray-900 px-5 text-sm font-semibold text-white hover:bg-gray-800">
+          <span>显示参考表达</span>
+          <svg class="h-4 w-4" fill="none" stroke="currentColor" viewBox="0 0 24 24" stroke-width="2">
+            <path stroke-linecap="round" stroke-linejoin="round" d="M9 5l7 7-7 7"/>
+          </svg>
+        </button>
+      </div>
+
+      <div id="ratingActions" class="mt-6 hidden grid grid-cols-3 gap-3 border-t border-gray-200 pt-5">
+        <button type="button" data-rating="again"
+                class="rating-button rounded-lg border border-red-200 bg-red-50 px-3 py-3 text-sm font-semibold text-red-700 hover:bg-red-100">
+          没表达出来
+        </button>
+        <button type="button" data-rating="good"
+                class="rating-button rounded-lg border border-blue-200 bg-blue-50 px-3 py-3 text-sm font-semibold text-blue-700 hover:bg-blue-100">
+          能表达
+        </button>
+        <button type="button" data-rating="easy"
+                class="rating-button rounded-lg border border-emerald-200 bg-emerald-50 px-3 py-3 text-sm font-semibold text-emerald-700 hover:bg-emerald-100">
+          工作中可直接用
+        </button>
+      </div>
+    </div>
+
+    <aside class="border-t border-gray-200 bg-gray-50 px-5 py-6 lg:border-l lg:border-t-0">
+      <h2 class="text-sm font-bold text-gray-950">本轮练习</h2>
+      <dl class="mt-5 space-y-4">
+        <div class="flex items-center justify-between gap-3">
+          <dt class="text-sm text-gray-500">模式</dt>
+          <dd class="text-sm font-semibold text-gray-900">
+            {% for value, label in modes %}{% if value == current_mode %}{{ label }}{% endif %}{% endfor %}
+          </dd>
+        </div>
+        <div class="flex items-center justify-between gap-3">
+          <dt class="text-sm text-gray-500">内容</dt>
+          <dd class="text-right text-sm font-semibold text-gray-900">
+            {% if current_category %}{{ scenario_map[current_category].label }}{% else %}混合场景{% endif %}
+          </dd>
+        </div>
+        <div class="flex items-center justify-between gap-3">
+          <dt class="text-sm text-gray-500">共计</dt>
+          <dd class="text-sm font-semibold text-gray-900">{{ phrases|length }} 条</dd>
+        </div>
+      </dl>
+
+      <div class="mt-6 border-t border-gray-200 pt-5">
+        <div class="flex items-center justify-between text-xs font-semibold text-gray-500">
+          <span>本轮完成</span>
+          <span id="sessionCompleted">0</span>
+        </div>
+        <div class="mt-2 grid grid-cols-3 gap-2 text-center">
+          <div class="rounded-md bg-white px-2 py-3">
+            <div id="againCount" class="text-lg font-bold text-red-600">0</div>
+            <div class="mt-0.5 text-[11px] text-gray-500">再练</div>
+          </div>
+          <div class="rounded-md bg-white px-2 py-3">
+            <div id="goodCount" class="text-lg font-bold text-blue-600">0</div>
+            <div class="mt-0.5 text-[11px] text-gray-500">掌握</div>
+          </div>
+          <div class="rounded-md bg-white px-2 py-3">
+            <div id="easyCount" class="text-lg font-bold text-emerald-600">0</div>
+            <div class="mt-0.5 text-[11px] text-gray-500">熟练</div>
+          </div>
+        </div>
+      </div>
+    </aside>
+  </section>
+  <script id="drillSessionData" type="application/json">{{ phrases|tojson }}</script>
+  <script src="{{ url_for('static', filename='js/drill_lab.js') }}"></script>
+  {% else %}
+  <section class="px-6 py-20 text-center">
+    <div class="mx-auto flex h-12 w-12 items-center justify-center rounded-lg bg-gray-100 text-gray-500">
+      <svg class="h-6 w-6" fill="none" stroke="currentColor" viewBox="0 0 24 24" stroke-width="2">
+        <path stroke-linecap="round" stroke-linejoin="round" d="M9 12h6m-6 4h6m2 5H7a2 2 0 01-2-2V5a2 2 0 012-2h5.586a1 1 0 01.707.293l5.414 5.414a1 1 0 01.293.707V19a2 2 0 01-2 2z"/>
+      </svg>
+    </div>
+    <h2 class="mt-4 text-base font-bold text-gray-900">当前场景还没有可练习素材</h2>
+    <a href="{{ url_for('drill.materials') }}" class="mt-4 inline-flex rounded-lg bg-gray-900 px-4 py-2.5 text-sm font-semibold text-white">前往素材库</a>
+  </section>
+  {% endif %}
 </div>
 {% endblock %}

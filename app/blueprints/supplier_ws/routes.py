@@ -5,6 +5,7 @@ Supplier Workspace — 概览 Dashboard + 各 Tab 路由
 from datetime import datetime, timedelta
 from collections import defaultdict, OrderedDict
 import json
+import re
 
 from flask import render_template, abort, redirect, url_for, jsonify, request
 from sqlalchemy import func, or_
@@ -336,30 +337,47 @@ def _tr_effective_date(tr):
     return None
 
 
+def _supplier_short_name(supplier):
+    """Build a concise English display name from the supplier legal name."""
+    words = re.findall(r"[A-Za-z0-9&]+", supplier.name or "")
+    ignored = {
+        "ALUMINUM", "AND", "AUTO", "AUTOPARTS", "CHONGQING", "CO", "DEVELOPMENT",
+        "EXP", "GEAR", "GROUP", "HENAN", "IMP", "LTD", "MACHINE", "MACHINERY",
+        "MAGNESIUM", "MANUFACTURE", "MANUFACTURING", "MOTORCYCLE", "PARTS", "QINGDAO",
+        "TECH", "TECHNOLOGY", "WEIHAI", "WHEEL", "ZHEJIANG",
+    }
+    meaningful = [word.upper() for word in words if word.upper() not in ignored]
+    return meaningful[0] if meaningful else ((supplier.name or supplier.code).strip().upper())
+
+
 def _resolve_period(period, custom_start, custom_end):
-    """返回 (start_date, end_date, 中文标签)；start/end 为 None 表示不限"""
+    """返回 (start_date, end_date, 双语标签, 英文标签)。"""
     today = _date.today()
     if period == "this_month":
         start = today.replace(day=1)
-        return start, today, f"{start.year}年{start.month}月"
+        month_en = ("Jan", "Feb", "Mar", "Apr", "May", "Jun", "Jul", "Aug", "Sep", "Oct", "Nov", "Dec")[start.month - 1]
+        period_en = f"{month_en} {start.year}"
+        return start, today, f"{start.year}年{start.month}月 / {period_en}", period_en
     if period == "this_quarter":
         q = (today.month - 1) // 3
         start = _date(today.year, q * 3 + 1, 1)
-        return start, today, f"{start.year}年 Q{q + 1}"
+        period_en = f"Q{q + 1} {start.year}"
+        return start, today, f"{start.year}年 Q{q + 1} / {period_en}", period_en
     if period == "this_half":
         if today.month <= 6:
-            return _date(today.year, 1, 1), today, f"{today.year}年 上半年"
-        return _date(today.year, 7, 1), today, f"{today.year}年 下半年"
+            return _date(today.year, 1, 1), today, f"{today.year}年上半年 / H1 {today.year}", f"H1 {today.year}"
+        return _date(today.year, 7, 1), today, f"{today.year}年下半年 / H2 {today.year}", f"H2 {today.year}"
     if period == "this_year":
-        return _date(today.year, 1, 1), today, f"{today.year}年"
+        return _date(today.year, 1, 1), today, f"{today.year}年 / Year {today.year}", f"Year {today.year}"
     if period == "custom" and custom_start and custom_end:
         try:
             s = _datetime.strptime(custom_start, "%Y-%m-%d").date()
             e = _datetime.strptime(custom_end, "%Y-%m-%d").date()
-            return s, e, f"{s.strftime('%Y/%m/%d')} – {e.strftime('%Y/%m/%d')}"
+            period_en = f"{s.strftime('%Y/%m/%d')} - {e.strftime('%Y/%m/%d')}"
+            return s, e, period_en, period_en
         except ValueError:
             pass
-    return None, None, "全部时间"
+    return None, None, "全部时间 / All Time", "All Time"
 
 
 @supplier_ws_bp.route("/<supplier_code>/report")
@@ -369,7 +387,7 @@ def report(supplier_code):
     custom_start = request.args.get("start", "")
     custom_end = request.args.get("end", "")
 
-    start, end, period_label = _resolve_period(period, custom_start, custom_end)
+    start, end, period_label, period_label_en = _resolve_period(period, custom_start, custom_end)
 
     all_trs = _get_trs(supplier)  # 已按 created_at 倒序
 
@@ -387,7 +405,19 @@ def report(supplier_code):
     closed = sum(1 for t in trs if (t.status or "").lower() in ("closed", "done", "completed"))
     open_cnt = total - closed
     pending_8d = sum(1 for t in trs if t.eight_d_status == "NOT_RECEIVED")
-    debit_total = sum(t.debit_amount for t in trs if t.debit_amount) or 0
+    debit_counter = defaultdict(float)
+    for t in trs:
+        if t.debit_amount:
+            debit_counter[(t.debit_currency or "EUR").upper()] += t.debit_amount
+    currency_symbols = {"EUR": "€", "USD": "$", "CNY": "¥", "VND": "₫"}
+    debit_totals = [
+        {
+            "currency": currency,
+            "symbol": currency_symbols.get(currency, f"{currency} "),
+            "amount": amount,
+        }
+        for currency, amount in sorted(debit_counter.items())
+    ]
 
     # ── 环比（仅固定周期）──
     prev_total = None
@@ -416,22 +446,31 @@ def report(supplier_code):
             m += 1
             if m > 12:
                 m = 1; y += 1
-        monthly = [{"label": f"{k[1]}月", "count": v} for k, v in months.items()]
+        month_names_en = ("Jan", "Feb", "Mar", "Apr", "May", "Jun", "Jul", "Aug", "Sep", "Oct", "Nov", "Dec")
+        monthly = [
+            {"label": f"{k[1]}月 / {month_names_en[k[1] - 1]}", "label_en": month_names_en[k[1] - 1], "count": v}
+            for k, v in months.items()
+        ]
     else:
         monthly = []
     month_max = max([x["count"] for x in monthly], default=1) or 1
 
     # ── 8D 状态分布 ──
-    d8_map = {"NOT_REQUIRED": "不要求", "NOT_RECEIVED": "未收到", "RECEIVED_REJECT": "已收到(拒收)", "RECEIVED_PASS": "已收到(通过)"}
+    d8_map = {
+        "NOT_REQUIRED": ("Not Required / 不要求", "Not Required"),
+        "NOT_RECEIVED": ("Not Received / 未收到", "Not Received"),
+        "RECEIVED_REJECT": ("Received, Rejected / 已收到（拒收）", "Received, Rejected"),
+        "RECEIVED_PASS": ("Received, Accepted / 已收到（通过）", "Received, Accepted"),
+    }
     d8_counter = Counter((t.eight_d_status or "NOT_REQUIRED") for t in trs)
-    eight_d = [{"key": k, "label": d8_map.get(k, k), "count": d8_counter.get(k, 0)}
+    eight_d = [{"key": k, "label": d8_map.get(k, (k, k))[0], "label_en": d8_map.get(k, (k, k))[1], "count": d8_counter.get(k, 0)}
                for k in ["NOT_RECEIVED", "RECEIVED_REJECT", "RECEIVED_PASS", "NOT_REQUIRED"]]
 
     # ── Top 问题零件 ──
     part_counter = Counter()
     part_name_map = {}
     for t in trs:
-        pn = t.part_number or "（未填零件号）"
+        pn = t.part_number or "No Part No. / 未填零件号"
         part_counter[pn] += 1
         if pn not in part_name_map and t.part_name:
             part_name_map[pn] = t.part_name
@@ -441,11 +480,11 @@ def report(supplier_code):
 
     # ── 评级 ──
     if open_cnt >= 4:
-        rating = {"label": "需重点关注", "color": "red"}
+        rating = {"label": "Attention Required / 需重点关注", "label_en": "Attention Required", "color": "red"}
     elif open_cnt >= 1:
-        rating = {"label": "持续跟进", "color": "amber"}
+        rating = {"label": "Follow-up Required / 持续跟进", "label_en": "Follow-up Required", "color": "amber"}
     else:
-        rating = {"label": "表现良好", "color": "green"}
+        rating = {"label": "Good Performance / 表现良好", "label_en": "Good Performance", "color": "green"}
 
     # TR 列表（按日期倒序，未闭环优先）
     trs_sorted = sorted(
@@ -457,10 +496,11 @@ def report(supplier_code):
     return render_template(
         "supplier_ws/report.html",
         supplier=supplier,
-        period=period, period_label=period_label,
+        supplier_short_name=_supplier_short_name(supplier),
+        period=period, period_label=period_label, period_label_en=period_label_en,
         custom_start=custom_start, custom_end=custom_end,
         total=total, open_cnt=open_cnt, closed=closed,
-        pending_8d=pending_8d, debit_total=debit_total,
+        pending_8d=pending_8d, debit_totals=debit_totals,
         prev_total=prev_total,
         monthly=monthly, month_max=month_max,
         eight_d=eight_d,

@@ -1,4 +1,5 @@
-from datetime import datetime
+from datetime import date, datetime
+import json
 from .extensions import db
 from sqlalchemy import CheckConstraint
 
@@ -895,12 +896,21 @@ class ControlPlan(db.Model):
 
     created_at   = db.Column(db.DateTime, default=datetime.utcnow, nullable=False)
     updated_at   = db.Column(db.DateTime, default=datetime.utcnow, onupdate=datetime.utcnow)
+    published_version_id = db.Column(db.Integer)
+    structure_status = db.Column(db.String(20), default='pending', index=True)
+    quality_score = db.Column(db.Integer)
+    source_template = db.Column(db.String(50))
 
     # 关系
     steps        = db.relationship(
         'ProcessStep', backref='control_plan',
         lazy='dynamic', cascade='all, delete-orphan',
         order_by='ProcessStep.seq'
+    )
+    versions     = db.relationship(
+        'ControlPlanVersion', backref='control_plan',
+        lazy='dynamic', cascade='all, delete-orphan',
+        order_by='ControlPlanVersion.version_no.desc()'
     )
     supplier = db.relationship('Supplier', backref=db.backref('control_plans', lazy='dynamic'))
     part     = db.relationship('Part',     backref=db.backref('control_plans', lazy='dynamic'))
@@ -925,6 +935,46 @@ class ControlPlan(db.Model):
     size = db.Column(db.Integer)
 
 
+class ControlPlanVersion(db.Model):
+    """Immutable source file and its reviewable structured extraction."""
+    __tablename__ = 'control_plan_versions'
+
+    id = db.Column(db.Integer, primary_key=True)
+    cp_id = db.Column(db.Integer, db.ForeignKey('control_plans.id'), nullable=False, index=True)
+    version_no = db.Column(db.Integer, nullable=False)
+    revision = db.Column(db.String(20))
+    status = db.Column(db.String(20), default='review', nullable=False, index=True)
+    extract_status = db.Column(db.String(20), default='pending', nullable=False, index=True)
+
+    original_name = db.Column(db.String(255), nullable=False)
+    stored_name = db.Column(db.String(255), nullable=False)
+    rel_path = db.Column(db.String(500), nullable=False)
+    mime = db.Column(db.String(100))
+    size = db.Column(db.Integer)
+    file_sha256 = db.Column(db.String(64), index=True)
+
+    source_sheet = db.Column(db.String(255))
+    source_template = db.Column(db.String(50))
+    parser_version = db.Column(db.String(30))
+    ai_model = db.Column(db.String(100))
+    confidence = db.Column(db.Float)
+    quality_score = db.Column(db.Integer)
+    quality_issues = db.Column(db.Text)
+    metadata_json = db.Column(db.Text)
+    structured_json = db.Column(db.Text)
+    extraction_error = db.Column(db.Text)
+
+    created_at = db.Column(db.DateTime, default=datetime.utcnow, nullable=False)
+    published_at = db.Column(db.DateTime)
+
+    __table_args__ = (
+        db.UniqueConstraint('cp_id', 'version_no', name='uq_cp_version_no'),
+    )
+
+    def __repr__(self):
+        return f'<ControlPlanVersion {self.cp_id} v{self.version_no}>'
+
+
 class ProcessStep(db.Model):
     """
     工序步骤表
@@ -936,12 +986,14 @@ class ProcessStep(db.Model):
     cp_id           = db.Column(db.Integer, db.ForeignKey('control_plans.id'), nullable=False, index=True)
 
     seq             = db.Column(db.Integer, nullable=False)     # 顺序号 10, 20, 30 … 便于插入
-    process_name    = db.Column(db.String(100), nullable=False) # 工序名：压铸 / T6热处理 / 机加工
+    process_name    = db.Column(db.String(255), nullable=False) # 工序名：压铸 / T6热处理 / 机加工
     process_code    = db.Column(db.String(50))                  # 工序编号（供应商自己的编号）
-    machine         = db.Column(db.String(100))                 # 设备/工具名称
+    machine         = db.Column(db.Text)                        # 设备/工具名称
     is_key_process  = db.Column(db.Boolean, default=False)      # 关键工序 KPC flag
 
     notes           = db.Column(db.Text)
+    source_sheet    = db.Column(db.String(255))
+    source_row      = db.Column(db.Integer)
 
     # 子特性（每道工序下可有多个控制特性行）
     characteristics = db.relationship(
@@ -967,15 +1019,23 @@ class ControlCharacteristic(db.Model):
     id             = db.Column(db.Integer, primary_key=True)
     step_id        = db.Column(db.Integer, db.ForeignKey('process_steps.id'), nullable=False, index=True)
 
-    char_name      = db.Column(db.String(150), nullable=False)  # 特性名称：模具温度
-    spec_value     = db.Column(db.String(100))  # 规格值（数值或文本）：220
+    char_name      = db.Column(db.String(255), nullable=False)  # 特性名称：模具温度
+    char_type      = db.Column(db.String(20), default='product')
+    char_code      = db.Column(db.String(50))
+    special_class  = db.Column(db.String(50))
+    spec_value     = db.Column(db.Text)         # 规格值（数值或文本）：220
     spec_unit      = db.Column(db.String(30))   # 单位：°C / MPa / mm / s
     tolerance      = db.Column(db.String(50))   # 公差：±10 / +0.05/-0.02
-    control_method = db.Column(db.String(150))  # 控制方法：热电偶 / 游标卡尺
+    measurement_method = db.Column(db.Text)     # 评价/测量技术
+    control_method = db.Column(db.Text)         # 控制方法：检验规范 / 记录表
     sample_size    = db.Column(db.String(50))   # 抽样量：3件
     frequency      = db.Column(db.String(50))   # 检验频次：每批次 / 每小时 / 连续
+    inspector      = db.Column(db.String(100))
     reaction_plan  = db.Column(db.Text)         # 超差反应计划
     is_key_char    = db.Column(db.Boolean, default=False)  # 关键特性 KCC flag
+    source_sheet   = db.Column(db.String(255))
+    source_row     = db.Column(db.Integer)
+    confidence     = db.Column(db.Float)
 
     def __repr__(self):
         return f'<ControlCharacteristic {self.char_name}: {self.spec_value}{self.spec_unit}>'
@@ -992,21 +1052,14 @@ class ControlCharacteristic(db.Model):
         return ' '.join(parts)
 
 # ── 追加到 app/models.py 末尾 ──────────────────────────────────────────────
-# 默译冲刺 / 口语句库  Drill Phrase
-#
-# 说明：
-#   - SRS 复习状态（ef / interval / due）不存数据库，存在手机端 localStorage。
-#     这样离线 HTML 自包含、不依赖回传，符合“生产在本地、消费离线化”的分工。
-#   - 数据库只负责“句库内容”：中文、英文参考、分类、重点术语、来源。
+# SQE English Lab：素材、服务器端复习进度和练习记录
 
 class DrillPhrase(db.Model):
     __tablename__ = 'drill_phrases'
 
     id = db.Column(db.Integer, primary_key=True)
 
-    # 分类：决定离线文件里的筛选 pill
-    # meeting(会议胶水语) / audit(审核) / metallurgy(金相材料)
-    # surface(表面处理) / electrical(电气) / measurement(测量)
+    # 工作场景分类，用于练习筛选和 AI 素材归类。
     category = db.Column(db.String(50), nullable=False, default='meeting', index=True)
 
     cn = db.Column(db.Text, nullable=False)      # 中文（正面，默译用）
@@ -1016,18 +1069,87 @@ class DrillPhrase(db.Model):
     note = db.Column(db.Text)                    # 可选：用法提示 / 易错点
     source = db.Column(db.String(100))           # 可选：来源（TR 编号 / 审核编号 / 文档）
 
+    # SQE English Lab fields
+    topic = db.Column(db.String(50), index=True)
+    difficulty = db.Column(db.String(20), nullable=False, default="intermediate", index=True)
+    context_cn = db.Column(db.Text)
+    alternatives_json = db.Column(db.Text)
+    chunks_json = db.Column(db.Text)
+    status = db.Column(db.String(20), nullable=False, default="approved", index=True)
+    source_type = db.Column(db.String(30), index=True)
+    source_id = db.Column(db.String(100), index=True)
+
     active = db.Column(db.Boolean, default=True, nullable=False, index=True)
     created_at = db.Column(db.DateTime, default=datetime.utcnow, nullable=False, index=True)
+    updated_at = db.Column(
+        db.DateTime, default=datetime.utcnow, onupdate=datetime.utcnow, nullable=False
+    )
 
     def __repr__(self):
         return f'<DrillPhrase {self.id}: {self.cn[:20]}>'
 
     def to_dict(self):
+        def decode(value):
+            try:
+                parsed = json.loads(value or "[]")
+                return parsed if isinstance(parsed, list) else []
+            except (TypeError, ValueError):
+                return []
+
         return {
             'id': self.id,
             'cat': self.category,
+            'topic': self.topic or '',
+            'difficulty': self.difficulty or 'intermediate',
+            'context': self.context_cn or '',
             'cn': self.cn,
             'en': self.en,
             'terms': [t.strip() for t in (self.key_terms or '').split(',') if t.strip()],
             'note': self.note or '',
+            'alternatives': decode(self.alternatives_json),
+            'chunks': decode(self.chunks_json),
+            'source': self.source or '',
         }
+
+
+class DrillProgress(db.Model):
+    __tablename__ = "drill_progress"
+
+    id = db.Column(db.Integer, primary_key=True)
+    phrase_id = db.Column(
+        db.Integer, db.ForeignKey("drill_phrases.id"), nullable=False, unique=True, index=True
+    )
+    ease_factor = db.Column(db.Float, nullable=False, default=2.5)
+    interval_days = db.Column(db.Integer, nullable=False, default=0)
+    repetitions = db.Column(db.Integer, nullable=False, default=0)
+    due_date = db.Column(db.Date, nullable=False, default=date.today, index=True)
+    attempts = db.Column(db.Integer, nullable=False, default=0)
+    successes = db.Column(db.Integer, nullable=False, default=0)
+    last_rating = db.Column(db.String(20))
+    last_mode = db.Column(db.String(30))
+    last_practiced_at = db.Column(db.DateTime)
+    updated_at = db.Column(
+        db.DateTime, default=datetime.utcnow, onupdate=datetime.utcnow, nullable=False
+    )
+
+    phrase = db.relationship(
+        "DrillPhrase", backref=db.backref("progress", uselist=False, cascade="all, delete-orphan")
+    )
+
+
+class DrillAttempt(db.Model):
+    __tablename__ = "drill_attempts"
+
+    id = db.Column(db.Integer, primary_key=True)
+    phrase_id = db.Column(
+        db.Integer, db.ForeignKey("drill_phrases.id"), nullable=False, index=True
+    )
+    mode = db.Column(db.String(30), nullable=False, index=True)
+    rating = db.Column(db.String(20), nullable=False, index=True)
+    correct = db.Column(db.Boolean)
+    response_text = db.Column(db.Text)
+    created_at = db.Column(db.DateTime, default=datetime.utcnow, nullable=False, index=True)
+
+    phrase = db.relationship(
+        "DrillPhrase", backref=db.backref("attempt_history", lazy="dynamic", cascade="all, delete-orphan")
+    )

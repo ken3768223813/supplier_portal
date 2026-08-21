@@ -199,19 +199,35 @@
 
               <!-- 操作按钮 -->
               <div class="flex flex-col gap-2 shrink-0">
+                {% if doc.original_name and doc.original_name.lower().endswith('.pdf') %}
                 <a href="{{ url_for('tr.view_document', tr_id=tr.id, doc_id=doc.id) }}"
                    target="_blank"
                    class="inline-flex items-center justify-center gap-2 px-4 py-2.5 rounded-xl
                           bg-gradient-to-r from-blue-600 to-blue-700 text-white font-semibold text-sm
                           shadow-lg shadow-blue-600/30 hover:shadow-xl hover:shadow-blue-600/40
                           transition-all hover:scale-105 active:scale-95 whitespace-nowrap"
-                   title="在新窗口预览">
+                   title="在新窗口预览 PDF">
                   <svg class="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24">
                     <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M15 12a3 3 0 11-6 0 3 3 0 016 0z"/>
                     <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M2.458 12C3.732 7.943 7.523 5 12 5c4.478 0 8.268 2.943 9.542 7-1.274 4.057-5.064 7-9.542 7-4.477 0-8.268-2.943-9.542-7z"/>
                   </svg>
                   预览
                 </a>
+                {% else %}
+                <button type="button"
+                        onclick="revealTRDocument(event, '{{ url_for('tr.reveal_document', tr_id=tr.id, doc_id=doc.id) }}')"
+                        class="inline-flex items-center justify-center gap-2 px-4 py-2.5 rounded-xl
+                               bg-gradient-to-r from-blue-600 to-blue-700 text-white font-semibold text-sm
+                               shadow-lg shadow-blue-600/30 hover:shadow-xl hover:shadow-blue-600/40
+                               transition-all hover:scale-105 active:scale-95 whitespace-nowrap"
+                        title="在文件夹中显示">
+                  <svg class="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                    <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M15 12a3 3 0 11-6 0 3 3 0 016 0z"/>
+                    <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M2.458 12C3.732 7.943 7.523 5 12 5c4.478 0 8.268-2.943 9.542-7-1.274 4.057-5.064 7-9.542 7-4.477 0-8.268-2.943-9.542-7z"/>
+                  </svg>
+                  文件夹
+                </button>
+                {% endif %}
 
                 <a href="{{ url_for('tr.download_document', tr_id=tr.id, doc_id=doc.id) }}"
                    class="inline-flex items-center justify-center gap-2 px-4 py-2.5 rounded-xl

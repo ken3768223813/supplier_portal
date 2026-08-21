@@ -1,0 +1,256 @@
+{% extends "layout/base.html" %}
+{% block title %}SQE English Lab · 素材库{% endblock %}
+
+{% block content %}
+<div class="overflow-hidden rounded-lg border border-gray-200 bg-white shadow-sm">
+  {% include "drill/_nav.html" %}
+
+  <section class="grid border-b border-gray-200 lg:grid-cols-[1.15fr_.85fr]">
+    <div class="border-b border-gray-200 px-6 py-6 lg:border-b-0 lg:border-r">
+      <div class="flex items-start gap-3">
+        <div class="flex h-9 w-9 shrink-0 items-center justify-center rounded-lg bg-violet-50 text-violet-700">
+          <svg class="h-5 w-5" fill="none" stroke="currentColor" viewBox="0 0 24 24" stroke-width="2">
+            <path stroke-linecap="round" stroke-linejoin="round" d="M5 3v4M3 5h4m11-2l.94 2.06L21 6l-2.06.94L18 9l-.94-2.06L15 6l2.06-.94L18 3zM6 12l1.88 4.12L12 18l-4.12 1.88L6 24l-1.88-4.12L0 18l4.12-1.88L6 12zm8-2l1.41 3.09L18.5 14.5l-3.09 1.41L14 19l-1.41-3.09L9.5 14.5l3.09-1.41L14 10z"/>
+          </svg>
+        </div>
+        <div>
+          <h2 class="text-base font-bold text-gray-950">从业务资料生成训练素材</h2>
+          <p class="mt-1 text-sm text-gray-500">AI 生成后先进入待审核区，不会直接加入练习。</p>
+        </div>
+      </div>
+
+      <form id="aiMaterialForm" method="POST" action="{{ url_for('drill.generate') }}" class="mt-5">
+        <div class="grid gap-3 md:grid-cols-[minmax(0,1fr)_170px_auto]">
+          <div>
+            <label for="sourceRef" class="mb-1.5 block text-xs font-bold uppercase text-gray-500">业务来源</label>
+            <select id="sourceRef" name="source_ref" required
+                    class="h-11 w-full rounded-lg border border-gray-300 bg-white px-3 text-sm text-gray-800 outline-none focus:border-violet-500 focus:ring-2 focus:ring-violet-100">
+              <option value="">选择一份资料...</option>
+              {% if latest_trs %}
+              <optgroup label="Trouble Reports">
+                {% for tr in latest_trs %}
+                <option value="tr:{{ tr.id }}">{{ tr.tr_no }} · {{ (tr.issue_summary or tr.part_name or '')[:56] }}</option>
+                {% endfor %}
+              </optgroup>
+              {% endif %}
+              {% if eight_d_trs %}
+              <optgroup label="8D 分析">
+                {% for tr in eight_d_trs %}
+                <option value="eight_d:{{ tr.id }}">{{ tr.tr_no }} · 8D</option>
+                {% endfor %}
+              </optgroup>
+              {% endif %}
+              {% if control_plans %}
+              <optgroup label="控制计划">
+                {% for cp in control_plans %}
+                <option value="cp:{{ cp.id }}">{{ cp.cp_no }}{% if cp.part %} · {{ cp.part.pn }}{% endif %}</option>
+                {% endfor %}
+              </optgroup>
+              {% endif %}
+            </select>
+          </div>
+          <div>
+            <label for="generateCategory" class="mb-1.5 block text-xs font-bold uppercase text-gray-500">训练场景</label>
+            <select id="generateCategory" name="category"
+                    class="h-11 w-full rounded-lg border border-gray-300 bg-white px-3 text-sm text-gray-800 outline-none focus:border-violet-500 focus:ring-2 focus:ring-violet-100">
+              <option value="">自动判断</option>
+              {% for scenario in scenarios %}
+              <option value="{{ scenario.value }}">{{ scenario.label }}</option>
+              {% endfor %}
+            </select>
+          </div>
+          <button id="aiGenerateButton" type="submit"
+                  class="mt-auto inline-flex h-11 items-center justify-center gap-2 rounded-lg bg-violet-600 px-4 text-sm font-semibold text-white hover:bg-violet-700 disabled:cursor-wait disabled:opacity-70">
+            <svg id="aiGenerateIcon" class="h-4 w-4" fill="none" stroke="currentColor" viewBox="0 0 24 24" stroke-width="2">
+              <path stroke-linecap="round" stroke-linejoin="round" d="M12 4V2m0 20v-2m8-8h2M2 12h2m13.66-5.66l1.42-1.42M4.92 19.08l1.42-1.42m11.32 0l1.42 1.42M4.92 4.92l1.42 1.42M8 12a4 4 0 108 0 4 4 0 00-8 0z"/>
+            </svg>
+            <span id="aiGenerateLabel">AI 生成</span>
+          </button>
+        </div>
+        <div id="aiGenerateStatus" class="mt-3 hidden rounded-lg border border-violet-200 bg-violet-50 px-3 py-2 text-sm font-semibold text-violet-700">
+          AI 正在分析业务内容并生成口语素材，请稍候...
+        </div>
+      </form>
+    </div>
+
+    <div class="px-6 py-6">
+      <details>
+        <summary class="flex cursor-pointer list-none items-center justify-between gap-4">
+          <div>
+            <h2 class="text-base font-bold text-gray-950">手动添加</h2>
+            <p class="mt-1 text-sm text-gray-500">录入会议上常用但资料中没有的表达。</p>
+          </div>
+          <span class="rounded-lg border border-gray-300 px-3 py-2 text-sm font-semibold text-gray-700">展开表单</span>
+        </summary>
+        <form method="POST" action="{{ url_for('drill.add') }}" class="mt-5 space-y-3 border-t border-gray-200 pt-4">
+          <div class="grid grid-cols-2 gap-3">
+            <select name="category" class="h-10 rounded-lg border border-gray-300 px-3 text-sm">
+              {% for scenario in scenarios %}<option value="{{ scenario.value }}">{{ scenario.label }}</option>{% endfor %}
+            </select>
+            <select name="difficulty" class="h-10 rounded-lg border border-gray-300 px-3 text-sm">
+              <option value="foundation">基础</option>
+              <option value="intermediate" selected>进阶</option>
+              <option value="advanced">高级</option>
+            </select>
+          </div>
+          <input name="context_cn" placeholder="工作情境（可选）" class="h-10 w-full rounded-lg border border-gray-300 px-3 text-sm">
+          <textarea name="cn" required rows="2" placeholder="中文表达意图" class="w-full rounded-lg border border-gray-300 px-3 py-2 text-sm"></textarea>
+          <textarea name="en" required rows="2" placeholder="自然、专业的英文口语表达" class="w-full rounded-lg border border-gray-300 px-3 py-2 text-sm"></textarea>
+          <input name="key_terms" placeholder="重点术语，用逗号分隔" class="h-10 w-full rounded-lg border border-gray-300 px-3 text-sm">
+          <input name="note" placeholder="用法提示（可选）" class="h-10 w-full rounded-lg border border-gray-300 px-3 text-sm">
+          <button type="submit" class="rounded-lg bg-gray-900 px-4 py-2.5 text-sm font-semibold text-white">保存并加入练习</button>
+        </form>
+      </details>
+    </div>
+  </section>
+
+  <section>
+    <div class="flex flex-wrap items-center justify-between gap-4 border-b border-gray-200 px-6 py-4">
+      <div class="flex items-center gap-2">
+        <a href="{{ url_for('drill.materials', status='pending') }}"
+           class="rounded-lg px-3 py-2 text-sm font-semibold {% if current_status == 'pending' %}bg-gray-900 text-white{% else %}bg-gray-100 text-gray-600{% endif %}">
+          待审核 {{ counts.pending }}
+        </a>
+        <a href="{{ url_for('drill.materials', status='approved') }}"
+           class="rounded-lg px-3 py-2 text-sm font-semibold {% if current_status == 'approved' %}bg-gray-900 text-white{% else %}bg-gray-100 text-gray-600{% endif %}">
+          已批准 {{ counts.approved }}
+        </a>
+        <a href="{{ url_for('drill.materials', status='all') }}"
+           class="rounded-lg px-3 py-2 text-sm font-semibold {% if current_status == 'all' %}bg-gray-900 text-white{% else %}bg-gray-100 text-gray-600{% endif %}">
+          全部
+        </a>
+      </div>
+      <span class="text-xs text-gray-400">共 {{ pagination.total }} 条</span>
+    </div>
+
+    {% if phrases %}
+    <div class="divide-y divide-gray-200">
+      {% for phrase in phrases %}
+      <article class="px-6 py-5">
+        <div class="flex flex-wrap items-start justify-between gap-4">
+          <div class="flex min-w-0 flex-wrap items-center gap-2">
+            <span class="rounded-md bg-blue-50 px-2 py-1 text-xs font-semibold text-blue-700">{{ category_map.get(phrase.category, {}).get('label', phrase.category) }}</span>
+            <span class="rounded-md bg-gray-100 px-2 py-1 text-xs font-semibold text-gray-600">
+              {% if phrase.difficulty == 'foundation' %}基础{% elif phrase.difficulty == 'advanced' %}高级{% else %}进阶{% endif %}
+            </span>
+            {% if phrase.status == 'pending' %}
+            <span class="rounded-md bg-amber-50 px-2 py-1 text-xs font-semibold text-amber-700">待审核</span>
+            {% endif %}
+            {% if phrase.source %}<span class="text-xs text-gray-400">来源：{{ phrase.source }}</span>{% endif %}
+          </div>
+          <div class="flex shrink-0 items-center gap-2">
+            {% if phrase.status == 'pending' %}
+            <form method="POST" action="{{ url_for('drill.approve', pid=phrase.id) }}">
+              <button type="submit" class="inline-flex items-center gap-1.5 rounded-lg bg-emerald-600 px-3 py-2 text-sm font-semibold text-white hover:bg-emerald-700">
+                <svg class="h-4 w-4" fill="none" stroke="currentColor" viewBox="0 0 24 24" stroke-width="2">
+                  <path stroke-linecap="round" stroke-linejoin="round" d="M5 13l4 4L19 7"/>
+                </svg>
+                批准
+              </button>
+            </form>
+            {% endif %}
+            <form method="POST" action="{{ url_for('drill.delete', pid=phrase.id, status=current_status) }}" onsubmit="return confirm('确定归档这条素材吗？')">
+              <button type="submit" title="归档" class="flex h-9 w-9 items-center justify-center rounded-lg border border-gray-300 text-gray-500 hover:border-red-300 hover:text-red-600">
+                <svg class="h-4 w-4" fill="none" stroke="currentColor" viewBox="0 0 24 24" stroke-width="2">
+                  <path stroke-linecap="round" stroke-linejoin="round" d="M20 7H4m1 0l1 13h12l1-13M9 11v5m6-5v5M8 7V4h8v3"/>
+                </svg>
+              </button>
+            </form>
+          </div>
+        </div>
+
+        <form method="POST" action="{{ url_for('drill.edit', pid=phrase.id, status=current_status) }}" class="mt-4">
+          <div class="grid gap-4 lg:grid-cols-[180px_minmax(0,1fr)_minmax(0,1.15fr)]">
+            <div class="space-y-3">
+              <div>
+                <label class="mb-1 block text-xs font-semibold text-gray-500">场景</label>
+                <select name="category" class="h-10 w-full rounded-lg border border-gray-300 px-3 text-sm">
+                  {% for scenario in scenarios %}
+                  <option value="{{ scenario.value }}" {% if phrase.category == scenario.value %}selected{% endif %}>{{ scenario.label }}</option>
+                  {% endfor %}
+                </select>
+              </div>
+              <div>
+                <label class="mb-1 block text-xs font-semibold text-gray-500">难度</label>
+                <select name="difficulty" class="h-10 w-full rounded-lg border border-gray-300 px-3 text-sm">
+                  <option value="foundation" {% if phrase.difficulty == 'foundation' %}selected{% endif %}>基础</option>
+                  <option value="intermediate" {% if phrase.difficulty == 'intermediate' %}selected{% endif %}>进阶</option>
+                  <option value="advanced" {% if phrase.difficulty == 'advanced' %}selected{% endif %}>高级</option>
+                </select>
+              </div>
+            </div>
+            <div class="space-y-3">
+              <div>
+                <label class="mb-1 block text-xs font-semibold text-gray-500">工作情境</label>
+                <input name="context_cn" value="{{ phrase.context_cn or '' }}" class="h-10 w-full rounded-lg border border-gray-300 px-3 text-sm">
+              </div>
+              <div>
+                <label class="mb-1 block text-xs font-semibold text-gray-500">中文表达意图</label>
+                <textarea name="cn" rows="3" class="w-full rounded-lg border border-gray-300 px-3 py-2 text-sm leading-6">{{ phrase.cn }}</textarea>
+              </div>
+            </div>
+            <div class="space-y-3">
+              <div>
+                <label class="mb-1 block text-xs font-semibold text-gray-500">英文口语表达</label>
+                <textarea name="en" rows="3" class="w-full rounded-lg border border-gray-300 px-3 py-2 text-sm leading-6">{{ phrase.en }}</textarea>
+              </div>
+              <div class="grid gap-3 md:grid-cols-2">
+                <input name="key_terms" value="{{ phrase.key_terms or '' }}" placeholder="重点术语" class="h-10 rounded-lg border border-gray-300 px-3 text-sm">
+                <input name="note" value="{{ phrase.note or '' }}" placeholder="用法提示" class="h-10 rounded-lg border border-gray-300 px-3 text-sm">
+              </div>
+            </div>
+          </div>
+          <div class="mt-3 flex justify-end">
+            <button type="submit" class="rounded-lg border border-gray-300 bg-white px-3 py-2 text-sm font-semibold text-gray-700 hover:bg-gray-50">保存修改</button>
+          </div>
+        </form>
+      </article>
+      {% endfor %}
+    </div>
+    {% else %}
+    <div class="px-6 py-16 text-center">
+      <h3 class="text-base font-bold text-gray-900">当前列表为空</h3>
+      <p class="mt-1 text-sm text-gray-500">可从上方业务资料生成，或手动添加一条表达。</p>
+    </div>
+    {% endif %}
+
+    {% if pagination.pages > 1 %}
+    <nav class="flex items-center justify-between gap-4 border-t border-gray-200 bg-gray-50 px-6 py-4" aria-label="素材分页">
+      <div class="text-sm text-gray-500">第 {{ pagination.page }} / {{ pagination.pages }} 页</div>
+      <div class="flex items-center gap-2">
+        <a href="{{ url_for('drill.materials', status=current_status, page=1) }}"
+           class="rounded-lg border border-gray-300 bg-white px-3 py-2 text-sm font-semibold text-gray-700 hover:bg-gray-50
+                  {% if not pagination.has_prev %}pointer-events-none opacity-40{% endif %}">
+          第一页
+        </a>
+        <a href="{{ url_for('drill.materials', status=current_status, page=pagination.prev_num or 1) }}"
+           class="rounded-lg border border-gray-300 bg-white px-3 py-2 text-sm font-semibold text-gray-700 hover:bg-gray-50
+                  {% if not pagination.has_prev %}pointer-events-none opacity-40{% endif %}">
+          上一页
+        </a>
+        <a href="{{ url_for('drill.materials', status=current_status, page=pagination.next_num or pagination.pages) }}"
+           class="rounded-lg border border-gray-300 bg-white px-3 py-2 text-sm font-semibold text-gray-700 hover:bg-gray-50
+                  {% if not pagination.has_next %}pointer-events-none opacity-40{% endif %}">
+          下一页
+        </a>
+      </div>
+    </nav>
+    {% endif %}
+  </section>
+</div>
+
+<script>
+  (function () {
+    const form = document.getElementById('aiMaterialForm');
+    if (!form) return;
+    form.addEventListener('submit', function () {
+      const button = document.getElementById('aiGenerateButton');
+      const icon = document.getElementById('aiGenerateIcon');
+      document.getElementById('aiGenerateLabel').textContent = '识别中';
+      document.getElementById('aiGenerateStatus').classList.remove('hidden');
+      button.disabled = true;
+      icon.classList.add('animate-spin');
+    });
+  })();
+</script>
+{% endblock %}

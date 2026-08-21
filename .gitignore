@@ -5,6 +5,7 @@ __pycache__/
 # Virtual env
 .venv/
 venv/
+node_modules/
 
 # PyCharm
 .idea/
@@ -18,4 +19,6 @@ instance/
 
 # Logs
 *.log
+
+tmp/
 
